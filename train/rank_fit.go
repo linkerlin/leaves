@@ -9,7 +9,7 @@ import (
 
 func isRankObjective(name string) bool {
 	switch name {
-	case ObjectiveRankPairwise, ObjectiveRankNDCG:
+	case ObjectiveRankPairwise, ObjectiveRankNDCG, ObjectiveRankListwise:
 		return true
 	default:
 		return false
@@ -35,13 +35,13 @@ func (l *Learner) fitRanking(dm data.Matrix, rankObj objective.RankFunc) error {
 	evalPreds := make([]float64, n)
 
 	for round := 0; round < l.cfg.NumRound; round++ {
-		l.booster.PredictMargins(dm, preds)
+		l.predictMarginsInternal(dm, preds, false)
 		if err := objective.GradHessRanking(rankObj, dm, groups, preds, grad, hess); err != nil {
 			return err
 		}
 		l.booster.Boost(dm, grad, hess)
 		if l.metric != nil {
-			l.booster.PredictMargins(dm, evalPreds)
+			l.predictMarginsInternal(dm, evalPreds, false)
 			metricLabels, metricPreds := metricInputs(l.cfg, labels, evalPreds, 1)
 			if v, err := evaluateTrainMetric(l, metricLabels, metricPreds, dm); err == nil {
 				l.metricHistory = append(l.metricHistory, v)

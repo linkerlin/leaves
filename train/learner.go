@@ -9,6 +9,7 @@ import (
 	"github.com/dmitryikh/leaves/metrics"
 	"github.com/dmitryikh/leaves/model"
 	"github.com/dmitryikh/leaves/objective"
+	"github.com/dmitryikh/leaves/tree"
 	"github.com/dmitryikh/leaves/treebuilder"
 )
 
@@ -31,6 +32,8 @@ type Config struct {
 	Seed            int64
 	NumThreads      int // 0 = 全部 CPU；T4 多线程 hist
 	NumParallelTree int
+	AccelMode       string // auto|webgpu|born_cpu|cpu；空则 LEAVES_TRAIN_ACCEL
+	HistBinPolicy   string // global|per_node；hist 路径默认 global
 	DART            *booster.DARTConfig
 	EvalSet         data.Matrix
 	EarlyStop       *EarlyStopping
@@ -44,12 +47,19 @@ type Config struct {
 
 // Learner 训练编排器。
 type Learner struct {
-	cfg           Config
-	obj           objective.Func
-	booster       booster.Booster
-	numGroups     int
-	metric        metrics.Metric
-	metricHistory []float64
+	cfg                Config
+	obj                objective.Func
+	booster            booster.Booster
+	numGroups          int
+	metric             metrics.Metric
+	metricHistory      []float64
+	resolvedTreeMethod string
+	useGPUHist         bool
+	accelLogged        bool
+	marginEngine       *tree.BornEngine
+	marginGPULogged    bool
+	marginPredictGPU   int
+	marginPredictCPU   int
 }
 
 // NewLearner 创建 Learner。
@@ -77,7 +87,7 @@ func NewLearner(cfg Config) (*Learner, error) {
 		cfg.Booster = BoosterGBTree
 	}
 	if cfg.TreeMethod == "" {
-		cfg.TreeMethod = treebuilder.MethodHist
+		cfg.TreeMethod = treebuilder.MethodAuto
 	}
 	if cfg.Subsample <= 0 {
 		cfg.Subsample = 1.0
@@ -104,6 +114,11 @@ func (l *Learner) Fit(dm data.Matrix) error {
 	if dm == nil {
 		return fmt.Errorf("train: nil matrix")
 	}
+	l.beginTrainAccel(dm)
+	defer func() {
+		l.endTrainAccel()
+		l.closeMarginEngine()
+	}()
 	if rankObj, ok := objective.IsRanking(l.obj); ok {
 		if _, err := data.GroupsFromRanking(dm); err != nil {
 			return fmt.Errorf("train: ranking requires GroupedMatrix: %w", err)
@@ -131,7 +146,7 @@ func (l *Learner) Fit(dm data.Matrix) error {
 	mc, isMC := objective.IsMulticlass(l.obj)
 
 	for round := 0; round < l.cfg.NumRound; round++ {
-		l.booster.PredictMargins(dm, preds)
+		l.predictMarginsInternal(dm, preds, false)
 		if isMC {
 			for i := 0; i < n; i++ {
 				copy(predRow, preds[i*g:(i+1)*g])
@@ -149,7 +164,7 @@ func (l *Learner) Fit(dm data.Matrix) error {
 		}
 		l.booster.Boost(dm, grad, hess)
 		if l.metric != nil {
-			l.booster.PredictMargins(dm, evalPreds)
+			l.predictMarginsInternal(dm, evalPreds, false)
 			metricLabels, metricPreds := metricInputs(l.cfg, labels, evalPreds, g)
 			if v, err := evaluateTrainMetric(l, metricLabels, metricPreds, dm); err == nil {
 				l.metricHistory = append(l.metricHistory, v)
@@ -170,15 +185,7 @@ func (l *Learner) Fit(dm data.Matrix) error {
 }
 
 func (l *Learner) initBooster(dm data.Matrix, labels []float64) error {
-	tbCfg := treebuilder.Config{
-		MaxDepth:     l.cfg.MaxDepth,
-		MinHessian:   l.cfg.MinHessian,
-		Lambda:       l.cfg.Lambda,
-		Gamma:        l.cfg.Gamma,
-		LearningRate: l.cfg.LearningRate,
-		MaxBin:       l.cfg.MaxBin,
-		NumThreads:   l.cfg.NumThreads,
-	}
+	tbCfg := l.treebuilderCfg(dm)
 	trainParams := booster.TrainParams{
 		Subsample:       l.cfg.Subsample,
 		ColsampleByTree: l.cfg.ColsampleByTree,
@@ -186,7 +193,10 @@ func (l *Learner) initBooster(dm data.Matrix, labels []float64) error {
 		NumParallelTree: l.cfg.NumParallelTree,
 		DART:            l.cfg.DART,
 	}
-	method := l.cfg.TreeMethod
+	method := l.resolvedTreeMethod
+	if method == "" {
+		method = l.cfg.TreeMethod
+	}
 
 	switch l.cfg.Booster {
 	case BoosterGBLinear:
@@ -320,7 +330,7 @@ func (l *Learner) PredictMargins(dm data.Matrix, out []float64) error {
 	if len(out) < need {
 		return fmt.Errorf("train: output too short (need %d)", need)
 	}
-	l.booster.PredictMargins(dm, out)
+	l.predictMarginsInternal(dm, out, true)
 	return nil
 }
 

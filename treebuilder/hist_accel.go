@@ -1,5 +1,3 @@
-//go:build born_train
-
 package treebuilder
 
 import (
@@ -25,23 +23,42 @@ func initBornCPU() {
 	})
 }
 
+// BornHistAvailable Born CPU hist 增益扫描是否可用（born 已在 go.mod 依赖中）。
 func BornHistAvailable() bool { return true }
 
-func scanHistGains(histG, histH []float64, sumG, sumH, lambda float64, useGPU bool) (int, float64) {
-	_ = useGPU
-	n := len(histG)
-	if n < bornHistMinBins {
-		return scanHistGainsCPU(histG, histH, sumG, sumH, lambda)
-	}
-	initBornCPU()
-	bestS, bestG, err := scanHistGainsBorn(bornCPU, histG, histH, sumG, sumH, lambda)
-	if err != nil {
-		return scanHistGainsCPU(histG, histH, sumG, sumH, lambda)
-	}
-	return bestS, bestG
+// WebGPUHistAvailable 当前环境是否可尝试 WebGPU hist 增益扫描。
+func WebGPUHistAvailable() bool {
+	return tree.BornWebGPUAvailable()
 }
 
-// scanHistGainsBorn 用 Born 张量在 CPU 上向量化增益扫描（与 CPU 算法等价）。
+func scanHistGains(histG, histH []float64, sumG, sumH, lambda float64, cfg Config) (int, float64) {
+	n := len(histG)
+	mode := effectiveAccelMode(cfg)
+	tryWebGPU := cfg.UseGPUHist && mode == AccelModeWebGPU && cfg.NumThreads == 1
+	tryBorn := mode == AccelModeBornCPU || (mode == AccelModeAuto && cfg.UseGPUHist)
+	if mode == AccelModeCPU {
+		tryWebGPU, tryBorn = false, false
+	}
+
+	if tryWebGPU && n >= bornHistMinBins {
+		if split, gain, ok := scanHistGainsWebGPU(histG, histH, sumG, sumH, lambda); ok {
+			setAccelWebGPUOK(true)
+			recordGainScanWebGPU()
+			return split, gain
+		}
+	}
+	if tryBorn && n >= bornHistMinBins && BornHistAvailable() {
+		initBornCPU()
+		if split, gain, err := scanHistGainsBorn(bornCPU, histG, histH, sumG, sumH, lambda); err == nil {
+			recordGainScanBornCPU()
+			return split, gain
+		}
+	}
+	recordGainScanPureCPU()
+	return scanHistGainsCPU(histG, histH, sumG, sumH, lambda)
+}
+
+// scanHistGainsBorn Born CPU 向量化增益扫描（与纯 CPU 算法等价）。
 func scanHistGainsBorn(b *borncpu.Backend, histG, histH []float64, sumG, sumH, lambda float64) (int, float64, error) {
 	n := len(histG)
 	if n < 2 {
@@ -69,22 +86,7 @@ func scanHistGainsBorn(b *borncpu.Backend, histG, histH []float64, sumG, sumH, l
 	rightTerm := gRight.Mul(gRight).Div(hRightL)
 	totalTerm := tensor.Full[float64](tensor.Shape{prefix}, (sumG*sumG)/(sumH+lambda), b)
 	gains := leftTerm.Add(rightTerm).Sub(totalTerm).MulScalar(0.5)
-	gainData := gains.Data()
-	bestSplit := -1
-	bestGain := 0.0
-	for s := 0; s < prefix; s++ {
-		hL := hLeft.Data()[s]
-		hR := hRight.Data()[s]
-		if hL <= 0 || hR <= 0 {
-			continue
-		}
-		g := gainData[s]
-		if g > bestGain {
-			bestGain = g
-			bestSplit = s
-		}
-	}
-	return bestSplit, bestGain, nil
+	return bestSplitFromGainData(gains.Data(), hLeft.Data(), hRight.Data())
 }
 
 func cumsum1D(b *borncpu.Backend, data []float64) *tensor.Tensor[float64, *borncpu.Backend] {
@@ -101,11 +103,25 @@ func cumsum1D(b *borncpu.Backend, data []float64) *tensor.Tensor[float64, *bornc
 	return res
 }
 
+func bestSplitFromGainData(gainData, hLeft, hRight []float64) (int, float64, error) {
+	prefix := len(gainData)
+	bestSplit := -1
+	bestGain := 0.0
+	for s := 0; s < prefix; s++ {
+		if hLeft[s] <= 0 || hRight[s] <= 0 {
+			continue
+		}
+		g := gainData[s]
+		if g > bestGain {
+			bestGain = g
+			bestSplit = s
+		}
+	}
+	return bestSplit, bestGain, nil
+}
+
+// BuildHistGPU gpu_hist：启用 WebGPU hist 增益扫描（不可用则自动回退 Born CPU / 纯 CPU）。
 func BuildHistGPU(dm data.Matrix, indices []int, grad, hess []float64, cfg Config) *tree.TreeIR {
-	_ = dm
-	_ = indices
-	_ = grad
-	_ = hess
-	_ = cfg
-	return nil
+	cfg.UseGPUHist = true
+	return BuildHist(dm, indices, grad, hess, cfg)
 }

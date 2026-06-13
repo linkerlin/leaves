@@ -40,6 +40,8 @@ func ByNameWithClass(name string, numClass int) (Func, error) {
 		return NewRankPairwise(RankTrainConfig{LambdaNorm: true}), nil
 	case "rank:ndcg":
 		return NewRankNDCG(RankTrainConfig{LambdaNorm: true}), nil
+	case "rank:listwise":
+		return NewRankListwise(RankTrainConfig{}), nil
 	default:
 		return nil, fmt.Errorf("objective: unsupported %q", name)
 	}
@@ -52,6 +54,8 @@ func ConfigureRanking(obj Func, cfg RankTrainConfig) Func {
 		return NewRankPairwise(cfg)
 	case RankNDCG:
 		return NewRankNDCG(cfg)
+	case RankListwise:
+		return NewRankListwise(cfg)
 	default:
 		return obj
 	}

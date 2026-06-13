@@ -16,6 +16,14 @@ const (
 	TreeMethodGPUHist  = treebuilder.MethodGPUHist
 )
 
+// 训练加速模式（LEAVES_TRAIN_ACCEL / Config.AccelMode）。
+const (
+	AccelModeAuto    = treebuilder.AccelModeAuto
+	AccelModeWebGPU  = treebuilder.AccelModeWebGPU
+	AccelModeBornCPU = treebuilder.AccelModeBornCPU
+	AccelModeCPU     = treebuilder.AccelModeCPU
+)
+
 // 目标函数名。
 const (
 	ObjectiveSquaredError    = "reg:squarederror"
@@ -26,6 +34,7 @@ const (
 	ObjectivePoisson         = "count:poisson"
 	ObjectiveRankPairwise    = "rank:pairwise"
 	ObjectiveRankNDCG        = "rank:ndcg"
+	ObjectiveRankListwise     = "rank:listwise"
 )
 
 // 评估指标名（与 metrics.Resolve / XGBoost eval_metric 对齐）。

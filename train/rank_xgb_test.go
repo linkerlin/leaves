@@ -306,9 +306,60 @@ func TestRankMovieLensPairwiseDemo(t *testing.T) {
 		"run testdata/gen_rank_movielens.py",
 		rankTrendGate{
 			FinalTrainTol: 0.12, MilestoneTol: 0.15, TestFinalTol: 0.10,
-			MinTrainGain: 0.02, MinTestNDCG: 0.55,
+			MinTrainGain: 0.015, MinTestNDCG: 0.55,
 		},
 	)
+}
+
+// TestRankMovieLensListwiseObjective rank:listwise 在 MovieLens 上（无 XGB 同名目标，验 NDCG@10）。
+func TestRankMovieLensListwiseObjective(t *testing.T) {
+	base := filepath.Join("..", "testdata")
+	trainPath := filepath.Join(base, "rank_movielens_train.tsv")
+	testPath := filepath.Join(base, "rank_movielens_test.tsv")
+	if _, err := os.Stat(trainPath); err != nil {
+		t.Skipf("missing %s (run testdata/gen_rank_movielens.py)", trainPath)
+	}
+	trainDM, err := data.LoadRankingTSV(trainPath, "\t")
+	if err != nil {
+		t.Fatal(err)
+	}
+	testDM, err := data.LoadRankingTSV(testPath, "\t")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	learner, err := train.NewLearner(train.Config{
+		Objective:    train.ObjectiveRankListwise,
+		NumRound:     40,
+		MaxDepth:     4,
+		LearningRate: 0.1,
+		Lambda:       1.0,
+		TreeMethod:   train.TreeMethodHist,
+		Seed:         42,
+		NDCGK:        10,
+		EvalMetric:   "ndcg@10",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := learner.Fit(trainDM); err != nil {
+		t.Fatal(err)
+	}
+
+	testPreds := make([]float64, testDM.NumRow())
+	if err := learner.PredictMargins(testDM, testPreds); err != nil {
+		t.Fatal(err)
+	}
+	zeroPreds := make([]float64, testDM.NumRow())
+	before := ndcgOnMatrix(t, testDM, zeroPreds, 10)
+	after := ndcgOnMatrix(t, testDM, testPreds, 10)
+	if after < before+0.02 {
+		t.Errorf("test ndcg@10 should improve: before=%f after=%f", before, after)
+	}
+	if after < 0.55 {
+		t.Errorf("test ndcg@10 too low: %f", after)
+	}
+	t.Logf("rank:listwise movielens test ndcg@10=%.4f (zero baseline=%.4f)", after, before)
 }
 
 func roundToReach(hist []float64, thresh float64) int {

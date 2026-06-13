@@ -7,7 +7,7 @@ import (
 )
 
 func TestRankObjectives(t *testing.T) {
-	for _, name := range []string{"rank:pairwise", "rank:ndcg"} {
+	for _, name := range []string{"rank:pairwise", "rank:ndcg", "rank:listwise"} {
 		f, err := objective.ByNameWithClass(name, 0)
 		if err != nil {
 			t.Fatalf("%s: %v", name, err)

@@ -15,7 +15,7 @@ func evalMetricFor(cfg Config, numGroups int) (metrics.Metric, error) {
 			name = EvalAUC
 		case ObjectiveMultiSoftmax, ObjectiveMultiSoftprob:
 			name = EvalMLogLoss
-		case ObjectiveRankPairwise, ObjectiveRankNDCG:
+		case ObjectiveRankPairwise, ObjectiveRankNDCG, ObjectiveRankListwise:
 			if cfg.NDCGK > 0 {
 				name = fmt.Sprintf("ndcg@%d", cfg.NDCGK)
 			} else {

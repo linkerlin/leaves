@@ -64,18 +64,38 @@ func TestScanHistGainsCPU(t *testing.T) {
 	}
 }
 
-func TestGPUHistFallbackWithoutTag(t *testing.T) {
-	if BornHistAvailable() {
-		t.Skip("born_train tag enabled")
+func TestScanHistGainsBornMatchesCPU(t *testing.T) {
+	if !BornHistAvailable() {
+		t.Skip("born hist unavailable")
 	}
+	histG := []float64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}
+	histH := make([]float64, len(histG))
+	for i := range histH {
+		histH[i] = 1
+	}
+	var sumG, sumH float64
+	for i := range histG {
+		sumG += histG[i]
+		sumH += histH[i]
+	}
+	lambda := 1.0
+	sCPU, gCPU := scanHistGainsCPU(histG, histH, sumG, sumH, lambda)
+	sBorn, gBorn := scanHistGains(histG, histH, sumG, sumH, lambda, Config{})
+	if sCPU != sBorn || gCPU != gBorn {
+		t.Errorf("cpu=(%d,%v) born=(%d,%v)", sCPU, gCPU, sBorn, gBorn)
+	}
+}
+
+func TestGPUHistBuildsTree(t *testing.T) {
 	dm, idx, grad, hess := synthHistDataset(50, 4)
 	cfg := Config{MaxDepth: 3, MaxBin: 16}
-	if BuildHistGPU(dm, idx, grad, hess, cfg) != nil {
-		t.Fatal("expected nil without born_train")
+	treeIR := BuildHistGPU(dm, idx, grad, hess, cfg)
+	if treeIR == nil {
+		t.Fatal("gpu_hist should build tree with accel fallback chain")
 	}
-	tree := Build(dm, idx, grad, hess, cfg, MethodGPUHist)
-	if tree == nil {
-		t.Fatal("gpu_hist should fall back to CPU hist")
+	built := Build(dm, idx, grad, hess, cfg, MethodGPUHist)
+	if built == nil {
+		t.Fatal("gpu_hist via Build should not be nil")
 	}
 }
 

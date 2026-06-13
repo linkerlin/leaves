@@ -163,7 +163,7 @@ def train_baseline(objective, dtrain, dtest):
 def write_baseline(path, objective, eval_metric, metric_key, train_hist, test_hist, extra):
     meta = {
         "dataset": "MovieLens-100K",
-        "demo_note": "listwise 对标 rank:ndcg；无 rank:listwise 目标",
+        "demo_note": "rank:ndcg/pairwise 有 XGB 基准；rank:listwise 为 leaves 原生 ListNet",
         "seed": SEED,
         "objective": objective,
         "eval_metric": eval_metric,

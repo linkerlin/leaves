@@ -24,6 +24,7 @@ func BuildHist(dm data.Matrix, indices []int, grad, hess []float64, cfg Config) 
 	if cfg.MaxBin <= 0 {
 		cfg.MaxBin = 256
 	}
+	ensureGlobalBins(dm, &cfg)
 	root := buildHistNode(dm, indices, grad, hess, 0, cfg)
 	if root == nil {
 		w := leafWeight(indices, grad, hess, cfg.Lambda) * cfg.LearningRate
@@ -50,7 +51,7 @@ func buildHistNode(dm data.Matrix, idx []int, grad, hess []float64, depth int, c
 
 	ncols := dm.NumCol()
 	row := make([]float64, ncols)
-	pick := findBestHistSplit(dm, idx, featureList(cfg, ncols), grad, hess, sumG, sumH, row, cfg)
+	pick := findBestHistSplit(dm, idx, featureList(cfg, ncols), grad, hess, sumG, sumH, row, depth, cfg)
 	if pick.ok {
 		bestGain = pick.gain
 		bestFeat = pick.feat
@@ -85,37 +86,11 @@ func bestHistSplit(
 	row []float64,
 	cfg Config,
 ) (bestFeat int, bestThr, bestGain float64, bestLeft, bestRight []int) {
-	vals := make([]float64, 0, len(idx))
-	for _, i := range idx {
-		_ = dm.Row(i, row)
-		vals = append(vals, row[feat])
-	}
-	cuts, numBins := histCutPoints(vals, cfg.MaxBin)
-	if numBins <= 1 {
+	pick := histSplitFromFeat(dm, idx, feat, grad, hess, sumG, sumH, row, cfg, nil)
+	if !pick.ok {
 		return 0, 0, 0, nil, nil
 	}
-
-	histG := make([]float64, numBins)
-	histH := make([]float64, numBins)
-
-	for _, i := range idx {
-		_ = dm.Row(i, row)
-		b := valueToBinCuts(row[feat], cuts)
-		histG[b] += grad[i]
-		histH[b] += hess[i]
-	}
-
-	splitIdx, bestGain := scanHistGains(histG, histH, sumG, sumH, cfg.Lambda, cfg.UseGPUHist)
-	if splitIdx < 0 || bestGain <= 0 {
-		return 0, 0, 0, nil, nil
-	}
-	bestFeat = feat
-	bestThr = cuts[splitIdx]
-	bestLeft, bestRight = splitIndices(dm, idx, feat, bestThr, row)
-	if len(bestLeft) == 0 || len(bestRight) == 0 {
-		return 0, 0, 0, nil, nil
-	}
-	return bestFeat, bestThr, bestGain, bestLeft, bestRight
+	return pick.feat, pick.thr, pick.gain, pick.left, pick.right
 }
 
 func histCutPoints(vals []float64, maxBin int) (cuts []float64, numBins int) {

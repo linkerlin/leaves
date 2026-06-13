@@ -55,18 +55,85 @@ func findBestHistSplit(
 	grad, hess []float64,
 	sumG, sumH float64,
 	row []float64,
+	depth int,
 	cfg Config,
 ) histSplitPick {
 	best := histSplitPick{gain: cfg.Gamma}
+	if len(feats) == 0 {
+		return best
+	}
+
+	if !gpuHistBatchEnabled(cfg) {
+		return parallelEvalHistFeats(dm, idx, feats, grad, hess, sumG, sumH, row, cfg, nil)
+	}
+
+	gpuFeats := filterGPUHistFeats(feats, idx, depth, cfg)
+	gpuSet := make(map[int]struct{}, len(gpuFeats))
+	for _, f := range gpuFeats {
+		gpuSet[f] = struct{}{}
+	}
+	cpuOnly := make([]int, 0, len(feats)-len(gpuFeats))
+	for _, f := range feats {
+		if _, onGPU := gpuSet[f]; !onGPU {
+			cpuOnly = append(cpuOnly, f)
+		}
+	}
+
+	var gpuDone <-chan map[int]gpuHistResult
+	if len(gpuFeats) > 0 {
+		gpuDone = enqueueGPUHistBatch(gpuFeats, idx, grad, hess, cfg)
+	}
+
+	// 阶段 1：GPU worker 排队时，CPU 并行评估非 GPU 特征
+	if len(cpuOnly) > 0 {
+		best = betterHistPick(best, parallelEvalHistFeats(dm, idx, cpuOnly, grad, hess, sumG, sumH, row, cfg, nil))
+	}
+
+	// 阶段 2：取回 GPU 直方图，评估 GPU 特征
+	if gpuDone != nil {
+		prebuilt := <-gpuDone
+		if len(prebuilt) > 0 {
+			best = betterHistPick(best, parallelEvalHistFeats(dm, idx, gpuFeats, grad, hess, sumG, sumH, row, cfg, prebuilt))
+		} else {
+			best = betterHistPick(best, parallelEvalHistFeats(dm, idx, gpuFeats, grad, hess, sumG, sumH, row, cfg, nil))
+		}
+	}
+
+	return best
+}
+
+func parallelEvalHistFeats(
+	dm data.Matrix,
+	idx []int,
+	feats []int,
+	grad, hess []float64,
+	sumG, sumH float64,
+	row []float64,
+	cfg Config,
+	prebuilt map[int]gpuHistResult,
+) histSplitPick {
+	best := histSplitPick{gain: cfg.Gamma}
+	if len(feats) == 0 {
+		return best
+	}
+
+	evalFeat := func(f int) histSplitPick {
+		var gh *gpuHistResult
+		if prebuilt != nil {
+			if r, ok := prebuilt[f]; ok && r.ok {
+				rr := r
+				gh = &rr
+			}
+		}
+		return histSplitFromFeat(dm, idx, f, grad, hess, sumG, sumH, row, cfg, gh)
+	}
+
 	nThreads := effectiveThreads(cfg.NumThreads)
 	if nThreads <= 1 || len(feats) < 4 {
 		for _, f := range feats {
-			feat, thr, gain, left, right := bestHistSplit(dm, idx, f, grad, hess, sumG, sumH, row, cfg)
-			if gain <= cfg.Gamma {
-				continue
+			if pick := evalFeat(f); pick.ok {
+				best = betterHistPick(best, pick)
 			}
-			cand := histSplitPick{feat: feat, thr: thr, gain: gain, left: left, right: right, ok: true}
-			best = betterHistPick(best, cand)
 		}
 		return best
 	}
@@ -88,12 +155,9 @@ func findBestHistSplit(
 			defer wg.Done()
 			local := histSplitPick{gain: cfg.Gamma}
 			for _, f := range featBlock {
-				feat, thr, gain, left, right := bestHistSplit(dm, idx, f, grad, hess, sumG, sumH, row, cfg)
-				if gain <= cfg.Gamma {
-					continue
+				if pick := evalFeat(f); pick.ok {
+					local = betterHistPick(local, pick)
 				}
-				cand := histSplitPick{feat: feat, thr: thr, gain: gain, left: left, right: right, ok: true}
-				local = betterHistPick(local, cand)
 			}
 			if !local.ok {
 				return

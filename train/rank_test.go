@@ -112,6 +112,39 @@ func TestFitRankingPairwise(t *testing.T) {
 	}
 }
 
+func TestFitRankingListwise(t *testing.T) {
+	dm := syntheticRankingMatrix(t)
+	before := ndcgScore(t, dm, make([]float64, dm.NumRow()))
+
+	learner, err := train.NewLearner(train.Config{
+		Objective:    train.ObjectiveRankListwise,
+		NumRound:     30,
+		MaxDepth:     3,
+		LearningRate: 0.3,
+		Lambda:       1.0,
+		TreeMethod:   train.TreeMethodExact,
+		EvalMetric:   train.EvalNDCG,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := learner.Fit(dm); err != nil {
+		t.Fatal(err)
+	}
+
+	preds := make([]float64, dm.NumRow())
+	if err := learner.PredictMargins(dm, preds); err != nil {
+		t.Fatal(err)
+	}
+	after := ndcgScore(t, dm, preds)
+	if after < before-0.01 {
+		t.Errorf("NDCG should not drop: before=%f after=%f", before, after)
+	}
+	if preds[0] <= preds[2] {
+		t.Errorf("high-rel doc margin %f should beat low-rel %f", preds[0], preds[2])
+	}
+}
+
 func TestFitRankingRequiresGroups(t *testing.T) {
 	vals := []float64{0, 1, 2, 3}
 	labels := []float64{1, 0, 2, 0}

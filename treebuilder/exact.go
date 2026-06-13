@@ -17,7 +17,10 @@ type Config struct {
 	MaxBin         int
 	FeatureIndices []int
 	NumThreads     int  // 0 = runtime.NumCPU()；T4 多线程 hist
-	UseGPUHist     bool // 内部：gpu_hist 时启用 GoMLX 直方图加速
+	UseGPUHist     bool // hist/gpu_hist：尝试 WebGPU 增益扫描，失败回退 Born CPU / 纯 CPU
+	AccelMode      string // auto|webgpu|born_cpu|cpu；空则读 LEAVES_TRAIN_ACCEL
+	HistBinPolicy  string // global（默认）| per_node
+	GlobalBins     *GlobalHistBins
 }
 
 func featureList(cfg Config, ncols int) []int {

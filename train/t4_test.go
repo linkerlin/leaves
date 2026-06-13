@@ -6,7 +6,6 @@ import (
 	"github.com/dmitryikh/leaves/data"
 	"github.com/dmitryikh/leaves/metrics"
 	"github.com/dmitryikh/leaves/train"
-	"github.com/dmitryikh/leaves/treebuilder"
 )
 
 func TestFitHistParallelThreads(t *testing.T) {
@@ -68,10 +67,7 @@ func TestFitHistParallelThreads(t *testing.T) {
 	}
 }
 
-func TestFitGPUHistFallback(t *testing.T) {
-	if treebuilder.BornHistAvailable() {
-		t.Skip("born_train build; covered by accel tests")
-	}
+func TestFitGPUHistBuilds(t *testing.T) {
 	vals := []float64{0, 1, 2, 3, 4, 5}
 	labels := []float64{0, 1, 2, 3, 4, 5}
 	dm, _ := data.NewDense(vals, 6, 1, labels, nil)
@@ -89,6 +85,6 @@ func TestFitGPUHistFallback(t *testing.T) {
 	rmse := metrics.RMSE{}
 	got, _ := rmse.Evaluate(labels, preds)
 	if got > 1.0 {
-		t.Errorf("gpu_hist fallback rmse %f", got)
+		t.Errorf("gpu_hist rmse %f", got)
 	}
 }

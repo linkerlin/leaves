@@ -19,3 +19,8 @@ func NewRankNDCG(cfg RankTrainConfig) RankNDCG {
 		MaxPosition: cfg.MaxPosition,
 	}}
 }
+
+func NewRankListwise(cfg RankTrainConfig) RankListwise {
+	_ = cfg
+	return RankListwise{}
+}
