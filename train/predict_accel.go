@@ -20,7 +20,10 @@ func gpuMarginPredictEnabled(l *Learner, nRow int) bool {
 	if _, ok := l.booster.(*booster.GBTree); !ok {
 		return false
 	}
-	mode := ResolveAccelMode(l.cfg.AccelMode)
+	mode := l.effectiveAccelMode
+	if mode == "" {
+		mode = l.resolveEffectiveAccel(nRow)
+	}
 	switch mode {
 	case AccelModeCPU:
 		return false

@@ -77,8 +77,8 @@ go test -tags born_train ./treebuilder/... -count=1
 - [x] `objective/registry.go`：`Register` 插件预备
 - [x] `data/external.go`：外存 `ExternalMemoryMatrix` 接口草案
 - [x] `data/ranking.go`：`GroupedMatrix` / `DenseWithGroups`
-- [ ] `objective/ranking.go`：`rank:pairwise` 训练梯度（T5）
-- [ ] `treebuilder/constraints.go`：单调约束（`monotone_constraints`）
+- [x] `objective/ranking_grad.go`：`rank:pairwise` 训练梯度（T5，LambdaRank + `fitRanking` 接线）
+- [x] `treebuilder/constraints.go`：单调约束（`monotone_constraints`）叶值检查 + exact/hist 分裂过滤
 
 ### IO 元数据补全
 

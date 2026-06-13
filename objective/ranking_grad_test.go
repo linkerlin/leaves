@@ -74,6 +74,56 @@ func TestGradHessRankingLargeGroup(t *testing.T) {
 	}
 }
 
+func TestRankPairwiseGradReference(t *testing.T) {
+	// 单对 (rel 高 vs 低)，pred 相等 → σ(0)=0.5，λ=(1-σ)=0.5
+	preds := []float64{0, 0}
+	labels := []float64{2, 0}
+	grad := make([]float64, 2)
+	hess := make([]float64, 2)
+	obj := objective.NewRankPairwise(objective.RankTrainConfig{})
+	obj.GradHessGroup(preds, labels, nil, grad, hess)
+	wantG := []float64{-0.5, 0.5}
+	wantH := []float64{0.25, 0.25}
+	for i := range grad {
+		if math.Abs(grad[i]-wantG[i]) > 1e-12 {
+			t.Errorf("grad[%d]: got %f want %f", i, grad[i], wantG[i])
+		}
+		if math.Abs(hess[i]-wantH[i]) > 1e-12 {
+			t.Errorf("hess[%d]: got %f want %f", i, hess[i], wantH[i])
+		}
+	}
+}
+
+func TestRankPairwiseSkipsTiesAndLowerRel(t *testing.T) {
+	preds := []float64{0.1, 0.2, 0.3}
+	labels := []float64{1, 1, 1} // 全 tie：无有效 pair
+	grad := make([]float64, 3)
+	hess := make([]float64, 3)
+	obj := objective.NewRankPairwise(objective.RankTrainConfig{})
+	obj.GradHessGroup(preds, labels, nil, grad, hess)
+	for i, g := range grad {
+		if g != 0 {
+			t.Errorf("tie group grad[%d]=%f want 0", i, g)
+		}
+	}
+}
+
+func TestRankPairwiseNoNDCGScale(t *testing.T) {
+	preds := []float64{0.0, 0.5}
+	labels := []float64{3, 0}
+	gPW := make([]float64, 2)
+	hPW := make([]float64, 2)
+	gND := make([]float64, 2)
+	hND := make([]float64, 2)
+	pw := objective.NewRankPairwise(objective.RankTrainConfig{})
+	nd := objective.NewRankNDCG(objective.RankTrainConfig{LambdaNorm: true, NDCGK: 2})
+	pw.GradHessGroup(preds, labels, nil, gPW, hPW)
+	nd.GradHessGroup(preds, labels, nil, gND, hND)
+	if math.Abs(gPW[0]-gND[0]) < 1e-9 && math.Abs(gPW[1]-gND[1]) < 1e-9 {
+		t.Fatal("pairwise and ndcg grads should differ when ΔNDCG scale applies")
+	}
+}
+
 func TestGradHessRankingMultiGroup(t *testing.T) {
 	labels := []float64{3, 0, 2, 0}
 	preds := []float64{0.1, 0.2, 0.3, 0.4}

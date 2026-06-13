@@ -37,7 +37,7 @@ func ByNameWithClass(name string, numClass int) (Func, error) {
 	case "count:poisson":
 		return Poisson{}, nil
 	case "rank:pairwise":
-		return NewRankPairwise(RankTrainConfig{LambdaNorm: true}), nil
+		return NewRankPairwise(RankTrainConfig{}), nil
 	case "rank:ndcg":
 		return NewRankNDCG(RankTrainConfig{LambdaNorm: true}), nil
 	case "rank:listwise":

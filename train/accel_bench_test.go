@@ -50,6 +50,14 @@ func filterAccelBenchCases(cases []accelBenchCase) []accelBenchCase {
 	return filtered
 }
 
+func gainGPUShare(s treebuilder.AccelStats) float64 {
+	total := s.GainScanWebGPU + s.GainScanBornCPU + s.GainScanPureCPU
+	if total == 0 {
+		return 0
+	}
+	return float64(s.GainScanWebGPU) / float64(total)
+}
+
 func histGPUShare(s treebuilder.AccelStats) float64 {
 	total := s.HistBuildCPU + s.HistBuildWebGPU
 	if total == 0 {
@@ -85,11 +93,11 @@ func runAccelBenchCase(
 	elapsed := time.Since(start)
 	stats := treebuilder.SnapshotAccelStats()
 	q := quality(t, learner, dm)
-	t.Logf("%s\t%.1f\t%.6f\thist_gpu=%.1f%%\t%s",
-		c.name, elapsed.Seconds(), q, 100*histGPUShare(stats), treebuilder.AccelSummary())
+	t.Logf("%s\t%.1f\t%.6f\thist_gpu=%.1f%%\tgain_gpu=%.1f%%\t%s",
+		c.name, elapsed.Seconds(), q, 100*histGPUShare(stats), 100*gainGPUShare(stats), treebuilder.AccelSummary())
 	fmt.Fprintf(os.Stderr,
-		"[accel-bench] %s elapsed=%.1fs quality=%.6f hist_gpu=%.1f%%\n",
-		c.name, elapsed.Seconds(), q, 100*histGPUShare(stats))
+		"[accel-bench] %s elapsed=%.1fs quality=%.6f hist_gpu=%.1f%% gain_gpu=%.1f%%\n",
+		c.name, elapsed.Seconds(), q, 100*histGPUShare(stats), 100*gainGPUShare(stats))
 }
 
 func synthBenchDense(rows, cols int) data.Matrix {
@@ -128,6 +136,7 @@ func TestMSLTRTrainAccelBenchmark(t *testing.T) {
 	cases := []accelBenchCase{
 		{name: "cpu_hist", accelMode: train.AccelModeCPU, treeMethod: train.TreeMethodHist, numThreads: 4},
 		{name: "auto_hist", accelMode: train.AccelModeAuto, treeMethod: train.TreeMethodHist, numThreads: 4},
+		{name: "auto_smart", accelMode: train.AccelModeAuto, treeMethod: train.TreeMethodAuto, numThreads: 4},
 	}
 	if tree.BornWebGPUAvailable() {
 		cases = append(cases,
@@ -210,6 +219,7 @@ func TestLargeDenseTrainAccelBenchmark(t *testing.T) {
 	cases := []accelBenchCase{
 		{name: "cpu_hist", accelMode: train.AccelModeCPU, treeMethod: train.TreeMethodHist, numThreads: 4},
 		{name: "auto_hist", accelMode: train.AccelModeAuto, treeMethod: train.TreeMethodHist, numThreads: 4},
+		{name: "auto_smart", accelMode: train.AccelModeAuto, treeMethod: train.TreeMethodAuto, numThreads: 4},
 	}
 	if tree.BornWebGPUAvailable() {
 		cases = append(cases,
@@ -231,7 +241,7 @@ func TestLargeDenseTrainAccelBenchmark(t *testing.T) {
 
 	t.Logf("large dense accel: rows=%d cols=%d rounds=%d webgpu=%v",
 		rows, cols, rounds, tree.BornWebGPUAvailable())
-	t.Log("mode\tseconds\trmse\thist_gpu%\taccel_summary")
+	t.Log("mode\tseconds\trmse\thist_gpu%\tgain_gpu%\taccel_summary")
 
 	for _, c := range cases {
 		cfg := train.Config{

@@ -36,6 +36,15 @@ func recordGainScanWebGPU() {
 	accelMu.Unlock()
 }
 
+func recordGainScanWebGPUBatch(n int) {
+	if n <= 0 {
+		return
+	}
+	accelMu.Lock()
+	accelStats.GainScanWebGPU += n
+	accelMu.Unlock()
+}
+
 func recordGainScanBornCPU() {
 	accelMu.Lock()
 	accelStats.GainScanBornCPU++
@@ -92,13 +101,13 @@ func AccelSummary() string {
 }
 
 // LogTrainAccelStart 训练开始时输出加速解析结果（每轮 Fit 一次）。
-func LogTrainAccelStart(requested, resolved, accelMode string, useGPU bool, nRow int, webgpuAvail, bornAvail bool) {
+func LogTrainAccelStart(requested, resolved, accelRequested, accelEffective string, useGPU bool, nRow int, webgpuAvail, bornAvail bool) {
 	accelMu.Lock()
 	if !accelInited {
 		accelInited = true
 		log.Printf(
-			"[leaves/train] accel: requested=%q resolved=%q accel_mode=%q use_gpu_hist=%v rows=%d webgpu_available=%v born_hist=%v",
-			requested, resolved, accelMode, useGPU, nRow, webgpuAvail, bornAvail,
+			"[leaves/train] accel: requested=%q resolved=%q accel_requested=%q accel_effective=%q use_gpu_hist=%v rows=%d webgpu_available=%v born_hist=%v",
+			requested, resolved, accelRequested, accelEffective, useGPU, nRow, webgpuAvail, bornAvail,
 		)
 	}
 	accelMu.Unlock()

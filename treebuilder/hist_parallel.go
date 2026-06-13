@@ -81,7 +81,7 @@ func findBestHistSplit(
 
 	var gpuDone <-chan map[int]gpuHistResult
 	if len(gpuFeats) > 0 {
-		gpuDone = enqueueGPUHistBatch(gpuFeats, idx, grad, hess, cfg)
+		gpuDone = enqueueGPUHistBatch(gpuFeats, idx, grad, hess, sumG, sumH, cfg.Lambda, cfg)
 	}
 
 	// 阶段 1：GPU worker 排队时，CPU 并行评估非 GPU 特征

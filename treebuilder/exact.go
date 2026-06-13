@@ -20,7 +20,8 @@ type Config struct {
 	UseGPUHist     bool // hist/gpu_hist：尝试 WebGPU 增益扫描，失败回退 Born CPU / 纯 CPU
 	AccelMode      string // auto|webgpu|born_cpu|cpu；空则读 LEAVES_TRAIN_ACCEL
 	HistBinPolicy  string // global（默认）| per_node
-	GlobalBins     *GlobalHistBins
+	GlobalBins           *GlobalHistBins
+	MonotoneConstraints  []int // 每特征 -1/0/1；长度可小于列数，不足视为 0
 }
 
 func featureList(cfg Config, ncols int) []int {
@@ -122,7 +123,7 @@ func buildNode(dm data.Matrix, idx []int, grad, hess []float64, depth int, cfg C
 			gl, hl := sumGradHess(left, grad, hess)
 			gr, hr := sumGradHess(right, grad, hess)
 			gain := splitGain(gl, hl, gr, hr, sumG, sumH, cfg.Lambda)
-			if gain > bestGain {
+			if gain > bestGain && monotoneAllowsSplit(cfg, f, left, right, grad, hess) {
 				bestGain = gain
 				bestFeat = f
 				bestThr = thr

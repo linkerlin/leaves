@@ -35,7 +35,7 @@ func scanHistGains(histG, histH []float64, sumG, sumH, lambda float64, cfg Confi
 	n := len(histG)
 	mode := effectiveAccelMode(cfg)
 	tryWebGPU := cfg.UseGPUHist && mode == AccelModeWebGPU && cfg.NumThreads == 1
-	tryBorn := mode == AccelModeBornCPU || (mode == AccelModeAuto && cfg.UseGPUHist)
+	tryBorn := tryBornGainScan(cfg)
 	if mode == AccelModeCPU {
 		tryWebGPU, tryBorn = false, false
 	}
@@ -56,6 +56,20 @@ func scanHistGains(histG, histH []float64, sumG, sumH, lambda float64, cfg Confi
 	}
 	recordGainScanPureCPU()
 	return scanHistGainsCPU(histG, histH, sumG, sumH, lambda)
+}
+
+func tryBornGainScan(cfg Config) bool {
+	mode := effectiveAccelMode(cfg)
+	switch mode {
+	case AccelModeCPU:
+		return false
+	case AccelModeBornCPU:
+		return true
+	case AccelModeAuto:
+		return cfg.UseGPUHist
+	default:
+		return false
+	}
 }
 
 // scanHistGainsBorn Born CPU 向量化增益扫描（与纯 CPU 算法等价）。

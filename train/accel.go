@@ -35,6 +35,11 @@ func ResolveAccelMode(cfgMode string) string {
 	return treebuilder.AccelModeFromEnv()
 }
 
+func (l *Learner) resolveEffectiveAccel(nRow int) string {
+	requested := ResolveAccelMode(l.cfg.AccelMode)
+	return treebuilder.ResolveEffectiveAccelMode(requested, nRow, tree.BornWebGPUAvailable())
+}
+
 func usesHistTreeMethod(method string) bool {
 	switch method {
 	case treebuilder.MethodHist, treebuilder.MethodGPUHist:
@@ -45,6 +50,10 @@ func usesHistTreeMethod(method string) bool {
 }
 
 func (l *Learner) treebuilderCfg(dm data.Matrix) treebuilder.Config {
+	accel := l.effectiveAccelMode
+	if accel == "" {
+		accel = l.resolveEffectiveAccel(dm.NumRow())
+	}
 	cfg := treebuilder.Config{
 		MaxDepth:      l.cfg.MaxDepth,
 		MinHessian:    l.cfg.MinHessian,
@@ -54,8 +63,9 @@ func (l *Learner) treebuilderCfg(dm data.Matrix) treebuilder.Config {
 		MaxBin:        l.cfg.MaxBin,
 		NumThreads:    l.cfg.NumThreads,
 		UseGPUHist:    l.useGPUHist,
-		AccelMode:     ResolveAccelMode(l.cfg.AccelMode),
-		HistBinPolicy: l.cfg.HistBinPolicy,
+		AccelMode:           accel,
+		HistBinPolicy:       l.cfg.HistBinPolicy,
+		MonotoneConstraints: l.cfg.MonotoneConstraints,
 	}
 	method := l.resolvedTreeMethod
 	if method == "" {
@@ -80,18 +90,23 @@ func (l *Learner) beginTrainAccel(dm data.Matrix) {
 	if requested == "" {
 		requested = treebuilder.MethodAuto
 	}
-	resolved, useGPU := ResolveTrainTreeMethod(l.cfg.TreeMethod, dm.NumRow())
+	webgpuAvail := tree.BornWebGPUAvailable()
+	accelRequested := ResolveAccelMode(l.cfg.AccelMode)
+	l.effectiveAccelMode = treebuilder.ResolveEffectiveAccelMode(accelRequested, dm.NumRow(), webgpuAvail)
+	resolved, useGPU := ResolveTrainTreeMethodWithAccel(
+		l.cfg.TreeMethod, dm.NumRow(), l.effectiveAccelMode, webgpuAvail,
+	)
 	l.resolvedTreeMethod = resolved
 	l.useGPUHist = useGPU
-	accelMode := ResolveAccelMode(l.cfg.AccelMode)
 	treebuilder.ResetAccelStats()
 	treebuilder.LogTrainAccelStart(
 		requested,
 		resolved,
-		accelMode,
+		accelRequested,
+		l.effectiveAccelMode,
 		useGPU,
 		dm.NumRow(),
-		tree.BornWebGPUAvailable(),
+		webgpuAvail,
 		treebuilder.BornHistAvailable(),
 	)
 	l.accelLogged = true

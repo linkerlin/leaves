@@ -6,6 +6,8 @@ type gpuHistJob struct {
 	feats          []int
 	idx            []int
 	grad, hess     []float64
+	sumG, sumH     float64
+	lambda         float64
 	cfg            Config
 	done           chan map[int]gpuHistResult
 }
@@ -22,7 +24,10 @@ func startGPUHistWorker() {
 			for job := range gpuHistQueue {
 				var result map[int]gpuHistResult
 				if gpuHistBatchEnabled(job.cfg) && len(job.feats) > 0 {
-					result = batchAccumulateHistWebGPU(job.feats, job.idx, job.grad, job.hess, job.cfg)
+					result = batchAccumulateHistWebGPU(
+						job.feats, job.idx, job.grad, job.hess,
+						job.sumG, job.sumH, job.lambda, job.cfg,
+					)
 				}
 				job.done <- result
 			}
@@ -35,6 +40,7 @@ func enqueueGPUHistBatch(
 	feats []int,
 	idx []int,
 	grad, hess []float64,
+	sumG, sumH, lambda float64,
 	cfg Config,
 ) <-chan map[int]gpuHistResult {
 	ch := make(chan map[int]gpuHistResult, 1)
@@ -44,12 +50,15 @@ func enqueueGPUHistBatch(
 	}
 	startGPUHistWorker()
 	gpuHistQueue <- gpuHistJob{
-		feats: feats,
-		idx:   idx,
-		grad:  grad,
-		hess:  hess,
-		cfg:   cfg,
-		done:  ch,
+		feats:  feats,
+		idx:    idx,
+		grad:   grad,
+		hess:   hess,
+		sumG:   sumG,
+		sumH:   sumH,
+		lambda: lambda,
+		cfg:    cfg,
+		done:   ch,
 	}
 	return ch
 }

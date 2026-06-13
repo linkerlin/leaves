@@ -51,7 +51,8 @@ func TestBatchGPUHistMultipleFeats(t *testing.T) {
 	cpuCfg.UseGPUHist = false
 
 	feats := []int{0, 1, 2, 3}
-	batch := batchAccumulateHistWebGPU(feats, idx, grad, hess, cfg)
+	sumG, sumH := sumGradHess(idx, grad, hess)
+	batch := batchAccumulateHistWebGPU(feats, idx, grad, hess, sumG, sumH, cfg.Lambda, cfg)
 	if batch == nil || len(batch) == 0 {
 		t.Skip("webgpu batch unavailable")
 	}
@@ -65,6 +66,14 @@ func TestBatchGPUHistMultipleFeats(t *testing.T) {
 			continue
 		}
 		cpuG, cpuH := accumulateHistCPU(f, idx, grad, hess, numBins, dm, nil, cuts, cpuCfg)
+		if gr.hasGain {
+			sumG, sumH := sumGradHess(idx, grad, hess)
+			sCPU, gCPU := scanHistGainsCPU(cpuG, cpuH, sumG, sumH, cfg.Lambda)
+			if gr.splitIdx != sCPU || math.Abs(gr.gain-gCPU) > 1e-3 {
+				t.Fatalf("feat %d fused gain: gpu=(%d,%v) cpu=(%d,%v)", f, gr.splitIdx, gr.gain, sCPU, gCPU)
+			}
+			continue
+		}
 		for i := range cpuG {
 			if math.Abs(cpuG[i]-gr.histG[i]) > 1e-3 || math.Abs(cpuH[i]-gr.histH[i]) > 1e-3 {
 				t.Fatalf("feat %d bin %d: cpuG=%v gpuG=%v", f, i, cpuG[i], gr.histG[i])
@@ -120,10 +129,25 @@ func TestGPUHistBuildMatchesCPU(t *testing.T) {
 	cpuCfg.UseGPUHist = false
 
 	cpuG, cpuH := accumulateHist(1, idx, grad, hess, numBins, dm, nil, cuts, cpuCfg)
-	gpuG, gpuH, gpuOK := accumulateHistWebGPU(1, idx, grad, hess, numBins, cfg)
-	if !gpuOK {
+	sumG, sumH := sumGradHess(idx, grad, hess)
+	batch := batchAccumulateHistWebGPU([]int{1}, idx, grad, hess, sumG, sumH, cfg.Lambda, cfg)
+	if batch == nil {
 		t.Skip("webgpu hist build unavailable")
 	}
+	gr, found := batch[1]
+	if !found || !gr.ok {
+		t.Skip("webgpu hist build unavailable")
+	}
+	if gr.hasGain {
+		sCPU, gCPU := scanHistGainsCPU(cpuG, cpuH, sumG, sumH, cfg.Lambda)
+		if gr.splitIdx != sCPU || math.Abs(gr.gain-gCPU) > 1e-3 {
+			t.Fatalf("fused gain: gpu=(%d,%v) cpu=(%d,%v)", gr.splitIdx, gr.gain, sCPU, gCPU)
+		}
+		return
+	}
+	gpuG, gpuH := gr.histG, gr.histH
+	gpuOK := true
+	_ = gpuOK
 	for i := range cpuG {
 		if math.Abs(cpuG[i]-gpuG[i]) > 1e-3 || math.Abs(cpuH[i]-gpuH[i]) > 1e-3 {
 			t.Fatalf("bin %d: cpuG=%v gpuG=%v cpuH=%v gpuH=%v", i, cpuG[i], gpuG[i], cpuH[i], gpuH[i])

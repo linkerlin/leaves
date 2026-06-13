@@ -12,7 +12,7 @@ const (
 	MethodGPUHist = "gpu_hist"
 )
 
-// ResolveMethod 解析建树算法；auto 时 n<5万用 exact，否则 hist。
+// ResolveMethod 解析建树算法；auto 时 n < AccelWebGPUMinRows 用 exact，否则 hist。
 func ResolveMethod(method string, nRow int) string {
 	if method == MethodExact {
 		return MethodExact
@@ -21,7 +21,7 @@ func ResolveMethod(method string, nRow int) string {
 		return MethodGPUHist
 	}
 	if method == MethodAuto {
-		if nRow < 50000 {
+		if nRow < AccelWebGPUMinRows {
 			return MethodExact
 		}
 		return MethodHist

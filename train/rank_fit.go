@@ -16,6 +16,14 @@ func isRankObjective(name string) bool {
 	}
 }
 
+// lambdaRankNormDefault 对标 XGBoost：rank:ndcg 默认 lambdarank_norm=1，pairwise/listwise 不使用。
+func lambdaRankNormDefault(cfg Config) bool {
+	if cfg.LambdaRankNorm {
+		return true
+	}
+	return cfg.Objective == ObjectiveRankNDCG
+}
+
 func (l *Learner) fitRanking(dm data.Matrix, rankObj objective.RankFunc) error {
 	labels := dm.Labels()
 	n := dm.NumRow()

@@ -11,10 +11,13 @@ const gpuHistFullNodeMinRows = 4096
 
 const gpuHistPartialMaxFeats = 32
 
-// gpuHistResult 预计算的 GPU/CPU 直方图。
+// gpuHistResult 预计算的 GPU/CPU 直方图；hasGain 时 splitIdx/gain 已在 GPU 上算好。
 type gpuHistResult struct {
-	histG, histH []float64
-	ok           bool
+	histG, histH       []float64
+	splitIdx           int
+	gain               float64
+	hasGain            bool
+	ok                 bool
 }
 
 func gpuHistBatchEnabled(cfg Config) bool {
@@ -56,6 +59,7 @@ func prebuildGPUHists(
 	feats []int,
 	idx []int,
 	grad, hess []float64,
+	sumG, sumH float64,
 	depth int,
 	cfg Config,
 ) map[int]gpuHistResult {
@@ -66,7 +70,7 @@ func prebuildGPUHists(
 	if len(gpuFeats) == 0 {
 		return nil
 	}
-	return batchAccumulateHistWebGPU(gpuFeats, idx, grad, hess, cfg)
+	return batchAccumulateHistWebGPU(gpuFeats, idx, grad, hess, sumG, sumH, cfg.Lambda, cfg)
 }
 
 func histSplitFromFeat(
@@ -99,19 +103,27 @@ func histSplitFromFeat(
 		}
 	}
 
-	var histG, histH []float64
-	if prebuilt != nil && prebuilt.ok {
-		histG, histH = prebuilt.histG, prebuilt.histH
+	var splitIdx int
+	var gain float64
+	if prebuilt != nil && prebuilt.ok && prebuilt.hasGain {
+		splitIdx, gain = prebuilt.splitIdx, prebuilt.gain
 	} else {
-		histG, histH = accumulateHistCPU(feat, idx, grad, hess, numBins, dm, row, cuts, cfg)
+		var histG, histH []float64
+		if prebuilt != nil && prebuilt.ok {
+			histG, histH = prebuilt.histG, prebuilt.histH
+		} else {
+			histG, histH = accumulateHistCPU(feat, idx, grad, hess, numBins, dm, row, cuts, cfg)
+		}
+		splitIdx, gain = scanHistGains(histG, histH, sumG, sumH, cfg.Lambda, cfg)
 	}
-
-	splitIdx, gain := scanHistGains(histG, histH, sumG, sumH, cfg.Lambda, cfg)
 	if splitIdx < 0 || gain <= cfg.Gamma {
 		return histSplitPick{}
 	}
 	left, right := splitIndices(dm, idx, feat, cuts[splitIdx], row)
 	if len(left) == 0 || len(right) == 0 {
+		return histSplitPick{}
+	}
+	if !monotoneAllowsSplit(cfg, feat, left, right, grad, hess) {
 		return histSplitPick{}
 	}
 	return histSplitPick{

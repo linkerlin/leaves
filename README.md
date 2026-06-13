@@ -102,7 +102,7 @@ m, err := io.LoadFromFile("model.ubj", &io.LoadOptions{
 | **T2** | dart/gblinear + 多目标扩展 | ✅ |
 | **T3** | CV/早停/checkpoint + XGB 3.x JSON 导出 | ✅ |
 | **T4** | 全局分箱 + Born/WebGPU hist + GPU margin 预测 | ✅ |
-| **T5** | rank/survival、外存 DMatrix、单调约束 | rank 训练 ✅；survival/外存/单调约束 未开始 |
+| **T5** | rank/survival、外存 DMatrix、单调约束 | rank 训练 ✅；**单调约束训练 ✅**；survival/外存 未开始 |
 
 训练入口：`train.NewLearner` → `Learner.Fit` → `Learner.Save` / `io.ExportXGBoostJSON`。默认 `TreeMethod=auto`（小数据 exact，≥5 万行 hist）。验收：`go test ./train/...`。
 
@@ -110,12 +110,14 @@ m, err := io.LoadFromFile("model.ubj", &io.LoadOptions{
 
 hist / `gpu_hist` 路径上的加速栈（日志前缀 `[leaves/train] accel:`）：
 
-| 阶段 | 实现 | 默认 `auto` | `LEAVES_TRAIN_ACCEL=webgpu` |
-|------|------|-------------|------------------------------|
+| 阶段 | 实现 | 默认 `auto`（≥3 万行 + WebGPU） | `LEAVES_TRAIN_ACCEL=webgpu` |
+|------|------|-------------------------------|------------------------------|
 | 全局分箱 | 训练期每特征一次切点 + 行级 bin 缓存 | ✅ | ✅ |
-| 直方图累加 | CPU rowBin / WebGPU SelectAdd 批量 | CPU | GPU batch（单 mutex 会话） |
-| 增益扫描 | Born CPU 向量化 | ✅ | WebGPU（`NumThreads=1` 时） |
-| margin 预测 | 逐行 CPU / Born GPU `PredictDense` | `PredictMargins` / `EvalSet` ≥256 行 | ≥64 行 |
+| 直方图累加 | CPU rowBin / WebGPU SelectAdd 批量 | **自动 gpu_hist** | GPU batch |
+| 增益扫描 | 纯 CPU / 批量 WebGPU gain | **批量 GPU**（GPU 路径） | 批量 GPU |
+| margin 预测 | 逐行 CPU / Born GPU `PredictDense` | `PredictMargins` ≥256 行 | ≥64 行 |
+
+`AccelMode=auto` 且 `TreeMethod=auto` 时：行数 **≥30000** 且 WebGPU 可用 → 自动解析为 `gpu_hist` + `webgpu`；小数据或显式 `TreeMethod=hist` 保持 CPU 路径。
 
 ```go
 learner, _ := train.NewLearner(train.Config{
@@ -130,6 +132,16 @@ _ = learner.Fit(dm)
 ```
 
 环境变量：`LEAVES_TRAIN_ACCEL=auto|webgpu|born_cpu|cpu`（覆盖 `Config.AccelMode`）。
+
+**单调约束**（T5，`MonotoneConstraints []int`，对标 XGBoost `monotone_constraints`）：
+
+```go
+learner, _ := train.NewLearner(train.Config{
+    Objective:           "reg:squarederror",
+    MonotoneConstraints: []int{1, 0, -1}, // 特征 0 递增，2 递减
+    TreeMethod:          train.TreeMethodHist,
+})
+```
 
 **MSLTR 子集加速对比**（120 train queries / 5425 docs，50 轮 `rank:ndcg`，`i9` 类 Windows + WebGPU；复现：`go test ./train/... -run TestMSLTRTrainAccelBenchmark -v`）：
 
@@ -166,10 +178,9 @@ gain_scan(webgpu=0 born_cpu=0 pure_cpu=324088)    → 增益扫描 0% GPU（NumT
 
 1. **节点子集 < 64 样本** → 强制 CPU 直方图（浅层 `gpuHistMinSamples=64`，深层略降）；树越深，越多节点落在 CPU 路径。
 2. **中等节点混合策略**：样本数 < 4096 的节点仅前 32 特征走 GPU batch，其余 CPU rowBin（避免小节点 GPU 固定开销反超）。
-3. **`NumThreads>1`** → WebGPU 增益扫描被禁用（避免全局 mutex 争用），增益扫描全是 Born / 纯 CPU。
-4. **异构队列**：`enqueueGPUHistBatch` 单 worker 排队，CPU 线程并行评估非 GPU 特征，减少 mutex 空等。
-5. **固定开销**：每次 GPU hist 需 lock → tensor 上传 → SelectAdd → 读回；中小节点上 **固定成本 > 计算收益**。
-6. **建树主路径仍在 CPU**：递归、index 分裂、小节点 rowBin 累加占大部分时间。
+3. **`NumThreads>1`** → WebGPU 增益扫描仍禁用（小直方图上 Born/GPU 固定开销 > 纯 CPU 循环）；`webgpu_t1` 可走 GPU 增益扫描。
+4. **异构队列 + 批量 GPU gain scan**：hist batch 后同 mutex 内将 chunk（≤64 特征）的 f32 直方图 **一次 2D 上传**算增益，跳过逐特征 GPU 会话；`hasGain` 直出分裂点。
+5. **`NumThreads>1`**：GPU 路径增益走批量 scan（~53%）；CPU 路径特征仍纯 CPU 增益扫描。
 
 因此在该子集上出现 **362s vs 128s** 并不意外——不是 GPU 无效，而是**工作集太小 + GPU 命中率低 + 并行 hist 不走 GPU 增益扫描**。
 
@@ -201,10 +212,11 @@ go test ./train/... -run TestLargeDenseTrainAccelBenchmark -v -timeout 60m
 | 行数 | 轮数 | `cpu_hist` | `webgpu_hist` | hist GPU 占比 | 结论 |
 |------|------|------------|---------------|---------------|------|
 | 2 万 | 5 | **4.3s** | 8.0s | ~49% | CPU 更快（固定开销主导） |
-| 5 万 | 10 | **24.5s** | **24.1s** | ~61% | GPU 略快（混合策略 + 异构队列） |
+| 5 万 | 10 | **15.3s** | 28.1s | ~61% / gain ~53% | GPU 路径批量 gain；总耗时仍略慢于 CPU |
+| 5 万 | 10 | — | **29.0s** (`auto_smart`) | ~61% / gain ~53% | `AccelMode=auto` + `TreeMethod=auto` 自动解析为 `gpu_hist`+`webgpu` |
 | 10 万 | 10 | 63.2s | **59.2s** | ~49% | GPU 约快 6% |
 
-交叉点约在 **3–5 万行**（本机合成数据、浅层节点仍约一半走 CPU hist）。行数继续增大时收益受 `gpuHistMinSamples=64` 与 `NumThreads=4`（增益扫描不走 GPU）限制；可试 `LEAVES_BENCH_ONLY=webgpu_t1` 对比单线程 GPU 增益扫描。
+交叉点约在 **3–5 万行**（本机合成数据、浅层节点仍约一半走 CPU hist）。行数继续增大时收益受混合策略与 `NumThreads=4`（增益扫描走纯 CPU）限制；`LEAVES_BENCH_ONLY=webgpu_t1` 可启用 GPU 增益扫描，但单线程在大数据上通常更慢。
 
 ### 计算底座
 
@@ -339,6 +351,17 @@ learner, _ := train.NewLearner(train.Config{
     LearningRate: 0.1,
     NDCGK:        10,
     EvalMetric:   "ndcg@10",
+})
+_ = learner.Fit(dm)
+
+// 或 RankNet pairwise（无 ΔNDCG 缩放）
+learner, _ = train.NewLearner(train.Config{
+    Objective:    train.ObjectiveRankPairwise,
+    NumRound:     40,
+    MaxDepth:     4,
+    LearningRate: 0.1,
+    EvalMetric:   "ndcg@10",
+    TreeMethod:   train.TreeMethodHist,
 })
 _ = learner.Fit(dm)
 

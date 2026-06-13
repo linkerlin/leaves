@@ -97,18 +97,38 @@ func TestFitRankingNDCGImproves(t *testing.T) {
 
 func TestFitRankingPairwise(t *testing.T) {
 	dm := syntheticRankingMatrix(t)
+	baseline := make([]float64, dm.NumRow())
+	before := ndcgScore(t, dm, baseline)
+
 	learner, err := train.FitRanking(train.Config{
 		Objective:    train.ObjectiveRankPairwise,
-		NumRound:     20,
-		MaxDepth:     2,
-		LearningRate: 0.5,
+		NumRound:     30,
+		MaxDepth:     3,
+		LearningRate: 0.3,
+		Lambda:       1.0,
 		TreeMethod:   train.TreeMethodExact,
+		EvalMetric:   train.EvalNDCG,
 	}, dm)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if learner.Model() == nil {
 		t.Fatal("nil model")
+	}
+
+	preds := make([]float64, dm.NumRow())
+	if err := learner.PredictMargins(dm, preds); err != nil {
+		t.Fatal(err)
+	}
+	after := ndcgScore(t, dm, preds)
+	if after < before-0.01 {
+		t.Errorf("NDCG should not drop: before=%f after=%f", before, after)
+	}
+	if preds[0] <= preds[2] {
+		t.Errorf("q1: doc0 (rel=3) margin %f should beat doc2 (rel=0) %f", preds[0], preds[2])
+	}
+	if preds[3] <= preds[5] {
+		t.Errorf("q2: doc0 (rel=2) margin %f should beat doc2 (rel=0) %f", preds[3], preds[5])
 	}
 }
 

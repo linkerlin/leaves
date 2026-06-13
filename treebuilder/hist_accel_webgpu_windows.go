@@ -40,7 +40,7 @@ func initTrainWebGPU() (*bornwebgpu.Backend, bool) {
 		trainWebGPUOK = true
 		if !trainWebGPULog {
 			trainWebGPULog = true
-			log.Printf("[leaves/train] accel: webgpu hist batch build+gain scan enabled")
+			log.Printf("[leaves/train] accel: webgpu hist batch + batched gain scan enabled")
 		}
 	})
 	return trainWebGPU, trainWebGPUOK
@@ -70,14 +70,24 @@ func scanHistGainsWebGPU(histG, histH []float64, sumG, sumH, lambda float64) (sp
 		return -1, 0, false
 	}
 	prefix := n - 1
-	g32 := f64ToF32(histG[:prefix])
-	h32 := f64ToF32(histH[:prefix])
+	return gainScanHistF32OnGPU(gpu, f64ToF32(histG[:prefix]), f64ToF32(histH[:prefix]), sumG, sumH, lambda)
+}
 
-	gPrefix, err := tensor.FromSlice(g32, tensor.Shape{prefix}, gpu)
+func gainScanHistF32OnGPU(
+	gpu *bornwebgpu.Backend,
+	histG, histH []float32,
+	sumG, sumH, lambda float64,
+) (split int, gain float64, ok bool) {
+	prefix := len(histG)
+	if prefix < 1 {
+		return -1, 0, false
+	}
+
+	gPrefix, err := tensor.FromSlice(histG, tensor.Shape{prefix}, gpu)
 	if err != nil {
 		return -1, 0, false
 	}
-	hPrefix, err := tensor.FromSlice(h32, tensor.Shape{prefix}, gpu)
+	hPrefix, err := tensor.FromSlice(histH, tensor.Shape{prefix}, gpu)
 	if err != nil {
 		return -1, 0, false
 	}

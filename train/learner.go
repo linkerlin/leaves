@@ -32,13 +32,14 @@ type Config struct {
 	Seed            int64
 	NumThreads      int // 0 = 全部 CPU；T4 多线程 hist
 	NumParallelTree int
-	AccelMode       string // auto|webgpu|born_cpu|cpu；空则 LEAVES_TRAIN_ACCEL
-	HistBinPolicy   string // global|per_node；hist 路径默认 global
-	DART            *booster.DARTConfig
-	EvalSet         data.Matrix
-	EarlyStop       *EarlyStopping
-	CheckpointEvery int
-	CheckpointPath  string
+	AccelMode           string // auto|webgpu|born_cpu|cpu；空则 LEAVES_TRAIN_ACCEL
+	HistBinPolicy       string // global|per_node；hist 路径默认 global
+	MonotoneConstraints []int  // 每特征 -1/0/1，对标 XGBoost monotone_constraints
+	EvalSet             data.Matrix
+	EarlyStop           *EarlyStopping
+	CheckpointEvery     int
+	CheckpointPath      string
+	DART                *booster.DARTConfig
 	// 排序学习（T5，对标 XGBoost LambdaMART）
 	NDCGK          int  // eval / lambda ndcg@k；0=全量
 	LambdaRankNorm bool // lambdarank_norm，默认 true
@@ -53,9 +54,10 @@ type Learner struct {
 	numGroups          int
 	metric             metrics.Metric
 	metricHistory      []float64
-	resolvedTreeMethod string
-	useGPUHist         bool
-	accelLogged        bool
+	resolvedTreeMethod  string
+	useGPUHist          bool
+	effectiveAccelMode  string
+	accelLogged         bool
 	marginEngine       *tree.BornEngine
 	marginGPULogged    bool
 	marginPredictGPU   int
@@ -70,7 +72,7 @@ func NewLearner(cfg Config) (*Learner, error) {
 	}
 	rankCfg := objective.RankTrainConfig{
 		NDCGK:       cfg.NDCGK,
-		LambdaNorm:  cfg.LambdaRankNorm || !isRankObjective(cfg.Objective),
+		LambdaNorm:  lambdaRankNormDefault(cfg),
 		MaxPosition: cfg.MaxPosition,
 	}
 	if _, ok := objective.IsRanking(obj); ok {
