@@ -1,0 +1,7 @@
+=== RUN   TestGoMLXBasics
+    gomlx_mini_test.go:38: ✓ Gather 1D works
+    gomlx_mini_test.go:56: ✓ OneHot+Mul works
+    gomlx_mini_test.go:72: ✓ ExpandDims+Gather works
+--- PASS: TestGoMLXBasics (0.00s)
+PASS
+ok  	github.com/dmitryikh/leaves/tree	1.529s

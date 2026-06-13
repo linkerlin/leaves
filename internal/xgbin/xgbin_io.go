@@ -121,9 +121,10 @@ type GBLinearModelParam struct {
 type TreeModel struct {
 	Nodes []Node
 	Stats []RTreeNodeStat
-	// // leaf vector, that is used to store additional information
-	// LeafVector []float32
 	Param TreeParam
+	// JSON 加载路径填充；二进制向量叶权重。
+	OutputDim   int
+	LeafWeights []float64
 }
 
 // GBTreeModel contains all input data related to gbtree model. Used just as a
@@ -295,11 +296,16 @@ func ReadTreeModel(reader *bufio.Reader) (*TreeModel, error) {
 		treeModel.Stats = append(treeModel.Stats, stat)
 	}
 	if treeModel.Param.SizeLeafVector > 0 {
-		// leaf vector, that is used to store additional information
-		// std::vector<bst_float> leaf_vector_;
-		_, err := ReadFloat32Slice(reader)
+		lv, err := ReadFloat32Slice(reader)
 		if err != nil {
 			return nil, err
+		}
+		if treeModel.Param.SizeLeafVector > 1 && len(lv) > 0 {
+			treeModel.OutputDim = int(treeModel.Param.SizeLeafVector)
+			treeModel.LeafWeights = make([]float64, len(lv))
+			for i, v := range lv {
+				treeModel.LeafWeights[i] = float64(v)
+			}
 		}
 	}
 	return treeModel, nil

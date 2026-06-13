@@ -6,6 +6,7 @@ import (
 	"runtime"
 	"sync"
 
+	"github.com/dmitryikh/leaves/model"
 	"github.com/dmitryikh/leaves/transformation"
 )
 
@@ -28,6 +29,11 @@ type ensembleBaseInterface interface {
 type Ensemble struct {
 	ensembleBaseInterface
 	transform transformation.Transform
+
+	engineOpts *EngineOptions
+	proxyOnce  sync.Once
+	proxyErr   error
+	proxy      *model.Ensemble
 }
 
 func (e *Ensemble) predictInnerAndTransform(fvals []float64, nEstimators int, predictions []float64, startIndex int) {
@@ -68,6 +74,9 @@ func (e *Ensemble) PredictSingle(fvals []float64, nEstimators int) float64 {
 	if err != nil {
 		return 0.0
 	}
+	if proxy, ok := e.viaProxy(); ok {
+		return proxy.PredictSingle(fvals, nEstimators)
+	}
 	ret := [1]float64{0.0}
 
 	e.predictInnerAndTransform(fvals, nEstimators, ret[:], 0)
@@ -91,6 +100,10 @@ func (e *Ensemble) Predict(fvals []float64, nEstimators int, predictions []float
 		return err
 	}
 
+	if proxy, ok := e.viaProxy(); ok {
+		return proxy.Predict(fvals, nEstimators, predictions)
+	}
+
 	e.predictInnerAndTransform(fvals, nEstimators, predictions, 0)
 	return nil
 }
@@ -110,6 +123,10 @@ func (e *Ensemble) PredictCSR(indptr []int, cols []int, vals []float64, predicti
 	err := e.checkNEstimators(nEstimators)
 	if err != nil {
 		return err
+	}
+
+	if proxy, ok := e.viaProxy(); ok {
+		return proxy.PredictCSR(indptr, cols, vals, predictions, nEstimators, nThreads)
 	}
 
 	if nRows <= BatchSize || nThreads == 0 || nThreads == 1 {
@@ -205,6 +222,10 @@ func (e *Ensemble) PredictDense(
 		return err
 	}
 
+	if proxy, ok := e.viaProxy(); ok {
+		return proxy.PredictDense(vals, nrows, ncols, predictions, nEstimators, nThreads)
+	}
+
 	if nRows <= BatchSize || nThreads == 0 || nThreads == 1 {
 		// single thread calculations
 		for i := 0; i < nRows; i++ {
@@ -296,12 +317,17 @@ func (e *Ensemble) Transformation() transformation.Transform {
 // EnsembleWithRawPredictions returns ensemble instance with TransformRaw (no
 // transformation functions will be applied to the model resulst)
 func (e *Ensemble) EnsembleWithRawPredictions() *Ensemble {
-	return &Ensemble{e, &transformation.TransformRaw{e.NRawOutputGroups()}}
+	return &Ensemble{
+		ensembleBaseInterface: e.ensembleCore(),
+		transform:             &transformation.TransformRaw{e.NRawOutputGroups()},
+	}
 }
 
 // EnsembleWithLeafPredictions returns ensemble instance with TransformLeafIndex
 // (return trees indices instead of numerical values)
 func (e *Ensemble) EnsembleWithLeafPredictions() *Ensemble {
-	// each predictions will produce NRawOutputGroups() * NEstimators() values
-	return &Ensemble{e, &transformation.TransformLeafIndex{e.NRawOutputGroups() * e.NEstimators()}}
+	return &Ensemble{
+		ensembleBaseInterface: e.ensembleCore(),
+		transform:             &transformation.TransformLeafIndex{e.NRawOutputGroups() * e.NEstimators()},
+	}
 }

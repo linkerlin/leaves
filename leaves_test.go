@@ -181,7 +181,7 @@ func InnerTestHiggs(t *testing.T, model *Ensemble, nThreads int, isDense bool, t
 	// I think this is because float32 format inside of XGBoost Binary format
 	count, err := util.NumMismatchedFloat64Slices(truePredictions.Values, predictions, tolerance)
 	if err != nil {
-		t.Errorf(err.Error())
+		t.Error(err)
 	}
 
 	if count > 70 {
@@ -668,7 +668,7 @@ func TestSKIris(t *testing.T) {
 	// I think this is because float32 format in sklearn X matrix
 	count, err := util.NumMismatchedFloat64Slices(truePredictions.Values, predictions, tolerance)
 	if err != nil {
-		t.Errorf(err.Error())
+		t.Error(err)
 	}
 
 	if count > 2 {

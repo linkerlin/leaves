@@ -1,0 +1,15 @@
+# github.com/dmitryikh/leaves
+# [github.com/dmitryikh/leaves]
+.\leaves_test.go:184:12: non-constant format string in call to (*testing.common).Errorf
+.\leaves_test.go:671:12: non-constant format string in call to (*testing.common).Errorf
+FAIL	github.com/dmitryikh/leaves [build failed]
+?   	github.com/dmitryikh/leaves/ensemble	[no test files]
+ok  	github.com/dmitryikh/leaves/internal/pickle	0.869s [no tests to run]
+ok  	github.com/dmitryikh/leaves/internal/xgbin	0.835s [no tests to run]
+?   	github.com/dmitryikh/leaves/io	[no test files]
+ok  	github.com/dmitryikh/leaves/mat	0.834s [no tests to run]
+?   	github.com/dmitryikh/leaves/model	[no test files]
+?   	github.com/dmitryikh/leaves/transformation	[no test files]
+ok  	github.com/dmitryikh/leaves/tree	1.369s
+ok  	github.com/dmitryikh/leaves/util	0.792s [no tests to run]
+FAIL

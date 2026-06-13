@@ -1,0 +1,11 @@
+{
+  "seed": 42,
+  "num_round": 50,
+  "max_depth": 4,
+  "learning_rate": 0.1,
+  "lambda": 1.0,
+  "tree_method": "hist",
+  "train_rows": 455,
+  "test_rows": 114,
+  "test_auc": 0.9934490664919751
+}

@@ -1,0 +1,10 @@
+=== RUN   TestBridgeLightGBM
+    bridge_test.go:65: total predictions: 57, mismatches: 0, max diff: 0.000000e+00
+--- PASS: TestBridgeLightGBM (0.00s)
+=== RUN   TestBridgeXGBoost
+    bridge_test.go:115: batch 100 rows, max diff: 0.000000e+00
+--- PASS: TestBridgeXGBoost (0.00s)
+=== RUN   TestBridgeAllTrees
+--- PASS: TestBridgeAllTrees (0.00s)
+PASS
+ok  	github.com/dmitryikh/leaves	0.933s

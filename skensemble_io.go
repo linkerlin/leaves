@@ -172,10 +172,12 @@ func SKEnsembleFromReader(reader *bufio.Reader, loadTransformation bool) (*Ensem
 			base[k] = 0.0
 		}
 	}
-	return &Ensemble{e, &transformation.TransformRaw{e.nRawOutputGroups}}, nil
+	return &Ensemble{ensembleBaseInterface: e, transform: &transformation.TransformRaw{e.nRawOutputGroups}}, nil
 }
 
-// SKEnsembleFromFile reads sklearn tree ensemble model from pickle file
+// SKEnsembleFromFile reads sklearn tree ensemble model from pickle file.
+//
+// Deprecated: use io.LoadFromFile（自动识别 SK pickle）。
 func SKEnsembleFromFile(filename string, loadTransformation bool) (*Ensemble, error) {
 	reader, err := os.Open(filename)
 	if err != nil {

@@ -387,10 +387,12 @@ func LGEnsembleFromReader(reader *bufio.Reader, loadTransformation bool) (*Ensem
 		}
 		e.Trees = append(e.Trees, tree)
 	}
-	return &Ensemble{e, transform}, nil
+	return &Ensemble{ensembleBaseInterface: e, transform: transform}, nil
 }
 
-// LGEnsembleFromFile reads LightGBM model from binary file
+// LGEnsembleFromFile reads LightGBM model from binary file.
+//
+// Deprecated: use io.LoadFromFile（自动识别 LGB text/JSON）。
 func LGEnsembleFromFile(filename string, loadTransformation bool) (*Ensemble, error) {
 	reader, err := os.Open(filename)
 	if err != nil {
@@ -665,5 +667,5 @@ func LGEnsembleFromJSON(reader io.Reader, loadTransformation bool) (*Ensemble, e
 		}
 		e.Trees = append(e.Trees, tree)
 	}
-	return &Ensemble{e, &transformation.TransformRaw{e.nRawOutputGroups}}, nil
+	return &Ensemble{ensembleBaseInterface: e, transform: &transformation.TransformRaw{e.nRawOutputGroups}}, nil
 }

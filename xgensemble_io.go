@@ -245,10 +245,12 @@ func XGEnsembleFromReader(reader *bufio.Reader, loadTransformation bool) (*Ensem
 		}
 		e.Trees = append(e.Trees, tree)
 	}
-	return &Ensemble{e, transform}, nil
+	return &Ensemble{ensembleBaseInterface: e, transform: transform}, nil
 }
 
-// XGEnsembleFromFile reads XGBoost model from binary file. Works with 'gbtree' and 'dart' models
+// XGEnsembleFromFile reads XGBoost model from binary file. Works with 'gbtree' and 'dart' models.
+//
+// Deprecated: use io.LoadFromFile（自动识别 XGB bin/json/ubj）。
 func XGEnsembleFromFile(filename string, loadTransformation bool) (*Ensemble, error) {
 	reader, err := os.Open(filename)
 	if err != nil {
