@@ -1,0 +1,161 @@
+{
+  "seed": 42,
+  "objective": "rank:pairwise",
+  "pair_mode": "full",
+  "note": "Full pairwise RankNet (|delta_Z|=1). XGBoost 3.x builtin uses sampled pairs; xgb_custom_margin_round1 uses custom obj with this same formula.",
+  "groups": [
+    3,
+    2,
+    4
+  ],
+  "labels": [
+    3.0,
+    1.0,
+    0.0,
+    2.0,
+    0.0,
+    4.0,
+    2.0,
+    1.0,
+    0.0
+  ],
+  "preds": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "grad": [
+    -1.0,
+    0.0,
+    1.0,
+    -0.5,
+    0.5,
+    -1.5,
+    -0.5,
+    0.5,
+    1.5
+  ],
+  "hess": [
+    0.5,
+    0.5,
+    0.5,
+    0.25,
+    0.25,
+    0.75,
+    0.75,
+    0.75,
+    0.75
+  ],
+  "group_pairs": [
+    {
+      "group": 0,
+      "size": 3,
+      "pairs": [
+        {
+          "hi": 0,
+          "lo": 1,
+          "rho": 0.5,
+          "lambda": 0.5,
+          "hess_pair": 0.25
+        },
+        {
+          "hi": 0,
+          "lo": 2,
+          "rho": 0.5,
+          "lambda": 0.5,
+          "hess_pair": 0.25
+        },
+        {
+          "hi": 1,
+          "lo": 2,
+          "rho": 0.5,
+          "lambda": 0.5,
+          "hess_pair": 0.25
+        }
+      ]
+    },
+    {
+      "group": 1,
+      "size": 2,
+      "pairs": [
+        {
+          "hi": 0,
+          "lo": 1,
+          "rho": 0.5,
+          "lambda": 0.5,
+          "hess_pair": 0.25
+        }
+      ]
+    },
+    {
+      "group": 2,
+      "size": 4,
+      "pairs": [
+        {
+          "hi": 0,
+          "lo": 1,
+          "rho": 0.5,
+          "lambda": 0.5,
+          "hess_pair": 0.25
+        },
+        {
+          "hi": 0,
+          "lo": 2,
+          "rho": 0.5,
+          "lambda": 0.5,
+          "hess_pair": 0.25
+        },
+        {
+          "hi": 0,
+          "lo": 3,
+          "rho": 0.5,
+          "lambda": 0.5,
+          "hess_pair": 0.25
+        },
+        {
+          "hi": 1,
+          "lo": 2,
+          "rho": 0.5,
+          "lambda": 0.5,
+          "hess_pair": 0.25
+        },
+        {
+          "hi": 1,
+          "lo": 3,
+          "rho": 0.5,
+          "lambda": 0.5,
+          "hess_pair": 0.25
+        },
+        {
+          "hi": 2,
+          "lo": 3,
+          "rho": 0.5,
+          "lambda": 0.5,
+          "hess_pair": 0.25
+        }
+      ]
+    }
+  ],
+  "xgb_custom_margin_round1": [
+    2.0,
+    0.0,
+    -2.0,
+    2.0,
+    -2.0,
+    2.0,
+    0.6666666865348816,
+    -0.6666666865348816,
+    -2.0
+  ],
+  "tolerance": {
+    "grad": 1e-12,
+    "hess": 1e-12,
+    "margin": 1e-05
+  }
+}

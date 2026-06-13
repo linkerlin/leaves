@@ -43,23 +43,38 @@ func (l *Learner) fitRanking(dm data.Matrix, rankObj objective.RankFunc) error {
 	evalPreds := make([]float64, n)
 
 	for round := 0; round < l.cfg.NumRound; round++ {
+		l.onRoundStart(round)
+		l.obj = objective.SetRankBoostRound(l.obj, round)
 		l.predictMarginsInternal(dm, preds, false)
 		if err := objective.GradHessRanking(rankObj, dm, groups, preds, grad, hess); err != nil {
 			return err
 		}
 		l.booster.Boost(dm, grad, hess)
+		var trainMetric float64
+		var metricOK bool
 		if l.metric != nil {
 			l.predictMarginsInternal(dm, evalPreds, false)
 			metricLabels, metricPreds := metricInputs(l.cfg, labels, evalPreds, 1)
 			if v, err := evaluateTrainMetric(l, metricLabels, metricPreds, dm); err == nil {
 				l.metricHistory = append(l.metricHistory, v)
+				trainMetric = v
+				metricOK = true
 			}
 		}
-		if l.cfg.EvalSet != nil && l.cfg.EarlyStop != nil {
+		var evalMetric float64
+		var evalMetricOK bool
+		if l.cfg.EvalSet != nil {
 			if score, err := evalMetricOnSet(l, l.cfg.EvalSet); err == nil {
-				if l.cfg.EarlyStop.update(score, round+1) {
-					break
-				}
+				evalMetric = score
+				evalMetricOK = true
+			}
+		}
+		if err := l.onRoundEnd(round, trainMetric, metricOK, evalMetric, evalMetricOK); err != nil {
+			return err
+		}
+		if l.cfg.EvalSet != nil && l.cfg.EarlyStop != nil && evalMetricOK {
+			if l.cfg.EarlyStop.update(evalMetric, round+1) {
+				break
 			}
 		}
 		if l.cfg.CheckpointEvery > 0 && l.cfg.CheckpointPath != "" && (round+1)%l.cfg.CheckpointEvery == 0 {

@@ -27,8 +27,16 @@ const (
 type RankOptions struct {
 	Scale       RankScale
 	NDCGK       int  // 0 = 全量位置
-	Norm        bool // lambdarank_norm：按 ideal_dcg 归一化
+	Norm        bool // lambdarank_norm（ndcg）：按 ideal_dcg 归一化
 	MaxPosition int  // 0 = 不截断
+	// 配对策略（对标 XGBoost 2.0+）
+	PairMethod            RankPairMethod
+	NumPairPerSample      int
+	PairSeed              int64
+	BoostRound            int
+	GroupIdx              int
+	LambdaNormalization   bool
+	ScoreNormalization    bool
 }
 
 // RankPairwise rank:pairwise（RankNet / LambdaMART，无 metric 缩放）。
@@ -54,7 +62,7 @@ func (r RankPairwise) InitialPred(labels []float64, weights []float64) float64 {
 func (r RankPairwise) GradHessGroup(preds, labels, weights []float64, grad, hess []float64) {
 	opts := r.Opts
 	opts.Scale = RankScalePairwise
-	computeLambdaRank(preds, labels, weights, grad, hess, opts)
+	computeLambdaRank(preds, labels, weights, grad, hess, opts, r.Opts.GroupIdx)
 }
 
 // RankNDCG rank:ndcg（LambdaMART + NDCG 缩放）。
@@ -80,7 +88,7 @@ func (r RankNDCG) InitialPred(labels []float64, weights []float64) float64 {
 func (r RankNDCG) GradHessGroup(preds, labels, weights []float64, grad, hess []float64) {
 	opts := r.Opts
 	opts.Scale = RankScaleNDCG
-	computeLambdaRank(preds, labels, weights, grad, hess, opts)
+	computeLambdaRank(preds, labels, weights, grad, hess, opts, r.Opts.GroupIdx)
 }
 
 // IsRanking 判断是否为排序目标。
@@ -89,7 +97,7 @@ func IsRanking(obj Func) (RankFunc, bool) {
 	return rf, ok
 }
 
-func computeLambdaRank(preds, labels, weights []float64, grad, hess []float64, opts RankOptions) {
+func computeLambdaRank(preds, labels, weights []float64, grad, hess []float64, opts RankOptions, groupIdx int) {
 	n := len(preds)
 	if n == 0 || len(labels) != n || len(grad) != n || len(hess) != n {
 		return
@@ -99,6 +107,16 @@ func computeLambdaRank(preds, labels, weights []float64, grad, hess []float64, o
 		hess[i] = 0
 	}
 
+	if opts.PairMethod == RankPairFull && !opts.ScoreNormalization && !opts.LambdaNormalization {
+		computeLambdaRankFullClassic(preds, labels, weights, grad, hess, opts)
+		return
+	}
+	computeLambdaRankXGB(preds, labels, weights, grad, hess, opts, groupIdx)
+}
+
+// computeLambdaRankFullClassic leaves 经典全配对（与 golden 对齐）。
+func computeLambdaRankFullClassic(preds, labels, weights []float64, grad, hess []float64, opts RankOptions) {
+	n := len(preds)
 	ranks := currentRanks(preds)
 	ideal := idealDCG(labels, opts.NDCGK)
 	if opts.Scale == RankScaleNDCG && opts.Norm && ideal <= 0 {
@@ -131,7 +149,49 @@ func computeLambdaRank(preds, labels, weights []float64, grad, hess []float64, o
 			hess[j] += h
 		}
 	}
+	clampMinHess(hess)
+}
 
+func computeLambdaRankXGB(preds, labels, weights []float64, grad, hess []float64, opts RankOptions, groupIdx int) {
+	rankIdx := sortedByPredIndices(preds)
+	ranks := currentRanks(preds)
+	ideal := idealDCG(labels, opts.NDCGK)
+	if opts.Scale == RankScaleNDCG && opts.Norm && ideal <= 0 {
+		clampMinHess(hess)
+		return
+	}
+
+	var sumLambda float64
+	forEachRankPair(preds, labels, opts.PairMethod, opts.NumPairPerSample, opts.PairSeed, groupIdx, opts.BoostRound,
+		func(rankHi, rankLo int) {
+			scale := 1.0
+			if opts.Scale == RankScaleNDCG {
+				idxHi := rankIdx[rankHi]
+				idxLo := rankIdx[rankLo]
+				if labels[idxHi] < labels[idxLo] {
+					idxHi, idxLo = idxLo, idxHi
+					rankHi, rankLo = rankLo, rankHi
+				}
+				if labels[idxHi] <= labels[idxLo] {
+					return
+				}
+				scale = deltaNDCG(labels, ranks, idxHi, idxLo, ideal, opts.NDCGK, opts.MaxPosition)
+				if scale <= 0 {
+					return
+				}
+			}
+			w := weightAt(weights, rankIdx[rankHi]) * weightAt(weights, rankIdx[rankLo])
+			lam := applyLambdaPair(preds, labels, rankIdx, rankHi, rankLo, scale*w, opts.ScoreNormalization, grad, hess)
+			sumLambda += lam
+		})
+
+	if opts.LambdaNormalization {
+		normalizeLambdaGrad(grad, hess, sumLambda)
+	}
+	clampMinHess(hess)
+}
+
+func clampMinHess(hess []float64) {
 	const minHess = 1e-16
 	for i := range hess {
 		if hess[i] < minHess {
@@ -232,6 +292,24 @@ func sigmoidRank(x float64) float64 {
 	return z / (1 + z)
 }
 
+// PairwiseLambda 单对 RankNet λ 分量（rank:pairwise，|ΔZ|=1）。
+type PairwiseLambda struct {
+	Rho      float64
+	Lambda   float64
+	HessPair float64
+}
+
+// PairwiseLambdaAt 计算组内 (hi, lo) 对的 λ 与 pair hess；labels[hi]>labels[lo] 时有效。
+func PairwiseLambdaAt(preds, labels []float64, hi, lo int) PairwiseLambda {
+	if hi < 0 || lo < 0 || hi >= len(preds) || lo >= len(labels) || labels[hi] <= labels[lo] {
+		return PairwiseLambda{}
+	}
+	rho := sigmoidRank(preds[hi] - preds[lo])
+	lam := 1 - rho
+	h := rho * (1 - rho)
+	return PairwiseLambda{Rho: rho, Lambda: lam, HessPair: h}
+}
+
 func weightAt(weights []float64, i int) float64 {
 	if weights == nil || i >= len(weights) {
 		return 1
@@ -261,7 +339,7 @@ func GradHessRanking(obj RankFunc, dm interface {
 	start := 0
 	bufG := make([]float64, 0, 64)
 	bufH := make([]float64, 0, 64)
-	for _, gsz := range groups {
+	for gIdx, gsz := range groups {
 		if gsz <= 0 {
 			return fmt.Errorf("objective: invalid group size %d", gsz)
 		}
@@ -277,7 +355,7 @@ func GradHessRanking(obj RankFunc, dm interface {
 			bufG[i] = 0
 			bufH[i] = 0
 		}
-		obj.GradHessGroup(preds[start:end], labels[start:end], sliceOrNil(weights, start, end), bufG, bufH)
+		gradHessGroupAt(obj, gIdx, preds[start:end], labels[start:end], sliceOrNil(weights, start, end), bufG, bufH)
 		copy(grad[start:end], bufG)
 		copy(hess[start:end], bufH)
 		start = end
@@ -298,4 +376,31 @@ func sliceOrNil(w []float64, start, end int) []float64 {
 		return nil
 	}
 	return w[start:end]
+}
+
+func gradHessGroupAt(obj RankFunc, groupIdx int, preds, labels, weights, grad, hess []float64) {
+	switch o := obj.(type) {
+	case RankPairwise:
+		o.Opts.GroupIdx = groupIdx
+		o.GradHessGroup(preds, labels, weights, grad, hess)
+	case RankNDCG:
+		o.Opts.GroupIdx = groupIdx
+		o.GradHessGroup(preds, labels, weights, grad, hess)
+	default:
+		obj.GradHessGroup(preds, labels, weights, grad, hess)
+	}
+}
+
+// SetRankBoostRound 更新排序目标当前 boosting 轮次（mean 采样 RNG）。
+func SetRankBoostRound(obj Func, round int) Func {
+	switch o := obj.(type) {
+	case RankPairwise:
+		o.Opts.BoostRound = round
+		return o
+	case RankNDCG:
+		o.Opts.BoostRound = round
+		return o
+	default:
+		return obj
+	}
 }

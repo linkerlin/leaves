@@ -133,5 +133,35 @@ func (e *Ensemble) Name() string            { return e.engine.Name() }
 // Engine 返回底层 predict.Engine（高级用法）。
 func (e *Ensemble) Engine() predict.Engine { return e.engine }
 
+// ReplaceEngine 替换底层引擎并关闭旧引擎（热更新内部使用）。
+func (e *Ensemble) ReplaceEngine(next predict.Engine) error {
+	if e == nil {
+		return fmt.Errorf("model: nil ensemble")
+	}
+	old := e.engine
+	e.engine = next
+	if old != nil {
+		if err := old.Close(); err != nil {
+			return fmt.Errorf("model: close old engine: %w", err)
+		}
+	}
+	return nil
+}
+
+// DetachEngine 取出引擎引用并将 Ensemble 置空（避免重复 Close）。
+func (e *Ensemble) DetachEngine() predict.Engine {
+	if e == nil {
+		return nil
+	}
+	eng := e.engine
+	e.engine = nil
+	return eng
+}
+
 // Close 释放资源。
-func (e *Ensemble) Close() error            { return e.engine.Close() }
+func (e *Ensemble) Close() error {
+	if e == nil || e.engine == nil {
+		return nil
+	}
+	return e.engine.Close()
+}

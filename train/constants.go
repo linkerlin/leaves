@@ -37,6 +37,13 @@ const (
 	ObjectiveRankListwise     = "rank:listwise"
 )
 
+// LambdaRank 配对策略（对标 XGBoost lambdarank_pair_method）。
+const (
+	LambdaRankPairFull = "full"
+	LambdaRankPairTopK = "topk"
+	LambdaRankPairMean = "mean"
+)
+
 // 评估指标名（与 metrics.Resolve / XGBoost eval_metric 对齐）。
 const (
 	EvalRMSE     = "rmse"

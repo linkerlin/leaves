@@ -67,6 +67,8 @@ func NewGBTree(numFeatures int, baseScore float64, numOutputs int, cfg treebuild
 
 func (b *GBTree) Forest() *tree.ForestIR { return b.forest }
 
+func (b *GBTree) setLearningRate(lr float64) { b.cfg.LearningRate = lr }
+
 func (b *GBTree) NumOutputGroups() int { return b.forest.NumOutputGroups }
 
 // Boost 用当前梯度/Hessian 建树并加入森林。

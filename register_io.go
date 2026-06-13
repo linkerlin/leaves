@@ -11,6 +11,10 @@ import (
 
 func init() {
 	io.RegisterLegacyLoader(legacyLoadFromFile, legacyBuildModelEnsemble)
+	model.RegisterReloadLoader(func(path string, opts any) (*model.Ensemble, error) {
+		lo, _ := opts.(*io.LoadOptions)
+		return io.LoadFromFile(path, lo)
+	})
 }
 
 func legacyLoadFromFile(filename string, opts *io.LoadOptions) (interface{}, error) {

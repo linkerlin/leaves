@@ -40,6 +40,8 @@ func NewGBLinear(numFeatures, numOutputs int, baseScore float64, cfg GBLinearCon
 
 func (b *GBLinear) Linear() *linear.LinearIR { return b.linear }
 
+func (b *GBLinear) setLearningRate(lr float64) { b.cfg.LearningRate = lr }
+
 func (b *GBLinear) NumOutputGroups() int { return b.linear.NumOutputGroups }
 
 // Boost 一轮坐标下降式权重更新。

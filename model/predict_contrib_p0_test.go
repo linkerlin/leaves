@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	_ "github.com/dmitryikh/leaves"
 	"github.com/dmitryikh/leaves/io"
 	"github.com/dmitryikh/leaves/predict"
 )

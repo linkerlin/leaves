@@ -40,10 +40,16 @@ type Config struct {
 	CheckpointEvery     int
 	CheckpointPath      string
 	DART                *booster.DARTConfig
+	LRScheduler         LearningRateScheduler
+	Callbacks           []TrainingCallback
 	// 排序学习（T5，对标 XGBoost LambdaMART）
-	NDCGK          int  // eval / lambda ndcg@k；0=全量
-	LambdaRankNorm bool // lambdarank_norm，默认 true
-	MaxPosition    int  // max_position；0=不截断
+	NDCGK                      int    // eval / lambda ndcg@k；0=全量
+	LambdaRankNorm             bool   // lambdarank_norm，rank:ndcg 默认 true
+	MaxPosition                int    // max_position；0=不截断
+	LambdaRankPairMethod       string // full|topk|mean；默认 full（leaves 经典全配对）
+	LambdaRankNumPairPerSample int    // lambdarank_num_pair_per_sample；0=默认
+	LambdaRankNormalization    bool   // lambdarank_normalization
+	LambdaRankScoreNorm        bool   // lambdarank_score_normalization
 }
 
 // Learner 训练编排器。
@@ -54,6 +60,7 @@ type Learner struct {
 	numGroups          int
 	metric             metrics.Metric
 	metricHistory      []float64
+	baseLearningRate   float64
 	resolvedTreeMethod  string
 	useGPUHist          bool
 	effectiveAccelMode  string
@@ -71,9 +78,14 @@ func NewLearner(cfg Config) (*Learner, error) {
 		return nil, err
 	}
 	rankCfg := objective.RankTrainConfig{
-		NDCGK:       cfg.NDCGK,
-		LambdaNorm:  lambdaRankNormDefault(cfg),
-		MaxPosition: cfg.MaxPosition,
+		NDCGK:                cfg.NDCGK,
+		LambdaNorm:           lambdaRankNormDefault(cfg),
+		MaxPosition:          cfg.MaxPosition,
+		PairMethod:           objective.ParseRankPairMethod(cfg.LambdaRankPairMethod),
+		NumPairPerSample:     cfg.LambdaRankNumPairPerSample,
+		PairSeed:             cfg.Seed,
+		LambdaNormalization:  cfg.LambdaRankNormalization,
+		ScoreNormalization:   cfg.LambdaRankScoreNorm,
 	}
 	if _, ok := objective.IsRanking(obj); ok {
 		obj = objective.ConfigureRanking(obj, rankCfg)
@@ -85,6 +97,7 @@ func NewLearner(cfg Config) (*Learner, error) {
 	if cfg.LearningRate <= 0 {
 		cfg.LearningRate = 0.3
 	}
+	baseLR := cfg.LearningRate
 	if cfg.Booster == "" {
 		cfg.Booster = BoosterGBTree
 	}
@@ -108,7 +121,7 @@ func NewLearner(cfg Config) (*Learner, error) {
 	if cfg.EarlyStop != nil && metric != nil {
 		cfg.EarlyStop.Maximize = metricMaximize(metric)
 	}
-	return &Learner{cfg: cfg, obj: obj, numGroups: numGroups, metric: metric}, nil
+	return &Learner{cfg: cfg, obj: obj, numGroups: numGroups, metric: metric, baseLearningRate: baseLR}, nil
 }
 
 // Fit 在 Matrix 上训练。
@@ -148,6 +161,7 @@ func (l *Learner) Fit(dm data.Matrix) error {
 	mc, isMC := objective.IsMulticlass(l.obj)
 
 	for round := 0; round < l.cfg.NumRound; round++ {
+		l.onRoundStart(round)
 		l.predictMarginsInternal(dm, preds, false)
 		if isMC {
 			for i := 0; i < n; i++ {
@@ -165,18 +179,31 @@ func (l *Learner) Fit(dm data.Matrix) error {
 			}
 		}
 		l.booster.Boost(dm, grad, hess)
+		var trainMetric float64
+		var metricOK bool
 		if l.metric != nil {
 			l.predictMarginsInternal(dm, evalPreds, false)
 			metricLabels, metricPreds := metricInputs(l.cfg, labels, evalPreds, g)
 			if v, err := evaluateTrainMetric(l, metricLabels, metricPreds, dm); err == nil {
 				l.metricHistory = append(l.metricHistory, v)
+				trainMetric = v
+				metricOK = true
 			}
 		}
-		if l.cfg.EvalSet != nil && l.cfg.EarlyStop != nil {
+		var evalMetric float64
+		var evalMetricOK bool
+		if l.cfg.EvalSet != nil {
 			if score, err := evalMetricOnSet(l, l.cfg.EvalSet); err == nil {
-				if l.cfg.EarlyStop.update(score, round+1) {
-					break
-				}
+				evalMetric = score
+				evalMetricOK = true
+			}
+		}
+		if err := l.onRoundEnd(round, trainMetric, metricOK, evalMetric, evalMetricOK); err != nil {
+			return err
+		}
+		if l.cfg.EvalSet != nil && l.cfg.EarlyStop != nil && evalMetricOK {
+			if l.cfg.EarlyStop.update(evalMetric, round+1) {
+				break
 			}
 		}
 		if l.cfg.CheckpointEvery > 0 && l.cfg.CheckpointPath != "" && (round+1)%l.cfg.CheckpointEvery == 0 {
