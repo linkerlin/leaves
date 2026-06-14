@@ -387,7 +387,7 @@ func LGEnsembleFromReader(reader *bufio.Reader, loadTransformation bool) (*Ensem
 		}
 		e.Trees = append(e.Trees, tree)
 	}
-	return &Ensemble{ensembleBaseInterface: e, transform: transform}, nil
+	return finalizeLegacyEnsemble(&Ensemble{ensembleBaseInterface: e, transform: transform}), nil
 }
 
 // LGEnsembleFromFile reads LightGBM model from binary file.
@@ -667,5 +667,5 @@ func LGEnsembleFromJSON(reader io.Reader, loadTransformation bool) (*Ensemble, e
 		}
 		e.Trees = append(e.Trees, tree)
 	}
-	return &Ensemble{ensembleBaseInterface: e, transform: &transformation.TransformRaw{e.nRawOutputGroups}}, nil
+	return finalizeLegacyEnsemble(&Ensemble{ensembleBaseInterface: e, transform: &transformation.TransformRaw{e.nRawOutputGroups}}), nil
 }

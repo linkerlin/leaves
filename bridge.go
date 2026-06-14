@@ -197,10 +197,10 @@ type EngineOptions struct {
 	Workload tree.WorkloadHint
 }
 
-// DefaultEngineOptions 默认使用 Native 后端。
+// DefaultEngineOptions 默认 BackendAuto（小 batch 选 Native，大 batch 可 Born）。
 func DefaultEngineOptions() *EngineOptions {
 	return &EngineOptions{
-		Backend:  tree.BackendNative,
+		Backend:  tree.BackendAuto,
 		Workload: tree.DefaultWorkloadHint(),
 	}
 }

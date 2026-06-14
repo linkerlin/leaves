@@ -36,6 +36,10 @@ func ByNameWithClass(name string, numClass int) (Func, error) {
 		return Gamma{}, nil
 	case "count:poisson":
 		return Poisson{}, nil
+	case "reg:tweedie":
+		return NewTweedie(defaultTweediePower), nil
+	case "survival:cox":
+		return Cox{}, nil
 	case "rank:pairwise":
 		return NewRankPairwise(RankTrainConfig{
 			PairMethod:          RankPairTopK,

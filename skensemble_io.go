@@ -172,7 +172,7 @@ func SKEnsembleFromReader(reader *bufio.Reader, loadTransformation bool) (*Ensem
 			base[k] = 0.0
 		}
 	}
-	return &Ensemble{ensembleBaseInterface: e, transform: &transformation.TransformRaw{e.nRawOutputGroups}}, nil
+	return finalizeLegacyEnsemble(&Ensemble{ensembleBaseInterface: e, transform: &transformation.TransformRaw{e.nRawOutputGroups}}), nil
 }
 
 // SKEnsembleFromFile reads sklearn tree ensemble model from pickle file.

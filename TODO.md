@@ -206,14 +206,9 @@ go test -tags born_train ./treebuilder/... -count=1
 
 ### WASM（下一步主线）
 
-
-
-- [ ] `GOOS=js GOARCH=wasm` 构建验证（Native CPU fallback）
-
-- [ ] `examples/wasm/`：HTML + `LoadFromFile` + 批预测 demo
-
-- [ ] 部署指南：模型体积、冷启动、batch 建议
-
+- [x] `GOOS=js GOARCH=wasm` 构建验证（Native CPU fallback）
+- [x] `examples/wasm/`：HTML + 批预测 demo
+- [ ] 部署指南：模型体积、冷启动、batch 建议（见 `examples/wasm/README.md` 初稿）
 - [ ] 部署性能报告（wasm vs Native）
 
 

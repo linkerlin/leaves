@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <title>leaves WASM Demo</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 640px; margin: 2rem auto; padding: 0 1rem; }
+    input { width: 100%; padding: 0.5rem; margin: 0.5rem 0; }
+    button { padding: 0.5rem 1rem; }
+    #out { margin-top: 1rem; font-family: monospace; }
+  </style>
+</head>
+<body>
+  <h1>leaves WASM 推理</h1>
+  <p>加载 <code>xgboost_smoke.json</code>（8 特征，binary:logistic）。</p>
+  <label>特征（逗号分隔，8 个数）</label>
+  <input id="features" value="0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8" />
+  <button id="run">预测</button>
+  <pre id="out">加载中…</pre>
+  <script src="wasm_exec.js"></script>
+  <script>
+    const go = new Go();
+    WebAssembly.instantiateStreaming(fetch("leaves.wasm"), go.importObject).then((result) => {
+      go.run(result.instance);
+      document.getElementById("out").textContent = "就绪。点击预测。";
+      document.getElementById("run").onclick = () => {
+        const parts = document.getElementById("features").value.split(",").map(Number);
+        const p = leavesPredict(parts);
+        document.getElementById("out").textContent = "概率 = " + p.toFixed(6);
+      };
+    }).catch((e) => {
+      document.getElementById("out").textContent = "WASM 加载失败: " + e;
+    });
+  </script>
+</body>
+</html>

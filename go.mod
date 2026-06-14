@@ -2,8 +2,6 @@ module github.com/dmitryikh/leaves
 
 go 1.26.0
 
-replace github.com/born-ml/born => C:/GitHub/born
-
 require (
 	github.com/born-ml/born v0.9.1
 	github.com/toitware/ubjson v0.0.0-20260115144145-354787fca6c1

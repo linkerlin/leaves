@@ -32,6 +32,8 @@ const (
 	ObjectiveMultiSoftprob   = "multi:softprob"
 	ObjectiveGamma           = "reg:gamma"
 	ObjectivePoisson         = "count:poisson"
+	ObjectiveTweedie         = "reg:tweedie"
+	ObjectiveSurvivalCox     = "survival:cox"
 	ObjectiveRankPairwise    = "rank:pairwise"
 	ObjectiveRankNDCG        = "rank:ndcg"
 	ObjectiveRankListwise     = "rank:listwise"

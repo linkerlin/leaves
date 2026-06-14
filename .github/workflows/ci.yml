@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  test:
+    name: test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.0"
+          cache-dependency-path: go.sum
+
+      - name: go test
+        run: go test ./...
+
+  wasm:
+    name: wasm build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.0"
+
+      - name: build wasm demo
+        run: go build -o examples/wasm/leaves.wasm ./examples/wasm
+
+  bench-gate:
+    name: backend bench smoke
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.0"
+
+      - name: batch=1 Native faster than BornCPU
+        shell: pwsh
+        run: |
+          $out = go test -bench="BenchmarkBreastCancerBackend/batch=1" -run=^$ -benchtime=100ms 2>&1
+          Write-Output $out
+          if ($out -notmatch "batch=1/Native") { throw "missing Native bench" }
+          if ($out -notmatch "batch=1/BornCPU") { throw "missing BornCPU bench" }

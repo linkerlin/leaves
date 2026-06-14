@@ -245,7 +245,7 @@ func XGEnsembleFromReader(reader *bufio.Reader, loadTransformation bool) (*Ensem
 		}
 		e.Trees = append(e.Trees, tree)
 	}
-	return &Ensemble{ensembleBaseInterface: e, transform: transform}, nil
+	return finalizeLegacyEnsemble(&Ensemble{ensembleBaseInterface: e, transform: transform}), nil
 }
 
 // XGEnsembleFromFile reads XGBoost model from binary file. Works with 'gbtree' and 'dart' models.

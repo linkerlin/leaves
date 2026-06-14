@@ -44,7 +44,7 @@ func XGBLinearFromReader(reader *bufio.Reader, loadTransformation bool) (*Ensemb
 			return nil, fmt.Errorf("unknown transformation function '%s'", header.NameObj)
 		}
 	}
-	return &Ensemble{ensembleBaseInterface: e, transform: transform}, nil
+	return finalizeLegacyEnsemble(&Ensemble{ensembleBaseInterface: e, transform: transform}), nil
 }
 
 // XGBLinearFromFile reads XGBoost's 'gblinear' model from binary file

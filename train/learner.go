@@ -50,6 +50,7 @@ type Config struct {
 	LambdaRankNumPairPerSample int    // lambdarank_num_pair_per_sample；0=默认 32（topk）
 	LambdaRankNormalization    bool   // lambdarank_normalization；topk/mean 默认 true（对标 XGBoost）
 	LambdaRankScoreNorm        bool   // lambdarank_score_normalization
+	TweedieVariancePower       float64 // reg:tweedie，默认 1.5，范围 (1,2)
 }
 
 // Learner 训练编排器。
@@ -93,6 +94,9 @@ func NewLearner(cfg Config) (*Learner, error) {
 	}
 	if _, ok := objective.IsRanking(obj); ok {
 		obj = objective.ConfigureRanking(obj, rankCfg)
+	}
+	if tw, ok := obj.(objective.Tweedie); ok && cfg.TweedieVariancePower > 0 {
+		obj = objective.ConfigureTweedie(tw, cfg.TweedieVariancePower)
 	}
 	if cfg.NumRound <= 0 {
 		cfg.NumRound = 10
@@ -142,6 +146,9 @@ func (l *Learner) Fit(dm data.Matrix) error {
 			return fmt.Errorf("train: ranking requires GroupedMatrix: %w", err)
 		}
 		return l.fitRanking(dm, rankObj)
+	}
+	if survObj, ok := objective.IsSurvival(l.obj); ok {
+		return l.fitSurvival(dm, survObj)
 	}
 	labels := dm.Labels()
 	n := dm.NumRow()
@@ -273,7 +280,7 @@ func metricInputs(cfg Config, labels, margins []float64, numGroups int) ([]float
 			copy(probs[i*numGroups:(i+1)*numGroups], p)
 		}
 		return labels, probs
-	case ObjectivePoisson, ObjectiveGamma:
+	case ObjectivePoisson, ObjectiveGamma, ObjectiveTweedie:
 		vals := make([]float64, len(margins))
 		for i, m := range margins {
 			vals[i] = math.Exp(m)

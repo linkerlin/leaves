@@ -103,7 +103,7 @@ m, err := io.LoadFromFile("model.ubj", &io.LoadOptions{
 | **T3** | CV/早停/checkpoint + XGB 3.x JSON 导出 | ✅ |
 | **T4** | 全局分箱 + Born/WebGPU hist + GPU margin 预测 | ✅ |
 | **T5** | rank 训练 + 单调约束 | ✅ |
-| **T5** | survival / 外存 DMatrix / tweedie 训练 | 未开始（`data/external.go` 仅接口草案） |
+| **T5** | survival / 外存 DMatrix / tweedie 训练 | tweedie + `survival:cox` ✅；外存 DMatrix 仍为接口草案 |
 
 训练入口：`train.NewLearner` → `Learner.Fit` → `Learner.Save` / `io.ExportXGBoostJSON`。默认 `TreeMethod=auto`（小数据 exact，≥5 万行 hist）。验收：`go test ./train/...`。
 

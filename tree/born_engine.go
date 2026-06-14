@@ -1,3 +1,5 @@
+//go:build !js
+
 // Package tree — Born 张量推理引擎（ForestIR 直读；CPU / WebGPU）。
 package tree
 

@@ -68,11 +68,11 @@ func SelectBackend(ir *model.ModelIR, hint WorkloadHint) Backend {
 	return model.SelectBackend(ir, hint)
 }
 
-// DefaultLoadOptions 默认选项（Native 后端，保守延迟最优）。
+// DefaultLoadOptions 默认 BackendAuto（小 batch Native，大 batch 可 Born）。
 func DefaultLoadOptions() *LoadOptions {
 	return &LoadOptions{
 		LoadTransformation: false,
-		Backend:            BackendNative,
+		Backend:            BackendAuto,
 		Workload:           tree.DefaultWorkloadHint(),
 	}
 }

@@ -3,6 +3,8 @@ github.com/a8m/djson v0.0.0-20170509170705-c02c5aef757f/go.mod h1:w3s8fnedJo6LJQ
 github.com/antonholmquist/jason v1.0.0/go.mod h1:+GxMEKI0Va2U8h3os6oiUAetHAlGMvxjdpAH/9uvUMA=
 github.com/bitly/go-simplejson v0.5.0/go.mod h1:cXHtHw4XUPsvGaxgjIAn8PhEWG9NfngEKAMDJEczWVA=
 github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869/go.mod h1:Ekp36dRnpXw/yCqJaO+ZrUyxD+3VXMFFr56k5XYrpB4=
+github.com/born-ml/born v0.9.1 h1:wNgRPBjO+7+rugNY8UMcoHIqLfjTRObk6rCVdNe3VQw=
+github.com/born-ml/born v0.9.1/go.mod h1:9ZG5SqYUdlHim/9zt6Ab7OhlITkRHm+RcP1r95/Om7Y=
 github.com/buger/jsonparser v0.0.0-20181115193947-bf1c66bbce23/go.mod h1:bbYlZJ7hK1yFx9hf58LP0zeX7UjIGs20ufpu3evjr+s=
 github.com/cesanta/ubjson v0.0.0-20160505143622-3758bbe9c1d8/go.mod h1:U5WrvamRW1wH8H2eZ55ErWRskrF+86e4Bnyt0OLwQtI=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
