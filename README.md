@@ -197,7 +197,8 @@ gain_scan(webgpu=0 born_cpu=0 pure_cpu=324088)    → 增益扫描 0% GPU（NumT
 **选型建议**：MSLTR 量级及同规模表格数据，优先 `cpu_hist` 或 `auto`；十万行以上再测 `webgpu_hist`。复现对比：
 
 ```bash
-# MSLTR 子集（~5k 行）
+# MSLTR 子集（~5k 行）；默认 go test ./... 会跳过，需显式开启
+$env:LEAVES_BENCH=1
 go test ./train/... -run TestMSLTRTrainAccelBenchmark -v -timeout 45m
 
 # 大规模稠密回归交叉点（默认 5 万行 × 64 特征 × 10 轮）
@@ -238,7 +239,7 @@ m, _ := leaves.LoadFromFile("model.json", &io.LoadOptions{
 | 1 | ~3 µs/op | ~1.9 ms/op | ~1.1 s/op（含 WebGPU 初始化） |
 | 16 | ~82 µs/op | ~4.3 ms/op | ~1.7 s/op |
 
-小森林张量路径有固定开销；**生产选型建议**：默认 `BackendAuto` 或 `BackendNative`；大 batch 数值树再测 BornGPU。训练加速 benchmark：`go test ./train/... -run TestMSLTRTrainAccelBenchmark -v`
+小森林张量路径有固定开销；**生产选型建议**：默认 `BackendAuto` 或 `BackendNative`；大 batch 数值树再测 BornGPU。训练加速 benchmark：`LEAVES_BENCH=1 go test ./train/... -run TestMSLTRTrainAccelBenchmark -v`
 
 ### Tree SHAP 与可解释性（v1.1+）
 
@@ -330,7 +331,7 @@ ndcg, _ := m.Evaluate(yTrue, yPred)
 | 目标 | 类型 | 说明 |
 |------|------|------|
 | `rank:ndcg` | LambdaMART（XGBoost 兼容） | pairwise + \|ΔNDCG\| 缩放，优化排序指标 |
-| `rank:pairwise` | RankNet pairwise | 默认 **full** 全配对；可选 `LambdaRankPairMethod=topk\|mean` 对标 XGBoost 2.0+。`topk` round-1 margin 已硬对齐；`mean` 使用 `minstd_rand`（MSVC 语义），因 XGBoost 文档所述平台 RNG 差异不做逐元素 margin 门禁 |
+| `rank:pairwise` | RankNet pairwise | 默认 **topk**（k=32）+ **lambdarank_normalization**（对标 XGBoost）；可选 `LambdaRankPairMethod=full\|mean` |
 | `rank:listwise` | **ListNet softmax CE**（leaves 原生） | 组内 q∝exp(label)、p=softmax(pred)，纯 listwise 交叉熵 |
 
 > `rank:ndcg` 与 `rank:listwise` 都面向 listwise 排序，但损失不同：前者对标 XGBoost LambdaMART，后者为 ListNet 式 softmax 目标（XGBoost 无同名目标）。
@@ -355,7 +356,7 @@ learner, _ := train.NewLearner(train.Config{
 })
 _ = learner.Fit(dm)
 
-// 或 RankNet pairwise（全配对，默认）
+// 或 RankNet pairwise（默认 topk 配对，k=32）
 learner, _ = train.NewLearner(train.Config{
     Objective:    train.ObjectiveRankPairwise,
     NumRound:     40,
@@ -366,12 +367,22 @@ learner, _ = train.NewLearner(train.Config{
 })
 _ = learner.Fit(dm)
 
-// 对标 XGBoost 3.x 默认 topk 配对
+// 经典全配对（显式 full）
+learner, _ = train.NewLearner(train.Config{
+    Objective:            train.ObjectiveRankPairwise,
+    LambdaRankPairMethod: train.LambdaRankPairFull,
+    NumRound:             40,
+    MaxDepth:             4,
+    LearningRate:         0.1,
+    EvalMetric:           "ndcg@10",
+})
+
+// 可选：显式关闭 λ 归一化（默认 topk 下已开启）
 learner, _ = train.NewLearner(train.Config{
     Objective:                  train.ObjectiveRankPairwise,
     LambdaRankPairMethod:       train.LambdaRankPairTopK,
     LambdaRankNumPairPerSample: 32,
-    LambdaRankNormalization:    true,
+    // LambdaRankNormalization 默认 true；full 配对默认 false
     NumRound:                   40,
     MaxDepth:                   4,
     LearningRate:               0.1,
@@ -393,10 +404,14 @@ _ = learner.Fit(dm)
 
 #### MovieLens 100K Demo（电影评分 → 个性化排序）
 
-每个 **user = query**，每条评分 = 文档；**label = 1–5 星**。可对比三种目标：
+每个 **user = query**，每条评分 = 文档；**label = 1–5 星**。可对比三种目标。
+
+**可运行 Demo**（训练 → 保存模型 → Top-K 推荐）：见 [`demos/movielens/README.md`](demos/movielens/README.md)
 
 ```bash
 cd testdata && python gen_rank_movielens.py
+go run ./demos/movielens/cmd/train
+go run ./demos/movielens/cmd/recommend -group 0 -topk 10
 go test ./train/... -run 'TestRankMovieLens' -v
 go test ./train/... -run TestFitRankingListwise -v
 ```
@@ -414,8 +429,9 @@ cd testdata && python gen_rank_msltr.py      # 首次 ~1.2G zip
 go test ./objective/... -run 'TestRank.*GradGolden' -v
 go test ./train/... -run 'TestRankNDCGTopK|TestRankPairwiseTopK|Monotone|Callback' -v
 go test ./train/... -run 'Rank.*' -v
-go test ./train/... -short                   # 跳过 MSLTR 慢测
-go test ./train/... -run TestMSLTRTrainAccelBenchmark -v  # MSLTR 训练加速对比（~15–30min）
+go test ./train/... -short                   # 跳过 MSLTR rank trend 等慢测
+# 训练加速 benchmark（~15–45min，默认 go test ./... 会 skip）：
+#   $env:LEAVES_BENCH=1; go test ./train/... -run TestMSLTRTrainAccelBenchmark -v -timeout 45m
 ```
 
 排序 + 单调约束：`MonotoneConstraints` 与 `rank:pairwise` / `rank:ndcg` / `rank:listwise` 可组合使用（见 `train/rank_monotone_test.go`）。

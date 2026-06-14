@@ -9,9 +9,9 @@ import (
 type RankPairMethod int
 
 const (
-	// RankPairFull leaves 经典全配对：所有 label[i]>label[j] 文档对。
+	// RankPairFull 经典全配对：所有 label[i]>label[j] 文档对（显式 lambdarank_pair_method=full）。
 	RankPairFull RankPairMethod = iota
-	// RankPairTopK 对标 XGBoost topk：按预测排序后，top-k 位置两两配对。
+	// RankPairTopK 默认；对标 XGBoost topk：按预测排序后，top-k 位置与后续位置配对。
 	RankPairTopK
 	// RankPairMean 对标 XGBoost mean：按 label 分桶随机采样配对。
 	RankPairMean

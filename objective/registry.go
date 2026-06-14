@@ -37,9 +37,18 @@ func ByNameWithClass(name string, numClass int) (Func, error) {
 	case "count:poisson":
 		return Poisson{}, nil
 	case "rank:pairwise":
-		return NewRankPairwise(RankTrainConfig{}), nil
+		return NewRankPairwise(RankTrainConfig{
+			PairMethod:          RankPairTopK,
+			NumPairPerSample:    defaultTopKPairs,
+			LambdaNormalization: true,
+		}), nil
 	case "rank:ndcg":
-		return NewRankNDCG(RankTrainConfig{LambdaNorm: true}), nil
+		return NewRankNDCG(RankTrainConfig{
+			LambdaNorm:          true,
+			PairMethod:          RankPairTopK,
+			NumPairPerSample:    defaultTopKPairs,
+			LambdaNormalization: true,
+		}), nil
 	case "rank:listwise":
 		return NewRankListwise(RankTrainConfig{}), nil
 	default:

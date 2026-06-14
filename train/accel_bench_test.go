@@ -33,6 +33,18 @@ func accelBenchEnvInt(name string, def int) int {
 	return n
 }
 
+func skipUnlessAccelBench(t *testing.T) {
+	t.Helper()
+	if testing.Short() {
+		t.Skip("accel benchmark skipped in -short mode")
+	}
+	switch os.Getenv("LEAVES_BENCH") {
+	case "1", "true", "yes":
+	default:
+		t.Skip("accel benchmark skipped (set LEAVES_BENCH=1; see README §训练加速 benchmark)")
+	}
+}
+
 func filterAccelBenchCases(cases []accelBenchCase) []accelBenchCase {
 	only := os.Getenv("LEAVES_BENCH_ONLY")
 	if only == "" {
@@ -118,11 +130,9 @@ func synthBenchDense(rows, cols int) data.Matrix {
 	return dm
 }
 
-// TestMSLTRTrainAccelBenchmark MSLR-WEB10K 子集训练加速路径对比（非 -short）。
+// TestMSLTRTrainAccelBenchmark MSLR-WEB10K 子集训练加速路径对比（需 LEAVES_BENCH=1）。
 func TestMSLTRTrainAccelBenchmark(t *testing.T) {
-	if testing.Short() {
-		t.Skip("MSLTR accel benchmark is slow; skip with -short")
-	}
+	skipUnlessAccelBench(t)
 	bl := loadRankXGBBaseline(t, filepath.Join("..", "testdata", "rank_msltr_ndcg_xgb_baseline.json"))
 	trainDM, err := data.LoadRankingTSV(filepath.Join("..", "testdata", "rank_msltr_train.tsv"), "\t")
 	if err != nil {
@@ -205,12 +215,10 @@ func TestMSLTRTrainAccelBenchmark(t *testing.T) {
 	}
 }
 
-// TestLargeDenseTrainAccelBenchmark 大规模稠密回归，验证 GPU hist 交叉点（非 -short）。
+// TestLargeDenseTrainAccelBenchmark 大规模稠密回归，验证 GPU hist 交叉点（需 LEAVES_BENCH=1）。
 // 环境变量：LEAVES_BENCH_ROWS（默认 50000）、LEAVES_BENCH_COLS（64）、LEAVES_BENCH_ROUNDS（10）。
 func TestLargeDenseTrainAccelBenchmark(t *testing.T) {
-	if testing.Short() {
-		t.Skip("large dense accel benchmark is slow; skip with -short")
-	}
+	skipUnlessAccelBench(t)
 	rows := accelBenchEnvInt("LEAVES_BENCH_ROWS", 50000)
 	cols := accelBenchEnvInt("LEAVES_BENCH_COLS", 64)
 	rounds := accelBenchEnvInt("LEAVES_BENCH_ROUNDS", 10)

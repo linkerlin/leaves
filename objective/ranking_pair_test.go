@@ -44,7 +44,10 @@ func TestRankPairMethodParse(t *testing.T) {
 	if objective.ParseRankPairMethod("mean") != objective.RankPairMean {
 		t.Fatal("mean")
 	}
-	if objective.ParseRankPairMethod("") != objective.RankPairFull {
-		t.Fatal("default full")
+	if objective.ParseRankPairMethod("") != objective.RankPairTopK {
+		t.Fatal("default topk")
+	}
+	if objective.ParseRankPairMethod("full") != objective.RankPairFull {
+		t.Fatal("full")
 	}
 }

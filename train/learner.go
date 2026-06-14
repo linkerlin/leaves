@@ -46,9 +46,9 @@ type Config struct {
 	NDCGK                      int    // eval / lambda ndcg@k；0=全量
 	LambdaRankNorm             bool   // lambdarank_norm，rank:ndcg 默认 true
 	MaxPosition                int    // max_position；0=不截断
-	LambdaRankPairMethod       string // full|topk|mean；默认 full（leaves 经典全配对）
-	LambdaRankNumPairPerSample int    // lambdarank_num_pair_per_sample；0=默认
-	LambdaRankNormalization    bool   // lambdarank_normalization
+	LambdaRankPairMethod       string // full|topk|mean；默认 topk（对标 XGBoost）
+	LambdaRankNumPairPerSample int    // lambdarank_num_pair_per_sample；0=默认 32（topk）
+	LambdaRankNormalization    bool   // lambdarank_normalization；topk/mean 默认 true（对标 XGBoost）
 	LambdaRankScoreNorm        bool   // lambdarank_score_normalization
 }
 
@@ -77,6 +77,10 @@ func NewLearner(cfg Config) (*Learner, error) {
 	if err != nil {
 		return nil, err
 	}
+	if _, ok := objective.IsRanking(obj); ok {
+		applyRankPairDefaults(&cfg)
+		cfg.Subsample = 1.0 // 排序训练需 query 完整（对标 XGBoost group）
+	}
 	rankCfg := objective.RankTrainConfig{
 		NDCGK:                cfg.NDCGK,
 		LambdaNorm:           lambdaRankNormDefault(cfg),
@@ -89,7 +93,6 @@ func NewLearner(cfg Config) (*Learner, error) {
 	}
 	if _, ok := objective.IsRanking(obj); ok {
 		obj = objective.ConfigureRanking(obj, rankCfg)
-		cfg.Subsample = 1.0 // 排序训练需 query 完整（对标 XGBoost group）
 	}
 	if cfg.NumRound <= 0 {
 		cfg.NumRound = 10

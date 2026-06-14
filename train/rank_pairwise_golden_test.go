@@ -59,15 +59,16 @@ func TestRankPairwiseOneRoundMarginVsXGBGolden(t *testing.T) {
 	}
 
 	learner, err := train.NewLearner(train.Config{
-		Objective:    train.ObjectiveRankPairwise,
-		NumRound:     1,
-		MaxDepth:     6,
-		LearningRate: 1.0,
-		Lambda:       0,
-		Gamma:        0,
-		MinHessian:   0,
-		TreeMethod:   train.TreeMethodExact,
-		Seed:         42,
+		Objective:            train.ObjectiveRankPairwise,
+		NumRound:             1,
+		MaxDepth:             6,
+		LearningRate:         1.0,
+		Lambda:               0,
+		Gamma:                0,
+		MinHessian:           0,
+		TreeMethod:           train.TreeMethodExact,
+		Seed:                 42,
+		LambdaRankPairMethod: train.LambdaRankPairFull, // golden 为全配对公式
 	})
 	if err != nil {
 		t.Fatal(err)
