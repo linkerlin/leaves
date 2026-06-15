@@ -4,7 +4,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/dmitryikh/leaves/tree"
+	"github.com/linkerlin/leaves/tree"
 )
 
 const (

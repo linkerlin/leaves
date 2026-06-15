@@ -4,9 +4,9 @@ import (
 	"math"
 	"testing"
 
-	"github.com/dmitryikh/leaves/data"
-	"github.com/dmitryikh/leaves/metrics"
-	"github.com/dmitryikh/leaves/train"
+	"github.com/linkerlin/leaves/data"
+	"github.com/linkerlin/leaves/metrics"
+	"github.com/linkerlin/leaves/train"
 )
 
 func TestFitHistRegression(t *testing.T) {

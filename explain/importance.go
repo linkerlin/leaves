@@ -1,6 +1,6 @@
 package explain
 
-import "github.com/dmitryikh/leaves/tree"
+import "github.com/linkerlin/leaves/tree"
 
 // ImportanceType 特征重要性类型。
 type ImportanceType int

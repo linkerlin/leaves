@@ -4,7 +4,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/dmitryikh/leaves/objective"
+	"github.com/linkerlin/leaves/objective"
 )
 
 func TestRankPairTopKVsFull(t *testing.T) {

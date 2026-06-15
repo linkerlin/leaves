@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dmitryikh/leaves/io"
-	"github.com/dmitryikh/leaves/tree"
+	"github.com/linkerlin/leaves/io"
+	"github.com/linkerlin/leaves/tree"
 )
 
 func TestXGBoostRFGolden(t *testing.T) {

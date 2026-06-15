@@ -4,8 +4,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/dmitryikh/leaves/data"
-	"github.com/dmitryikh/leaves/train"
+	"github.com/linkerlin/leaves/data"
+	"github.com/linkerlin/leaves/train"
 )
 
 func TestResumeFit(t *testing.T) {

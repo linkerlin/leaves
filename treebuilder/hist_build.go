@@ -1,6 +1,6 @@
 package treebuilder
 
-import "github.com/dmitryikh/leaves/data"
+import "github.com/linkerlin/leaves/data"
 
 const gpuHistMinSamples = 64 // 保留名供文档引用；运行时用 gpuHistMinSamplesForDepth
 

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dmitryikh/leaves/tree"
+	"github.com/linkerlin/leaves/tree"
 )
 
 // DumpJSON 以 JSON 格式 dump 森林（类 XGBoost dump 结构）。

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 
-	"github.com/dmitryikh/leaves/data"
+	"github.com/linkerlin/leaves/data"
 )
 
 // CVResult 交叉验证结果。

@@ -4,7 +4,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/dmitryikh/leaves/metrics"
+	"github.com/linkerlin/leaves/metrics"
 )
 
 func TestRMSE(t *testing.T) {

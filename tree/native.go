@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/dmitryikh/leaves/predict"
+	"github.com/linkerlin/leaves/predict"
 )
 
 // 编译期检查：NativeEngine 实现 predict.Engine。

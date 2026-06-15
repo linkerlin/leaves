@@ -1,6 +1,6 @@
 package train
 
-import "github.com/dmitryikh/leaves/treebuilder"
+import "github.com/linkerlin/leaves/treebuilder"
 
 // ResolveTrainTreeMethodWithAccel 解析建树算法与 GPU hist 开关；auto 加速在大数据 + WebGPU 时升级为 gpu_hist。
 func ResolveTrainTreeMethodWithAccel(

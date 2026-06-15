@@ -1,10 +1,10 @@
 # leaves
 
 [![版本](https://img.shields.io/badge/版本-v2.x--dev-blue.svg)](https://semver.org)
-[![构建状态](https://github.com/dmitryikh/leaves/actions/workflows/ci.yml/badge.svg)](https://github.com/dmitryikh/leaves/actions/workflows/ci.yml)
-[![Go 文档](https://godoc.org/github.com/dmitryikh/leaves?status.png)](https://godoc.org/github.com/dmitryikh/leaves)
+[![构建状态](https://github.com/linkerlin/leaves/actions/workflows/ci.yml/badge.svg)](https://github.com/linkerlin/leaves/actions/workflows/ci.yml)
+[![Go 文档](https://godoc.org/github.com/linkerlin/leaves?status.png)](https://godoc.org/github.com/linkerlin/leaves)
 [![测试覆盖率](https://coveralls.io/repos/github/dmitryikh/leaves/badge.svg?branch=master)](https://coveralls.io/github/dmitryikh/leaves?branch=master)
-[![Go 代码质量](https://goreportcard.com/badge/github.com/dmitryikh/leaves)](https://goreportcard.com/report/github.com/dmitryikh/leaves)
+[![Go 代码质量](https://goreportcard.com/badge/github.com/linkerlin/leaves)](https://goreportcard.com/report/github.com/linkerlin/leaves)
 
 ![Logo](logo.png)
 
@@ -60,7 +60,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/dmitryikh/leaves"
+	"github.com/linkerlin/leaves"
 )
 
 func main() {
@@ -120,7 +120,7 @@ _ = learner.Fit(dm)
 | sklearn | `.pkl` / `.joblib` | pickle 魔数识别 |
 
 ```go
-import "github.com/dmitryikh/leaves/io"
+import "github.com/linkerlin/leaves/io"
 
 // JSON 或 UBJ：DefaultLoadOptions 已默认 AutoTransform
 m, err := io.LoadFromFile("model.ubj", io.DefaultLoadOptions())
@@ -389,8 +389,8 @@ m, _ := leaves.LoadFromFile("model.json", &io.LoadOptions{
 
 ```go
 import (
-	"github.com/dmitryikh/leaves"
-	"github.com/dmitryikh/leaves/explain"
+	"github.com/linkerlin/leaves"
+	"github.com/linkerlin/leaves/explain"
 )
 
 m, _ := leaves.LoadFromFile("model.json", leaves.DefaultLoadOptions())
@@ -411,7 +411,7 @@ dot := m.Explain().DumpDOT(nil)
 **推荐（`predict.Request` 统一出口）**：末列 `bias` 为背景 margin（全零特征）；与 XGBoost `pred_contribs` **可加性一致**，逐元素分解可能不同。
 
 ```go
-import "github.com/dmitryikh/leaves/predict"
+import "github.com/linkerlin/leaves/predict"
 
 nf := m.NFeatures()
 nRows := 1
@@ -457,7 +457,7 @@ outMC := make([]float64, nRows*ng*(nf+1))
 内置 RMSE/MAE/AUC/LogLoss/MAPE/RMSLE/NDCG@k/MAP 等，名称与 XGBoost `eval_metric` 对齐（`metrics.Resolve`）：
 
 ```go
-import "github.com/dmitryikh/leaves/metrics"
+import "github.com/linkerlin/leaves/metrics"
 
 rmse, _ := metrics.RMSE{}.Evaluate(yTrue, yPred)
 m, _ := metrics.Resolve("ndcg@5", metrics.Options{Groups: []int{10, 10}})
@@ -480,8 +480,8 @@ ndcg, _ := m.Evaluate(yTrue, yPred)
 
 ```go
 import (
-    "github.com/dmitryikh/leaves/data"
-    "github.com/dmitryikh/leaves/train"
+    "github.com/linkerlin/leaves/data"
+    "github.com/linkerlin/leaves/train"
 )
 
 // TSV：qid label feat1 feat2 ...（同 qid 行连续）
@@ -607,7 +607,7 @@ if ne, ok := m.Engine().(*tree.NativeEngine); ok {
     _ = prof.Elapsed
 }
 
-// 线上模型轮换（须 import github.com/dmitryikh/leaves 注册 loader）
+// 线上模型轮换（须 import github.com/linkerlin/leaves 注册 loader）
 _ = m.Reload("/path/to/new.model", io.DefaultLoadOptions())
 ```
 
@@ -640,7 +640,7 @@ go test ./train/... -run Callback -count=1
 
 | 文档 | 说明 |
 |------|------|
-| [godoc](https://godoc.org/github.com/dmitryikh/leaves) | API 参考 |
+| [godoc](https://godoc.org/github.com/linkerlin/leaves) | API 参考 |
 | [`演进计划.md`](演进计划.md) | 全链路路线图（**v4.3**，与代码同步） |
 | [`TODO.md`](TODO.md) | 可执行 backlog（P0–T5 + v3.1 已清空） |
 | [`NOTES.md`](NOTES.md) | 版本变更与兼容性说明（含 v4.3 AutoTransform） |

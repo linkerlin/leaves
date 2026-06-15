@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/dmitryikh/leaves/predict"
-	"github.com/dmitryikh/leaves/tree"
+	"github.com/linkerlin/leaves/predict"
+	"github.com/linkerlin/leaves/tree"
 )
 
 // Levels int8 正半轴量化级数（0..Levels）。

@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/dmitryikh/leaves/objective"
+	"github.com/linkerlin/leaves/objective"
 )
 
 type ndcgGradGolden struct {

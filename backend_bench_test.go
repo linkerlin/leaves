@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/dmitryikh/leaves/mat"
-	"github.com/dmitryikh/leaves/tree"
+	"github.com/linkerlin/leaves/mat"
+	"github.com/linkerlin/leaves/tree"
 )
 
 // Phase 1 benchmark 门禁：Native / BornCPU / BornGPU 对比（batch=1/16/256）。

@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/dmitryikh/leaves/internal/xgbin"
-	"github.com/dmitryikh/leaves/model"
+	"github.com/linkerlin/leaves/internal/xgbin"
+	"github.com/linkerlin/leaves/model"
 )
 
 // LoaderFunc 由根包注册的遗留模型加载函数。
@@ -176,7 +176,7 @@ func LoadFromFile(filename string, opts *LoadOptions) (*model.Ensemble, error) {
 		opts = DefaultLoadOptions()
 	}
 	if registeredLoader == nil || registeredBuilder == nil {
-		return nil, fmt.Errorf("io loader not registered: import github.com/dmitryikh/leaves to enable")
+		return nil, fmt.Errorf("io loader not registered: import github.com/linkerlin/leaves to enable")
 	}
 
 	legacy, err := registeredLoader(filename, opts)

@@ -3,9 +3,9 @@ package model
 import (
 	"fmt"
 
-	"github.com/dmitryikh/leaves/linear"
-	"github.com/dmitryikh/leaves/predict"
-	"github.com/dmitryikh/leaves/tree"
+	"github.com/linkerlin/leaves/linear"
+	"github.com/linkerlin/leaves/predict"
+	"github.com/linkerlin/leaves/tree"
 )
 
 // NewEngine 从 ModelIR 创建推理引擎。

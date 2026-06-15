@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dmitryikh/leaves/quantize"
-	"github.com/dmitryikh/leaves/tree"
+	"github.com/linkerlin/leaves/quantize"
+	"github.com/linkerlin/leaves/tree"
 )
 
 func TestParityGatePassFail(t *testing.T) {

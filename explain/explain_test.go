@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	_ "github.com/dmitryikh/leaves"
-	"github.com/dmitryikh/leaves/explain"
-	"github.com/dmitryikh/leaves/io"
+	_ "github.com/linkerlin/leaves"
+	"github.com/linkerlin/leaves/explain"
+	"github.com/linkerlin/leaves/io"
 )
 
 func TestDumpTextSmoke(t *testing.T) {

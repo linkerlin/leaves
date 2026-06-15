@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/dmitryikh/leaves/io"
+	"github.com/linkerlin/leaves/io"
 )
 
 func TestXGBoostJSONSplitGainStats(t *testing.T) {

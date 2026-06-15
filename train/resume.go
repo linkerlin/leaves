@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/dmitryikh/leaves/booster"
-	"github.com/dmitryikh/leaves/data"
-	leavesio "github.com/dmitryikh/leaves/io"
-	"github.com/dmitryikh/leaves/treebuilder"
+	"github.com/linkerlin/leaves/booster"
+	"github.com/linkerlin/leaves/data"
+	leavesio "github.com/linkerlin/leaves/io"
+	"github.com/linkerlin/leaves/treebuilder"
 )
 
 // LoadCheckpoint 从 checkpoint JSON 恢复 Learner，并从已完成轮次续训。

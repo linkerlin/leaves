@@ -1,6 +1,6 @@
 package model
 
-import "github.com/dmitryikh/leaves/tree"
+import "github.com/linkerlin/leaves/tree"
 
 func capsFromIR(ir *ModelIR) tree.ModelCaps {
 	if ir == nil {

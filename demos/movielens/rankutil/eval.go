@@ -3,9 +3,9 @@ package rankutil
 import (
 	"fmt"
 
-	"github.com/dmitryikh/leaves/data"
-	"github.com/dmitryikh/leaves/metrics"
-	"github.com/dmitryikh/leaves/train"
+	"github.com/linkerlin/leaves/data"
+	"github.com/linkerlin/leaves/metrics"
+	"github.com/linkerlin/leaves/train"
 )
 
 // NDCGAtK 在带 groups 的矩阵上计算 NDCG@k。

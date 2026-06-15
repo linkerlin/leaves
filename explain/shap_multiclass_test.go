@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dmitryikh/leaves/explain"
-	"github.com/dmitryikh/leaves/io"
-	leafmodel "github.com/dmitryikh/leaves/model"
-	"github.com/dmitryikh/leaves/tree"
+	"github.com/linkerlin/leaves/explain"
+	"github.com/linkerlin/leaves/io"
+	leafmodel "github.com/linkerlin/leaves/model"
+	"github.com/linkerlin/leaves/tree"
 )
 
 func TestMulticlassLargeModelSHAPFast(t *testing.T) {

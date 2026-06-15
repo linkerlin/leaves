@@ -4,9 +4,9 @@ import (
 	"math"
 	"testing"
 
-	"github.com/dmitryikh/leaves/data"
-	"github.com/dmitryikh/leaves/train"
-	"github.com/dmitryikh/leaves/tree"
+	"github.com/linkerlin/leaves/data"
+	"github.com/linkerlin/leaves/train"
+	"github.com/linkerlin/leaves/tree"
 )
 
 func synthLargeDense(rows, cols int) data.Matrix {

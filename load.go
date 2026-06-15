@@ -1,9 +1,9 @@
 package leaves
 
 import (
-	"github.com/dmitryikh/leaves/io"
-	"github.com/dmitryikh/leaves/model"
-	"github.com/dmitryikh/leaves/tree"
+	"github.com/linkerlin/leaves/io"
+	"github.com/linkerlin/leaves/model"
+	"github.com/linkerlin/leaves/tree"
 )
 
 // LoadOptions 模型加载选项（委托 io 包）。

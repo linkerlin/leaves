@@ -1,9 +1,9 @@
 package leaves
 
 import (
-	"github.com/dmitryikh/leaves/data"
-	"github.com/dmitryikh/leaves/io"
-	"github.com/dmitryikh/leaves/train"
+	"github.com/linkerlin/leaves/data"
+	"github.com/linkerlin/leaves/io"
+	"github.com/linkerlin/leaves/train"
 )
 
 // TrainConfig 根包训练配置别名。

@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/dmitryikh/leaves"
-	"github.com/dmitryikh/leaves/model"
+	"github.com/linkerlin/leaves"
+	"github.com/linkerlin/leaves/model"
 )
 
 type predictRequest struct {

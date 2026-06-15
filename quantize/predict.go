@@ -3,7 +3,7 @@ package quantize
 import (
 	"math"
 
-	"github.com/dmitryikh/leaves/tree"
+	"github.com/linkerlin/leaves/tree"
 )
 
 // forestMarginsQ 与 tree.ForestMargins 等价，但数值分裂使用量化阈值。

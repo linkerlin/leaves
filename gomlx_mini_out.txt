@@ -4,4 +4,4 @@
     gomlx_mini_test.go:72: ✓ ExpandDims+Gather works
 --- PASS: TestGoMLXBasics (0.00s)
 PASS
-ok  	github.com/dmitryikh/leaves/tree	1.529s
+ok  	github.com/linkerlin/leaves/tree	1.529s

@@ -1,6 +1,6 @@
 package model
 
-import "github.com/dmitryikh/leaves/tree"
+import "github.com/linkerlin/leaves/tree"
 
 // forestSource 可返回底层 ForestIR 的引擎。
 type forestSource interface {

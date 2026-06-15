@@ -3,8 +3,8 @@ package train
 import (
 	"fmt"
 
-	"github.com/dmitryikh/leaves/data"
-	"github.com/dmitryikh/leaves/treebuilder"
+	"github.com/linkerlin/leaves/data"
+	"github.com/linkerlin/leaves/treebuilder"
 )
 
 // resolveTrainMatrix 外存多批次 + exact 时物化；hist 保留 BatchedMatrix。

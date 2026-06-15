@@ -3,7 +3,7 @@ package data_test
 import (
 	"testing"
 
-	"github.com/dmitryikh/leaves/data"
+	"github.com/linkerlin/leaves/data"
 )
 
 // stubExternal 验证 ExternalMemoryMatrix 接口可实现（T5 接线前编译门禁）。

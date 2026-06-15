@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/dmitryikh/leaves/data"
-	"github.com/dmitryikh/leaves/train"
+	"github.com/linkerlin/leaves/data"
+	"github.com/linkerlin/leaves/train"
 )
 
 // xgbTopKMarginGolden 来自 testdata/gen_rank_pairwise_grad.py 同数据集 + XGBoost 3.x topk 配置。

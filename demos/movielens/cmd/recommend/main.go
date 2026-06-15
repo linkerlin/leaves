@@ -7,12 +7,12 @@ import (
 	"os"
 	"path/filepath"
 
-	_ "github.com/dmitryikh/leaves" // 注册 leaves.json loader
+	_ "github.com/linkerlin/leaves" // 注册 leaves.json loader
 
-	"github.com/dmitryikh/leaves/data"
-	"github.com/dmitryikh/leaves/demos/movielens/rankutil"
-	"github.com/dmitryikh/leaves/io"
-	"github.com/dmitryikh/leaves/model"
+	"github.com/linkerlin/leaves/data"
+	"github.com/linkerlin/leaves/demos/movielens/rankutil"
+	"github.com/linkerlin/leaves/io"
+	"github.com/linkerlin/leaves/model"
 )
 
 const trainUserCount = 60

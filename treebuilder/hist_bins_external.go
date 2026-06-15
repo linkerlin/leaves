@@ -1,7 +1,7 @@
 package treebuilder
 
 import (
-	"github.com/dmitryikh/leaves/data"
+	"github.com/linkerlin/leaves/data"
 )
 
 // BuildGlobalHistBinsExternal 多批次外存数据上构建全局直方图分箱。

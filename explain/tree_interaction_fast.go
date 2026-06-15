@@ -1,6 +1,6 @@
 package explain
 
-import "github.com/dmitryikh/leaves/tree"
+import "github.com/linkerlin/leaves/tree"
 
 // treeInteractionFast 用条件 Tree SHAP 计算交互值（O(T·D²·U)，U=树内唯一特征数）。
 // 仅累加非对角 φ[i][j]（i≠j），对角由 InteractionValues 从主效应校正。

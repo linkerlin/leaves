@@ -3,7 +3,7 @@ package train
 import (
 	"fmt"
 
-	"github.com/dmitryikh/leaves/booster"
+	"github.com/linkerlin/leaves/booster"
 )
 
 // LearningRateScheduler 按 boosting 轮次调整学习率（对标 XGBoost learning_rate schedule）。

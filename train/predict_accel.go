@@ -3,9 +3,9 @@ package train
 import (
 	"log"
 
-	"github.com/dmitryikh/leaves/booster"
-	"github.com/dmitryikh/leaves/data"
-	"github.com/dmitryikh/leaves/tree"
+	"github.com/linkerlin/leaves/booster"
+	"github.com/linkerlin/leaves/data"
+	"github.com/linkerlin/leaves/tree"
 )
 
 const (

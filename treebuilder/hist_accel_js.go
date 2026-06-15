@@ -3,8 +3,8 @@
 package treebuilder
 
 import (
-	"github.com/dmitryikh/leaves/data"
-	"github.com/dmitryikh/leaves/tree"
+	"github.com/linkerlin/leaves/data"
+	"github.com/linkerlin/leaves/tree"
 )
 
 // BornHistAvailable js 无 Born hist 加速。

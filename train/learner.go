@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/dmitryikh/leaves/booster"
-	"github.com/dmitryikh/leaves/data"
-	"github.com/dmitryikh/leaves/metrics"
-	"github.com/dmitryikh/leaves/model"
-	"github.com/dmitryikh/leaves/objective"
-	"github.com/dmitryikh/leaves/tree"
-	"github.com/dmitryikh/leaves/treebuilder"
+	"github.com/linkerlin/leaves/booster"
+	"github.com/linkerlin/leaves/data"
+	"github.com/linkerlin/leaves/metrics"
+	"github.com/linkerlin/leaves/model"
+	"github.com/linkerlin/leaves/objective"
+	"github.com/linkerlin/leaves/tree"
+	"github.com/linkerlin/leaves/treebuilder"
 )
 
 // Config 训练配置（T1/T2/T3）。

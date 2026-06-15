@@ -3,9 +3,9 @@ package train
 import (
 	"log"
 
-	"github.com/dmitryikh/leaves/data"
-	"github.com/dmitryikh/leaves/tree"
-	"github.com/dmitryikh/leaves/treebuilder"
+	"github.com/linkerlin/leaves/data"
+	"github.com/linkerlin/leaves/tree"
+	"github.com/linkerlin/leaves/treebuilder"
 )
 
 // ResolveTrainTreeMethod 解析训练建树算法；auto/gpu_hist 在 hist 路径上启用 GPU 增益扫描尝试。

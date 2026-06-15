@@ -1,6 +1,6 @@
 === RUN   TestGoMLXEngineSmoke
 --- FAIL: TestGoMLXEngineSmoke (0.00s)
-panic: failed during graph construction/compilation: compilation failed for Exec "Exec:github.com/dmitryikh/leaves/tree.NewGoMLXEngine.func1": graphFn for "Exec:github.com/dmitryikh/leaves/tree.NewGoMLXEngine.func1" panicked: if operands are not scalars, their rank must match for BinaryOp (Mul), got shapes (Float64)[2 2] and (Float64)[2] [recovered, repanicked]
+panic: failed during graph construction/compilation: compilation failed for Exec "Exec:github.com/linkerlin/leaves/tree.NewGoMLXEngine.func1": graphFn for "Exec:github.com/linkerlin/leaves/tree.NewGoMLXEngine.func1" panicked: if operands are not scalars, their rank must match for BinaryOp (Mul), got shapes (Float64)[2 2] and (Float64)[2] [recovered, repanicked]
 
 goroutine 7 [running]:
 testing.tRunner.func1.2({0x7ff6c037d900, 0x1eb485d41360})
@@ -15,13 +15,13 @@ github.com/gomlx/gomlx/pkg/core/graph.(*Exec).MustExec(...)
 	C:/GitHub/gomlx/pkg/core/graph/execaliases.go:212
 github.com/gomlx/gomlx/pkg/core/graph.(*Exec).MustExec1(0x1eb485e06240, {0x1eb485d3be58?, 0x4?, 0x4?})
 	C:/GitHub/gomlx/pkg/core/graph/execaliases.go:319 +0x25
-github.com/dmitryikh/leaves/tree.(*GoMLXEngine).PredictDense(0x1eb485e28080, {0x1eb485d3bed0?, 0x1?, 0x1c?}, 0x2, 0x754?, {0x1eb485cf06d0, 0x2, 0x2}, 0x0)
+github.com/linkerlin/leaves/tree.(*GoMLXEngine).PredictDense(0x1eb485e28080, {0x1eb485d3bed0?, 0x1?, 0x1c?}, 0x2, 0x754?, {0x1eb485cf06d0, 0x2, 0x2}, 0x0)
 	C:/GitHub/leaves/tree/gomlx_engine.go:148 +0xbf
-github.com/dmitryikh/leaves/tree.TestGoMLXEngineSmoke(0x1eb485ce6400)
+github.com/linkerlin/leaves/tree.TestGoMLXEngineSmoke(0x1eb485ce6400)
 	C:/GitHub/leaves/tree/gomlx_test.go:31 +0x36d
 testing.tRunner(0x1eb485ce6400, 0x7ff6c03e0398)
 	C:/Go/src/testing/testing.go:2036 +0xc3
 created by testing.(*T).Run in goroutine 1
 	C:/Go/src/testing/testing.go:2101 +0x4a9
-FAIL	github.com/dmitryikh/leaves/tree	1.418s
+FAIL	github.com/linkerlin/leaves/tree	1.418s
 FAIL

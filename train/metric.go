@@ -3,8 +3,8 @@ package train
 import (
 	"fmt"
 
-	"github.com/dmitryikh/leaves/data"
-	"github.com/dmitryikh/leaves/metrics"
+	"github.com/linkerlin/leaves/data"
+	"github.com/linkerlin/leaves/metrics"
 )
 
 func evalMetricFor(cfg Config, numGroups int) (metrics.Metric, error) {

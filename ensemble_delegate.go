@@ -1,7 +1,7 @@
 package leaves
 
 import (
-	"github.com/dmitryikh/leaves/model"
+	"github.com/linkerlin/leaves/model"
 )
 
 // ensembleCore 返回底层 booster 实现（解开 Ensemble 包装层）。

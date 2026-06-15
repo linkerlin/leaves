@@ -3,7 +3,7 @@ package treebuilder
 import (
 	"testing"
 
-	"github.com/dmitryikh/leaves/data"
+	"github.com/linkerlin/leaves/data"
 )
 
 func synthHistDataset(rows, cols int) (data.Matrix, []int, []float64, []float64) {

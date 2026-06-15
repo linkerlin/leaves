@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dmitryikh/leaves/data"
-	leavesio "github.com/dmitryikh/leaves/io"
+	"github.com/linkerlin/leaves/data"
+	leavesio "github.com/linkerlin/leaves/io"
 )
 
 // LoadData 从文件加载训练矩阵（自动嗅探 CSV/TSV/libsvm/排序 TSV）。

@@ -5,8 +5,8 @@ import (
 	stdio "io"
 	"os"
 
-	leavesio "github.com/dmitryikh/leaves/io"
-	"github.com/dmitryikh/leaves/model"
+	leavesio "github.com/linkerlin/leaves/io"
+	"github.com/linkerlin/leaves/model"
 )
 
 func saveLeavesJSON(path string, ir *model.ModelIR, objective string) error {

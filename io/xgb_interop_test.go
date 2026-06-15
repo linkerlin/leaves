@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dmitryikh/leaves/io"
-	"github.com/dmitryikh/leaves/model"
+	"github.com/linkerlin/leaves/io"
+	"github.com/linkerlin/leaves/model"
 )
 
 func TestParseXGBoostJSONGblinear(t *testing.T) {

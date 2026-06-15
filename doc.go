@@ -21,7 +21,7 @@ All loaded models exibit the same interface from `Ensemble struct`. One can
 use method `Name` to get string representation of model origin. Possible name
 values are "lightgbm.gbdt", "lightgbm.rf", "xgboost.gbtree", "xgboost.gblinear", etc.
 
-LightGBM model
+# LightGBM model
 
 Example: binary classification
 
@@ -57,9 +57,9 @@ predict_breast_cancer_model.go:
 	import (
 		"fmt"
 
-		"github.com/dmitryikh/leaves"
-		"github.com/dmitryikh/leaves/mat"
-		"github.com/dmitryikh/leaves/util"
+		"github.com/linkerlin/leaves"
+		"github.com/linkerlin/leaves/mat"
+		"github.com/linkerlin/leaves/util"
 	)
 
 	func main() {
@@ -118,7 +118,7 @@ Output:
 	Transformation: logistic
 	Predictions the same!
 
-XGBoost Model
+# XGBoost Model
 
 example: Multiclass Classification
 
@@ -155,9 +155,9 @@ predict_iris_model.go:
 	import (
 		"fmt"
 
-		"github.com/dmitryikh/leaves"
-		"github.com/dmitryikh/leaves/mat"
-		"github.com/dmitryikh/leaves/util"
+		"github.com/linkerlin/leaves"
+		"github.com/linkerlin/leaves/mat"
+		"github.com/linkerlin/leaves/util"
 	)
 
 	func main() {
@@ -209,14 +209,13 @@ Output:
 	NEstimators: 5
 	Predictions the same! (mismatch = 0)
 
-Notes on XGBoost DART support
+# Notes on XGBoost DART support
 
 Please note that one must not provide nEstimators = 0 when predict with DART models from xgboost. For more details see xgboost's documentation.
 
-Notes on LightGBM DART support
+# Notes on LightGBM DART support
 
 Models trained with 'boosting_type': 'dart' options can be loaded with func `leaves.LGEnsembleFromFile`.
 But the name of the model (given by `Name()` method) will be 'lightgbm.gbdt', because LightGBM model format doesn't distinguish 'gbdt' and 'dart' models.
-
 */
 package leaves

@@ -5,9 +5,9 @@ import (
 	"math"
 	"testing"
 
-	"github.com/dmitryikh/leaves/io"
-	"github.com/dmitryikh/leaves/linear"
-	"github.com/dmitryikh/leaves/model"
+	"github.com/linkerlin/leaves/io"
+	"github.com/linkerlin/leaves/linear"
+	"github.com/linkerlin/leaves/model"
 )
 
 func TestLeavesJSONLinearRoundTrip(t *testing.T) {

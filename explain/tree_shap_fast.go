@@ -3,7 +3,7 @@ package explain
 import (
 	"math"
 
-	"github.com/dmitryikh/leaves/tree"
+	"github.com/linkerlin/leaves/tree"
 )
 
 // pathElement Tree SHAP 唯一路径元素（Lundberg et al. 2018）。

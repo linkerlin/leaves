@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	_ "github.com/dmitryikh/leaves" // 注册加载器
-	"github.com/dmitryikh/leaves/io"
+	_ "github.com/linkerlin/leaves" // 注册加载器
+	"github.com/linkerlin/leaves/io"
 )
 
 func TestLoadFromFileLightGBM(t *testing.T) {

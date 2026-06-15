@@ -5,10 +5,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	_ "github.com/dmitryikh/leaves"
-	"github.com/dmitryikh/leaves/io"
-	"github.com/dmitryikh/leaves/linear"
-	"github.com/dmitryikh/leaves/tree"
+	_ "github.com/linkerlin/leaves"
+	"github.com/linkerlin/leaves/io"
+	"github.com/linkerlin/leaves/linear"
+	"github.com/linkerlin/leaves/tree"
 )
 
 func TestSelectBackendFromIR(t *testing.T) {

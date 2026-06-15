@@ -3,8 +3,8 @@ package train_test
 import (
 	"testing"
 
-	"github.com/dmitryikh/leaves/data"
-	"github.com/dmitryikh/leaves/train"
+	"github.com/linkerlin/leaves/data"
+	"github.com/linkerlin/leaves/train"
 )
 
 func TestFitMonotoneIncreasing(t *testing.T) {

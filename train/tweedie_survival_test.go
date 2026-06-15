@@ -4,7 +4,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/dmitryikh/leaves/data"
+	"github.com/linkerlin/leaves/data"
 )
 
 func TestTweedieTrainSmoke(t *testing.T) {

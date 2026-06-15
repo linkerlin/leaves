@@ -9,9 +9,9 @@ import (
 	"fmt"
 	"syscall/js"
 
-	"github.com/dmitryikh/leaves/io"
-	"github.com/dmitryikh/leaves/model"
-	"github.com/dmitryikh/leaves/tree"
+	"github.com/linkerlin/leaves/io"
+	"github.com/linkerlin/leaves/model"
+	"github.com/linkerlin/leaves/tree"
 )
 
 //go:embed model.json

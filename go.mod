@@ -1,4 +1,4 @@
-module github.com/dmitryikh/leaves
+module github.com/linkerlin/leaves
 
 go 1.26.0
 

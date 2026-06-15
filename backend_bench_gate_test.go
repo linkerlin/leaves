@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dmitryikh/leaves/mat"
-	"github.com/dmitryikh/leaves/tree"
+	"github.com/linkerlin/leaves/mat"
+	"github.com/linkerlin/leaves/tree"
 )
 
 // TestBenchGateBornCPUSlowerBatch1 CI 门禁：batch=1 时 BornCPU 应显著慢于 Native。

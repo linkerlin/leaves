@@ -3,8 +3,8 @@ package leaves_test
 import (
 	"testing"
 
-	"github.com/dmitryikh/leaves"
-	"github.com/dmitryikh/leaves/data"
+	"github.com/linkerlin/leaves"
+	"github.com/linkerlin/leaves/data"
 )
 
 func TestTrainBridgeNewLearner(t *testing.T) {

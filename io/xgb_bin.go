@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/dmitryikh/leaves/internal/xgbin"
-	"github.com/dmitryikh/leaves/linear"
-	"github.com/dmitryikh/leaves/model"
-	"github.com/dmitryikh/leaves/tree"
+	"github.com/linkerlin/leaves/internal/xgbin"
+	"github.com/linkerlin/leaves/linear"
+	"github.com/linkerlin/leaves/model"
+	"github.com/linkerlin/leaves/tree"
 )
 
 // ParseXGBoostBinaryFile 解析经典 XGBoost 二进制模型（gbtree/dart/gblinear）。

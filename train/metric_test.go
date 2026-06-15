@@ -3,8 +3,8 @@ package train_test
 import (
 	"testing"
 
-	"github.com/dmitryikh/leaves/metrics"
-	"github.com/dmitryikh/leaves/train"
+	"github.com/linkerlin/leaves/metrics"
+	"github.com/linkerlin/leaves/train"
 )
 
 func TestEvalMetricResolveMAPE(t *testing.T) {

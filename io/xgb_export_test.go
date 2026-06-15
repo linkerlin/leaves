@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/dmitryikh/leaves/io"
+	"github.com/linkerlin/leaves/io"
 )
 
 func TestExportXGBoostJSONFeatureMeta(t *testing.T) {

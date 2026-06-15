@@ -7,10 +7,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/dmitryikh/leaves/data"
-	"github.com/dmitryikh/leaves/demos/movielens/rankutil"
-	"github.com/dmitryikh/leaves/io"
-	"github.com/dmitryikh/leaves/train"
+	"github.com/linkerlin/leaves/data"
+	"github.com/linkerlin/leaves/demos/movielens/rankutil"
+	"github.com/linkerlin/leaves/io"
+	"github.com/linkerlin/leaves/train"
 )
 
 const (

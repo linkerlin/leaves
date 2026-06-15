@@ -8,8 +8,8 @@ import (
 	borncpu "github.com/born-ml/born/backend/cpu"
 	"github.com/born-ml/born/tensor"
 
-	"github.com/dmitryikh/leaves/data"
-	"github.com/dmitryikh/leaves/tree"
+	"github.com/linkerlin/leaves/data"
+	"github.com/linkerlin/leaves/tree"
 )
 
 const bornHistMinBins = 16

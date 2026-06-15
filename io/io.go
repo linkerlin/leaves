@@ -6,8 +6,8 @@
 package io
 
 import (
-	"github.com/dmitryikh/leaves/model"
-	"github.com/dmitryikh/leaves/tree"
+	"github.com/linkerlin/leaves/model"
+	"github.com/linkerlin/leaves/tree"
 )
 
 // Format 模型格式枚举。

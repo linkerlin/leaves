@@ -9,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	_ "github.com/dmitryikh/leaves"
-	"github.com/dmitryikh/leaves/io"
-	"github.com/dmitryikh/leaves/predict"
+	_ "github.com/linkerlin/leaves"
+	"github.com/linkerlin/leaves/io"
+	"github.com/linkerlin/leaves/predict"
 )
 
 func TestPredictWithRequestContribution(t *testing.T) {

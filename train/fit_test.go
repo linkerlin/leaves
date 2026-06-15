@@ -6,13 +6,13 @@ import (
 	"path/filepath"
 	"testing"
 
-	_ "github.com/dmitryikh/leaves"
-	"github.com/dmitryikh/leaves/data"
-	"github.com/dmitryikh/leaves/io"
-	"github.com/dmitryikh/leaves/metrics"
-	"github.com/dmitryikh/leaves/model"
-	"github.com/dmitryikh/leaves/train"
-	"github.com/dmitryikh/leaves/tree"
+	_ "github.com/linkerlin/leaves"
+	"github.com/linkerlin/leaves/data"
+	"github.com/linkerlin/leaves/io"
+	"github.com/linkerlin/leaves/metrics"
+	"github.com/linkerlin/leaves/model"
+	"github.com/linkerlin/leaves/train"
+	"github.com/linkerlin/leaves/tree"
 )
 
 func TestFitRegressionSynthetic(t *testing.T) {

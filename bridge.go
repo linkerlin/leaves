@@ -1,11 +1,11 @@
 package leaves
 
 import (
-	"github.com/dmitryikh/leaves/linear"
-	"github.com/dmitryikh/leaves/model"
-	"github.com/dmitryikh/leaves/predict"
-	"github.com/dmitryikh/leaves/tree"
-	"github.com/dmitryikh/leaves/transformation"
+	"github.com/linkerlin/leaves/linear"
+	"github.com/linkerlin/leaves/model"
+	"github.com/linkerlin/leaves/predict"
+	"github.com/linkerlin/leaves/transformation"
+	"github.com/linkerlin/leaves/tree"
 )
 
 // ---- 类型别名：向后兼容 ----

@@ -7,4 +7,4 @@
 === RUN   TestBridgeAllTrees
 --- PASS: TestBridgeAllTrees (0.00s)
 PASS
-ok  	github.com/dmitryikh/leaves	0.933s
+ok  	github.com/linkerlin/leaves	0.933s

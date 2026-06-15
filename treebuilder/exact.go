@@ -3,8 +3,8 @@ package treebuilder
 import (
 	"sort"
 
-	"github.com/dmitryikh/leaves/data"
-	"github.com/dmitryikh/leaves/tree"
+	"github.com/linkerlin/leaves/data"
+	"github.com/linkerlin/leaves/tree"
 )
 
 // Config 树构建超参。

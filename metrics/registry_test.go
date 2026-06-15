@@ -4,7 +4,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/dmitryikh/leaves/metrics"
+	"github.com/linkerlin/leaves/metrics"
 )
 
 func TestResolveMetrics(t *testing.T) {

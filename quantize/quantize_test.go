@@ -4,8 +4,8 @@ import (
 	"math"
 	"testing"
 
-	"github.com/dmitryikh/leaves/tree"
-	"github.com/dmitryikh/leaves/quantize"
+	"github.com/linkerlin/leaves/quantize"
+	"github.com/linkerlin/leaves/tree"
 )
 
 func TestEncodeDecodeThreshold(t *testing.T) {

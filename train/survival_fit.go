@@ -3,8 +3,8 @@ package train
 import (
 	"fmt"
 
-	"github.com/dmitryikh/leaves/data"
-	"github.com/dmitryikh/leaves/objective"
+	"github.com/linkerlin/leaves/data"
+	"github.com/linkerlin/leaves/objective"
 )
 
 func (l *Learner) fitSurvival(dm data.Matrix, survObj objective.SurvivalFunc) error {
