@@ -1,4 +1,6 @@
 # IDE & Editor
+.chong/
+.cursor/
 .codebuddy/
 .vscode/
 .idea/
