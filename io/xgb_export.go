@@ -45,6 +45,14 @@ func buildXGBExportDoc(ir *model.ModelIR, objective string) map[string]interface
 	baseScoreStr := formatBaseScore(f)
 	trees := make([]map[string]interface{}, len(f.Trees))
 	for i := range f.Trees {
+		if i < len(f.XGBTreesRaw) && len(f.XGBTreesRaw[i]) > 0 {
+			var treeObj map[string]interface{}
+			if json.Unmarshal(f.XGBTreesRaw[i], &treeObj) == nil {
+				treeObj["id"] = i
+				trees[i] = treeObj
+				continue
+			}
+		}
 		trees[i] = exportTreeJSON(&f.Trees[i], i)
 	}
 	modelObj := map[string]interface{}{
@@ -59,6 +67,12 @@ func buildXGBExportDoc(ir *model.ModelIR, objective string) map[string]interface
 	if boosterName == "dart" && len(f.WeightDrop) > 0 {
 		modelObj["weight_drop"] = f.WeightDrop
 	}
+	if len(f.XGBCatsRaw) > 0 {
+		var cats interface{}
+		if json.Unmarshal(f.XGBCatsRaw, &cats) == nil {
+			modelObj["cats"] = cats
+		}
+	}
 	names := ir.FeatureNames
 	if names == nil {
 		names = []string{}
@@ -70,8 +84,16 @@ func buildXGBExportDoc(ir *model.ModelIR, objective string) map[string]interface
 			types[i] = "float"
 		}
 	}
+	boostFromAvg := "0"
+	if ir.XGBBoostFromAverage {
+		boostFromAvg = "1"
+	}
+	version := []int{3, 2, 0}
+	if len(ir.XGBVersion) > 0 {
+		version = ir.XGBVersion
+	}
 	return map[string]interface{}{
-		"version": []int{3, 2, 0},
+		"version": version,
 		"learner": map[string]interface{}{
 			"attributes":    map[string]interface{}{},
 			"feature_names": names,
@@ -82,7 +104,7 @@ func buildXGBExportDoc(ir *model.ModelIR, objective string) map[string]interface
 			},
 			"learner_model_param": map[string]string{
 				"base_score":           baseScoreStr,
-				"boost_from_average":   "0",
+				"boost_from_average":   boostFromAvg,
 				"num_class":            strconv.Itoa(numClass),
 				"num_feature":          strconv.Itoa(f.NumFeatures),
 				"num_target":           strconv.Itoa(maxInt(1, ir.NRawOutputGroups)),
@@ -118,7 +140,7 @@ func formatSci(v float64) string {
 
 func exportTreeJSON(t *tree.TreeIR, id int) map[string]interface{} {
 	x := treeIRToXGBFlat(t)
-	return map[string]interface{}{
+	out := map[string]interface{}{
 		"id": id,
 		"tree_param": map[string]string{
 			"num_nodes":        strconv.Itoa(x.numNodes),
@@ -126,30 +148,50 @@ func exportTreeJSON(t *tree.TreeIR, id int) map[string]interface{} {
 			"num_deleted":      "0",
 			"size_leaf_vector": strconv.Itoa(maxInt(1, t.OutputDim)),
 		},
-		"left_children":       x.left,
-		"right_children":      x.right,
-		"split_indices":       x.splitIdx,
-		"split_conditions":    x.splitCond,
-		"split_type":          x.splitType,
-		"default_left":        x.defaultLeft,
-		"base_weights":        x.baseWeights,
-		"categories":          []int32{},
-		"categories_nodes":    []int32{},
-		"categories_segments": []int64{},
-		"categories_sizes":    []int64{},
+		"left_children":    x.left,
+		"right_children":   x.right,
+		"split_indices":    x.splitIdx,
+		"split_conditions": x.splitCond,
+		"split_type":       x.splitType,
+		"default_left":     x.defaultLeft,
+		"base_weights":     x.baseWeights,
 	}
+	if len(x.lossChanges) > 0 {
+		out["loss_changes"] = x.lossChanges
+	}
+	if len(x.sumHessian) > 0 {
+		out["sum_hessian"] = x.sumHessian
+	}
+	if len(x.categories) > 0 {
+		out["categories"] = x.categories
+		out["categories_nodes"] = x.categoriesNodes
+		out["categories_segments"] = x.categoriesSegments
+		out["categories_sizes"] = x.categoriesSizes
+	} else {
+		out["categories"] = []int32{}
+		out["categories_nodes"] = []int32{}
+		out["categories_segments"] = []int64{}
+		out["categories_sizes"] = []int64{}
+	}
+	return out
 }
 
 type xgbFlatTree struct {
-	numNodes    int
-	numFeature  int
-	left        []int32
-	right       []int32
-	splitIdx    []int32
-	splitCond   []float64
-	splitType   []int
-	defaultLeft []int
-	baseWeights []float64
+	numNodes             int
+	numFeature           int
+	left                 []int32
+	right                []int32
+	splitIdx             []int32
+	splitCond            []float64
+	splitType            []int
+	defaultLeft          []int
+	baseWeights          []float64
+	lossChanges          []float64
+	sumHessian           []float64
+	categories           []int32
+	categoriesNodes      []int32
+	categoriesSegments   []int64
+	categoriesSizes      []int64
 }
 
 func treeIRToXGBFlat(t *tree.TreeIR) xgbFlatTree {
@@ -179,7 +221,24 @@ func treeIRToXGBFlat(t *tree.TreeIR) xgbFlatTree {
 	var splitType []int
 	var defaultLeft []int
 	var baseWeights []float64
+	var categories []int32
+	var categoriesNodes []int32
+	var categoriesSegments []int64
+	var categoriesSizes []int64
+	var lossChanges []float64
+	var sumHessian []float64
 	maxFeat := 0
+
+	statForNode := func(nodeIdx int) (float64, float64) {
+		lc, sh := 0.0, 0.0
+		if nodeIdx >= 0 && nodeIdx < len(t.SplitGain) {
+			lc = t.SplitGain[nodeIdx]
+		}
+		if nodeIdx >= 0 && nodeIdx < len(t.SumHess) {
+			sh = t.SumHess[nodeIdx]
+		}
+		return lc, sh
+	}
 
 	var addLeaf func(val float64) int32
 	addLeaf = func(val float64) int32 {
@@ -191,6 +250,8 @@ func treeIRToXGBFlat(t *tree.TreeIR) xgbFlatTree {
 		splitType = append(splitType, 0)
 		defaultLeft = append(defaultLeft, 0)
 		baseWeights = append(baseWeights, val)
+		lossChanges = append(lossChanges, 0)
+		sumHessian = append(sumHessian, 0)
 		return idx
 	}
 
@@ -209,9 +270,8 @@ func treeIRToXGBFlat(t *tree.TreeIR) xgbFlatTree {
 		st := 0
 		if nodeIdx < len(t.IsCategorical) && t.IsCategorical[nodeIdx] {
 			st = 1
-			if nodeIdx < len(t.CatSmall) && t.CatSmall[nodeIdx] {
-				cond = float64(uint32(t.SplitThreshold[nodeIdx]))
-			}
+			cond = 1e-45
+			appendXGBCatFromTreeIR(t, nodeIdx, xgbIdx, &categories, &categoriesNodes, &categoriesSegments, &categoriesSizes)
 		}
 		left = append(left, 0)
 		right = append(right, 0)
@@ -219,12 +279,15 @@ func treeIRToXGBFlat(t *tree.TreeIR) xgbFlatTree {
 		splitCond = append(splitCond, cond)
 		splitType = append(splitType, st)
 		defaultLeft = append(defaultLeft, dfl)
+		lc, sh := statForNode(nodeIdx)
+		lossChanges = append(lossChanges, lc)
+		sumHessian = append(sumHessian, sh)
 
-		lc := t.LeftChild[nodeIdx]
-		if lc < 0 {
-			left[xgbIdx] = addLeaf(leafScalar(t, lc))
+		lcChild := t.LeftChild[nodeIdx]
+		if lcChild < 0 {
+			left[xgbIdx] = addLeaf(leafScalar(t, lcChild))
 		} else {
-			left[xgbIdx] = build(int(lc))
+			left[xgbIdx] = build(int(lcChild))
 		}
 		rc := t.RightChild[nodeIdx]
 		if rc < 0 {
@@ -245,7 +308,44 @@ func treeIRToXGBFlat(t *tree.TreeIR) xgbFlatTree {
 	out.splitType = splitType
 	out.defaultLeft = defaultLeft
 	out.baseWeights = baseWeights
+	out.lossChanges = lossChanges
+	out.sumHessian = sumHessian
+	out.categories = categories
+	out.categoriesNodes = categoriesNodes
+	out.categoriesSegments = categoriesSegments
+	out.categoriesSizes = categoriesSizes
 	return out
+}
+
+func appendXGBCatFromTreeIR(
+	t *tree.TreeIR,
+	nodeIdx int,
+	flatIdx int32,
+	categories *[]int32,
+	nodes *[]int32,
+	segments *[]int64,
+	sizes *[]int64,
+) {
+	catIdx := int(t.SplitThreshold[nodeIdx])
+	if catIdx+1 >= len(t.CatBoundaries) {
+		return
+	}
+	start := t.CatBoundaries[catIdx]
+	end := t.CatBoundaries[catIdx+1]
+	*segments = append(*segments, int64(len(*categories)))
+	var nCats int64
+	for wi := start; wi < end && int(wi) < len(t.CatThresholds); wi++ {
+		word := t.CatThresholds[wi]
+		baseCat := int(wi-start) * 32
+		for b := 0; b < 32; b++ {
+			if (word>>uint(b))&1 != 0 {
+				*categories = append(*categories, int32(baseCat+b))
+				nCats++
+			}
+		}
+	}
+	*sizes = append(*sizes, nCats)
+	*nodes = append(*nodes, flatIdx)
 }
 
 func leafScalar(t *tree.TreeIR, leafRef int32) float64 {

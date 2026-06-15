@@ -1,6 +1,6 @@
 # testdata 回归矩阵
 
-> 格式 × 后端 × batch 门禁一览（2026-06-15）。  
+> 格式 × 后端 × batch 门禁一览（2026-06-15，**v4.3** 嗅探/AutoTransform）。  
 > 运行：`go test ./... -count=1`；Born 矩阵见 `born_parity_format_test.go`。
 
 ## 推理 parity（加载 → 预测）
@@ -14,6 +14,14 @@
 | XGB JSON | `xgboost_smoke.json` | 内嵌 | 同上 + `io/io_test.go` | 同上 | 同上 |
 | XGB UBJSON | `xgboost_smoke.ubj` | 内嵌 | 同上 | 同上 | 同上 |
 | XGB RF JSON | `xgboost_rf_smoke.json` | 内嵌 | 同上 | 同上 | 同上 |
+| XGB categorical | `xgboost_categorical_smoke.json` | 内嵌 | 同上 + export round-trip | 同上 | 同上 |
+| XGB multi-target | `xgboost_multitarget_vector.json` | 内嵌 | `io/xgb_multitarget_vector_test.go` | 同上 | 同上 |
+| XGB gblinear JSON | `xgboost_gblinear_smoke.json` | 内嵌 | `io/xgb_interop_test.go` | 同上 | 同上 |
+| XGB gamma JSON | `xgboost_gamma_smoke.json` | 内嵌 | `io/xgb_interop_test.go` | 同上 | 同上 |
+| XGB poisson JSON | `xgboost_poisson_smoke.json` | 内嵌 | `io/xgb_interop_test.go` | 同上 | 同上 |
+| XGB dart JSON | `xgboost_dart_smoke.json` | 内嵌 | `io/xgb_interop_test.go`（嵌套 gbtree） | 同上 | 同上 |
+| XGB multiclass JSON | `xgboost_multiclass_smoke.json` | 内嵌 | `io/xgb_interop_test.go`（softprob） | 同上 | 同上 |
+| XGB 二进制 | `xgagaricus.model` | 内嵌 | `io/xgb_bin.go` + `io/xgb_interop_test.go` | 同上 | 同上 |
 | SK pickle | `sk_gradient_boosting_classifier.model` | `sk_gradient_boosting_classifier_test.libsvm` | 同上 | 同上 | 同上 |
 
 \* BornGPU 仅在 Windows WebGPU 可用时运行；不可用时跳过。
@@ -29,6 +37,16 @@
 | rank vs XGB | `rank_*_xgb_baseline.json` | `train/rank_*_test.go` |
 | 量化 parity | 任意 smoke 模型 | `quantize/gate_test.go` |
 | 外存 hist bins | 合成 Dense 切批 | `treebuilder/hist_bins_external_test.go` |
+| tweedie 训练 | 合成 Dense | `train/tweedie_survival_test.go` `TestTweedieTrainSmoke` |
+| survival:cox/aft | 合成 Dense / AFTInterval | `TestSurvivalCoxTrainSmoke`, `TestSurvivalAFTIntervalTrainSmoke` |
+| checkpoint 续训 | 临时 ckpt | `train/resume_test.go` |
+| Eval API | 合成 Dense | `train/eval_test.go` `TestLearnerEval` |
+| FromFile 嗅探 | libsvm / rank TSV / breast_cancer TSV | `data/fromfile_test.go` |
+| AutoTransform 默认 | — | `io/transform_auto_test.go` |
+| InferObjective + 便利训练 | `xgboost_smoke.json` + `breast_cancer_train.tsv` | `train/load_test.go` |
+| train_from_model demo | 同上 | `examples/train_from_model/`（手工 `go run`） |
+| FromFile 显式格式 | CSV/libsvm | `data/csv_test.go`, `data/libsvm_test.go` |
+| WASM 体积 | `examples/wasm` 构建产物 | `wasm_size_gate_test.go` |
 
 ## 训练趋势（非 bit-exact）
 
@@ -46,5 +64,5 @@
 | Job | 命令 | 覆盖 |
 |-----|------|------|
 | test (3 OS) | `go test ./...` | 全矩阵 + 训练 |
-| wasm | `go build ./examples/wasm` | js/wasm 编译 |
+| wasm | `go build` + `TestWasmBinarySizeGate` | js/wasm 编译 + 体积 ≤16 MiB |
 | bench-gate (Windows) | `TestBenchGateBornCPUSlowerBatch1` | batch=1 BornCPU ≥20× Native |

@@ -43,7 +43,10 @@ python -m http.server 8080
 
 ## CI
 
-`.github/workflows/ci.yml` 的 `wasm` job 验证 `go build ./examples/wasm`。
+`.github/workflows/ci.yml` 的 `wasm` job：
+
+1. `go build -o examples/wasm/leaves.wasm ./examples/wasm`
+2. 体积门禁：`LEAVES_WASM_GATE=1 go test -run TestWasmBinarySizeGate`（≤ **16 MiB**）
 
 ## 部署性能报告
 

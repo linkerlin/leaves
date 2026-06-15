@@ -32,6 +32,10 @@ type ForestIR struct {
 	NumParallelTree int
 	// BaseScores 向量 base_score（XGBoost 3.1+）；为空时用 BaseScore 标量。
 	BaseScores []float64
+	// XGBCatsRaw 保留 XGBoost 3.1+ model.cats JSON 原文（round-trip）。
+	XGBCatsRaw []byte
+	// XGBTreesRaw 保留每棵树 JSON 原文（round-trip 导出）。
+	XGBTreesRaw [][]byte
 }
 
 // NEstimators 返回每组的估计器（树）数量。

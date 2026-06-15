@@ -2,10 +2,16 @@
 Package leaves is pure Go implemetation of prediction part for GBRT (Gradient
 Boosting Regression Trees) models from popular frameworks.
 
-Recommended API (v1.0+)
+Recommended API (v1.0+ inference, v4.3 defaults)
 
 	m, err := leaves.LoadFromFile("model.json", leaves.DefaultLoadOptions())
+	// DefaultLoadOptions enables AutoTransform (probabilities for binary:logistic, etc.)
 	p, err := m.PredictSingle(features, 0)
+
+Training (v2.x): leaves.NewLearner / train.NewLearner, Fit, Save, ResumeFit.
+Data: leaves.LoadDataAuto / data.FromFileAuto (content sniffing).
+Convenience: leaves.NewLearnerFromModelAndData (infer objective from reference JSON).
+See README §格式自动识别 and 演进计划.md v4.3.
 
 Legacy API: LGEnsembleFromFile / XGEnsembleFromFile still work and delegate to
 model.Ensemble internally via ensemble_delegate.go.

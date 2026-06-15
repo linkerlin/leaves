@@ -153,3 +153,57 @@ func XGBCategoricalGoLeft(t *TreeIR, nodeIdx int, fval float64) bool {
 	bit := uint32(cat % 32)
 	return (t.CatThresholds[wordIdx]>>bit)&1 > 0
 }
+
+// XGBTreeCatExport XGBoost JSON 分类分裂导出字段。
+type XGBTreeCatExport struct {
+	SplitType          []int
+	Categories         []int32
+	CategoriesNodes    []int32
+	CategoriesSegments []int64
+	CategoriesSizes    []int64
+}
+
+// ExportXGBTreeCatMeta 从 TreeIR 导出 XGBoost 分类元数据。
+func ExportXGBTreeCatMeta(t *TreeIR) XGBTreeCatExport {
+	out := XGBTreeCatExport{}
+	if t == nil {
+		return out
+	}
+	nNodes := t.NumNodes
+	if nNodes <= 0 {
+		nNodes = len(t.LeftChild)
+	}
+	if nNodes <= 0 {
+		return out
+	}
+	out.SplitType = make([]int, nNodes)
+	var categories []int32
+	for nidx := 0; nidx < nNodes; nidx++ {
+		if nidx >= len(t.IsCategorical) || !t.IsCategorical[nidx] {
+			continue
+		}
+		out.SplitType[nidx] = 1
+		catIdx := int(t.SplitThreshold[nidx])
+		if catIdx+1 >= len(t.CatBoundaries) {
+			continue
+		}
+		start := t.CatBoundaries[catIdx]
+		end := t.CatBoundaries[catIdx+1]
+		out.CategoriesSegments = append(out.CategoriesSegments, int64(len(categories)))
+		var nCats int64
+		for wi := start; wi < end && int(wi) < len(t.CatThresholds); wi++ {
+			word := t.CatThresholds[wi]
+			baseCat := int(wi-start) * 32
+			for b := 0; b < 32; b++ {
+				if (word>>uint(b))&1 != 0 {
+					categories = append(categories, int32(baseCat+b))
+					nCats++
+				}
+			}
+		}
+		out.CategoriesSizes = append(out.CategoriesSizes, nCats)
+		out.CategoriesNodes = append(out.CategoriesNodes, int32(nidx))
+	}
+	out.Categories = categories
+	return out
+}

@@ -1,38 +1,21 @@
 package objective
 
-import "math"
+import (
+	"fmt"
+	"math"
 
-// AFTNormal survival:aft（正态 AFT，Cox 式标签：正=事件时间，负=-删失时间）。
-// 对标 XGBoost 简化路径；完整 interval 标签见 AFTIntervalMatrix（后续）。
+	"github.com/dmitryikh/leaves/data"
+)
+
+// AFTNormal survival:aft（指数 AFT，μ=exp(pred)）。
+// 标量标签：正=事件时间，负=-右删失时间；区间删失见 data.AFTIntervalMatrix。
 type AFTNormal struct{}
 
 func (AFTNormal) Name() string { return "survival:aft" }
 
 func (AFTNormal) GradHess(pred, label, weight float64) (float64, float64) {
-	w := weight
-	y := label
-	mu := math.Exp(pred)
-	if y > 0 {
-		// 未删失：对数正态负对数似然梯度
-		g := w * (1 - y/mu)
-		h := w * y / mu
-		if h < 1e-16 {
-			h = 1e-16
-		}
-		return g, h
-	}
-	// 右删失于 t=|y|
-	t := -y
-	if t <= 0 {
-		return 0, 1e-16
-	}
-	z := (math.Log(t) - pred)
-	g := w * math.Exp(-0.5*z*z) / (mu * 0.3989422804014327) // phi(z)/mu 近似
-	h := w * 0.01
-	if h < 1e-16 {
-		h = 1e-16
-	}
-	return g, h
+	iv := data.AFTIntervalFromScalarLabel(label)
+	return aftIntervalGradHess(pred, weight, iv)
 }
 
 func (AFTNormal) InitialPred(labels []float64, weights []float64) float64 {
@@ -41,6 +24,84 @@ func (AFTNormal) InitialPred(labels []float64, weights []float64) float64 {
 		return 0
 	}
 	return math.Log(mean)
+}
+
+func (AFTNormal) GradHessBatch(preds, labels, weights, grad, hess []float64) error {
+	n := len(preds)
+	if len(labels) != n || len(grad) != n || len(hess) != n {
+		return fmt.Errorf("objective: aft length mismatch")
+	}
+	intervals := make([]data.AFTInterval, n)
+	for i, y := range labels {
+		intervals[i] = data.AFTIntervalFromScalarLabel(y)
+	}
+	return aftGradHessInterval(preds, weights, intervals, grad, hess)
+}
+
+// GradHessInterval 区间删失 batch 梯度。
+func (AFTNormal) GradHessInterval(preds, weights []float64, intervals []data.AFTInterval, grad, hess []float64) error {
+	return aftGradHessInterval(preds, weights, intervals, grad, hess)
+}
+
+func aftGradHessInterval(preds, weights []float64, intervals []data.AFTInterval, grad, hess []float64) error {
+	n := len(preds)
+	if len(intervals) != n || len(grad) != n || len(hess) != n {
+		return fmt.Errorf("objective: aft interval length mismatch")
+	}
+	for i := 0; i < n; i++ {
+		w := 1.0
+		if weights != nil && i < len(weights) {
+			w = weights[i]
+		}
+		g, h := aftIntervalGradHess(preds[i], w, intervals[i])
+		grad[i] = g
+		hess[i] = h
+	}
+	return nil
+}
+
+func aftIntervalGradHess(pred, w float64, iv data.AFTInterval) (float64, float64) {
+	mu := math.Exp(pred)
+	L, U := iv.Lower, iv.Upper
+
+	if math.IsInf(U, 1) {
+		g := -w * L / mu
+		h := w * math.Max(L/mu, 1e-16)
+		return g, h
+	}
+	if L == U {
+		y := L
+		g := w * (1 - y/mu)
+		h := w * math.Max(y/mu, 1e-16)
+		return g, h
+	}
+	if L == 0 {
+		aU := math.Exp(-U / mu)
+		F := 1 - aU
+		if F < 1e-16 {
+			F = 1e-16
+		}
+		dF := aU * U / mu
+		g := -w * dF / F
+		h := w * math.Max(math.Abs(g), 1e-16)
+		return g, h
+	}
+	aL := math.Exp(-L / mu)
+	aU := math.Exp(-U / mu)
+	diff := aL - aU
+	if diff < 1e-16 {
+		diff = 1e-16
+	}
+	dDiff := aL*L/mu - aU*U/mu
+	g := -w * dDiff / diff
+	h := w * math.Max(math.Abs(g), 1e-16)
+	return g, h
+}
+
+// IsAFT 判断是否为 AFT 目标。
+func IsAFT(obj Func) (AFTNormal, bool) {
+	a, ok := obj.(AFTNormal)
+	return a, ok
 }
 
 func weightedMeanPositive(labels, weights []float64) float64 {

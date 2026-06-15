@@ -67,4 +67,6 @@ const (
 	TransformSoftmax TransformType = 2
 	TransformLeafIndex TransformType = 3
 	TransformExponential TransformType = 4
+	// TransformArgmax multi:softmax 类标签输出（argmax margin）。
+	TransformArgmax TransformType = 5
 )

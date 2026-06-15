@@ -30,6 +30,13 @@ func TestBornParityFormatMatrix(t *testing.T) {
 		{name: "XGBJSON", model: "testdata/xgboost_smoke.json"},
 		{name: "XGBUBJ", model: "testdata/xgboost_smoke.ubj"},
 		{name: "XGBRFJSON", model: "testdata/xgboost_rf_smoke.json"},
+		{name: "XGBCatJSON", model: "testdata/xgboost_categorical_smoke.json"},
+		{name: "XGBMultiTarget", model: "testdata/xgboost_multitarget_vector.json"},
+		{name: "XGBGblinearJSON", model: "testdata/xgboost_gblinear_smoke.json"},
+		{name: "XGBGammaJSON", model: "testdata/xgboost_gamma_smoke.json"},
+		{name: "XGBPoissonJSON", model: "testdata/xgboost_poisson_smoke.json"},
+		{name: "XGBDartJSON", model: "testdata/xgboost_dart_smoke.json"},
+		{name: "XGBMulticlassJSON", model: "testdata/xgboost_multiclass_smoke.json"},
 		{name: "SKPickle", model: "testdata/sk_gradient_boosting_classifier.model", data: "testdata/sk_gradient_boosting_classifier_test.libsvm"},
 	}
 

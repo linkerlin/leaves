@@ -33,7 +33,14 @@ go test ./train/... -run TestAccelBench -count=1 -timeout 30m
 
 ## WASM vs Native
 
-WASM 无自动化 CI bench（需浏览器环境）。手动：
+WASM 体积门禁（CI `wasm` job，`LEAVES_WASM_GATE=1`）：
+
+```powershell
+$env:LEAVES_WASM_GATE = "1"
+go test -run TestWasmBinarySizeGate -count=1 -timeout 10m
+```
+
+上限 **16 MiB**。浏览器延迟手动对比：
 
 1. 构建 `examples/wasm/leaves.wasm`
 2. 打开 `index.html`，DevTools Performance 记录 `leavesPredict`

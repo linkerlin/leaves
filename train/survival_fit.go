@@ -21,10 +21,20 @@ func (l *Learner) fitSurvival(dm data.Matrix, survObj objective.SurvivalFunc) er
 	hess := make([]float64, n)
 	evalPreds := make([]float64, n)
 
-	for round := 0; round < l.cfg.NumRound; round++ {
+	for round := l.resumeFromRound; round < l.cfg.NumRound; round++ {
 		l.onRoundStart(round)
 		l.predictMarginsInternal(dm, preds, false)
-		if err := objective.GradHessSurvival(survObj, preds, labels, dm.Weights(), grad, hess); err != nil {
+		var err error
+		if intervals, ok := data.AFTIntervalsOf(dm); ok {
+			aft, isAFT := objective.IsAFT(l.obj)
+			if !isAFT {
+				return fmt.Errorf("train: interval censoring requires survival:aft")
+			}
+			err = aft.GradHessInterval(preds, dm.Weights(), intervals, grad, hess)
+		} else {
+			err = objective.GradHessSurvival(survObj, preds, labels, dm.Weights(), grad, hess)
+		}
+		if err != nil {
 			return err
 		}
 		l.booster.Boost(dm, grad, hess)

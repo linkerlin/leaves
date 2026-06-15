@@ -37,6 +37,11 @@ jobs:
       - name: build wasm demo
         run: go build -o examples/wasm/leaves.wasm ./examples/wasm
 
+      - name: wasm size gate (<= 16 MiB)
+        env:
+          LEAVES_WASM_GATE: "1"
+        run: go test -run TestWasmBinarySizeGate -count=1 -timeout 10m
+
   bench-gate:
     name: backend bench gate
     runs-on: windows-latest

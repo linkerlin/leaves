@@ -57,6 +57,8 @@ const (
 type LoadOptions struct {
 	// LoadTransformation 是否自动检测并加载变换函数。
 	LoadTransformation bool
+	// AutoTransform 为 true 时，按 objective 自动启用变换（binary:logistic 等）。
+	AutoTransform bool
 	// Backend 推理后端（BackendAuto 时结合 Workload 自动选择）。
 	Backend Backend
 	// Workload BackendAuto 时的 workload 提示。
@@ -68,11 +70,11 @@ func SelectBackend(ir *model.ModelIR, hint WorkloadHint) Backend {
 	return model.SelectBackend(ir, hint)
 }
 
-// DefaultLoadOptions 默认 BackendAuto（小 batch Native，大 batch 可 Born）。
+// DefaultLoadOptions 默认 BackendAuto + AutoTransform（按 objective 自动 sigmoid/softmax 等）。
 func DefaultLoadOptions() *LoadOptions {
 	return &LoadOptions{
-		LoadTransformation: false,
-		Backend:            BackendAuto,
-		Workload:           tree.DefaultWorkloadHint(),
+		AutoTransform: true,
+		Backend:       BackendAuto,
+		Workload:      tree.DefaultWorkloadHint(),
 	}
 }

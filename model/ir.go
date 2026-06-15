@@ -30,6 +30,10 @@ type ModelIR struct {
 	FeatureNames     []string
 	FeatureTypes     []string // XGBoost："float" / "c"
 
+	// XGBoost 3.x 元数据（round-trip）
+	XGBVersion          []int
+	XGBBoostFromAverage bool
+
 	// 树模型（KindGBTree / KindDART / KindSklearnGBDT）
 	Forest *tree.ForestIR
 

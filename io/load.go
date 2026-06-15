@@ -2,13 +2,14 @@ package io
 
 import (
 	"bufio"
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
+	"github.com/dmitryikh/leaves/internal/xgbin"
 	"github.com/dmitryikh/leaves/model"
 )
 
@@ -38,13 +39,66 @@ func DetectFormat(filename string) (Format, error) {
 		return detectJSONFormat(filename)
 	case ".ubj":
 		return FormatXGBoostUBJSON, nil
+	case ".pkl", ".joblib":
+		return FormatSklearn, nil
 	case ".model", ".bin":
 		return detectBinaryFormat(filename)
 	case ".txt":
-		return FormatLightGBM, nil
+		return detectTextFormat(filename)
 	default:
 		return detectBinaryFormat(filename)
 	}
+}
+
+func detectTextFormat(filename string) (Format, error) {
+	f, err := os.Open(filename)
+	if err != nil {
+		return FormatUnknown, err
+	}
+	defer f.Close()
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
+		}
+		if strings.HasPrefix(line, "tree=") || strings.TrimSpace(line) == "tree" || strings.HasPrefix(line, "version=") {
+			return FormatLightGBM, nil
+		}
+		// 数值 TSV/CSV 训练数据误用 .txt：给出明确提示
+		if looksLikeNumericTableLine(line) {
+			return FormatUnknown, fmt.Errorf("io: %q looks like tabular training data; use data.FromFile for training, not io.LoadFromFile", filename)
+		}
+		break
+	}
+	return detectBinaryFormat(filename)
+}
+
+func looksLikeNumericTableLine(line string) bool {
+	delim := ','
+	if strings.Count(line, "\t") > strings.Count(line, ",") {
+		delim = '\t'
+	}
+	var parts []string
+	if delim == '\t' {
+		parts = strings.Split(line, "\t")
+	} else {
+		parts = strings.Split(line, ",")
+	}
+	if len(parts) < 2 {
+		return false
+	}
+	numeric := 0
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			return false
+		}
+		if _, err := strconv.ParseFloat(p, 64); err == nil {
+			numeric++
+		}
+	}
+	return numeric == len(parts)
 }
 
 func detectJSONFormat(filename string) (Format, error) {
@@ -107,11 +161,13 @@ func detectBinaryFormat(filename string) (Format, error) {
 		}
 	}
 
-	// 默认尝试 XGBoost
-	if n == 4 && bytes.Equal(buf, []byte{0x00, 0x05, 0x5f, 0x00}) {
-		return FormatXGBoost, nil
+	// 经典 XGB 二进制无固定魔数：尝试解析 header
+	if _, err := f.Seek(0, 0); err == nil {
+		if _, err := xgbin.ReadModelHeader(bufio.NewReader(f)); err == nil {
+			return FormatXGBoost, nil
+		}
 	}
-	return FormatXGBoost, nil
+	return FormatUnknown, fmt.Errorf("io: unrecognized model format for %q (try .json / .ubj / .model)", filename)
 }
 
 // LoadFromFile 从文件自动检测格式并加载模型。

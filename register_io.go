@@ -20,10 +20,13 @@ func init() {
 func legacyLoadFromFile(filename string, opts *io.LoadOptions) (interface{}, error) {
 	format, err := io.DetectFormat(filename)
 	if err != nil {
+		if result, tryErr := io.ParseXGBoostBinaryFile(filename); tryErr == nil {
+			return result, nil
+		}
 		return nil, err
 	}
 
-	loadTransform := opts.LoadTransformation
+	loadTransform := opts != nil && opts.LoadTransformation
 
 	switch format {
 	case io.FormatLightGBM:
@@ -36,11 +39,7 @@ func legacyLoadFromFile(filename string, opts *io.LoadOptions) (interface{}, err
 		defer f.Close()
 		return LGEnsembleFromJSON(f, loadTransform)
 	case io.FormatXGBoost:
-		ensemble, err := XGEnsembleFromFile(filename, loadTransform)
-		if err == nil {
-			return ensemble, nil
-		}
-		return XGBLinearFromFile(filename, loadTransform)
+		return io.ParseXGBoostBinaryFile(filename)
 	case io.FormatXGBoostJSON:
 		return io.ParseXGBoostJSONFile(filename)
 	case io.FormatXGBoostUBJSON:
@@ -82,11 +81,10 @@ func legacyBuildModelEnsemble(legacy interface{}, opts *io.LoadOptions) (*model.
 }
 
 func buildFromXGBJSONResult(result *io.XGBoostLoadResult, opts *io.LoadOptions) (*model.Ensemble, error) {
-	loadTransform := false
+	loadTransform := io.ResolveLoadTransformation(opts, result.Objective)
 	backend := tree.BackendNative
 	hint := tree.DefaultWorkloadHint()
 	if opts != nil {
-		loadTransform = opts.LoadTransformation
 		backend = opts.Backend
 		hint = opts.Workload
 	}
@@ -96,11 +94,10 @@ func buildFromXGBJSONResult(result *io.XGBoostLoadResult, opts *io.LoadOptions) 
 }
 
 func buildFromLeavesResult(result *io.LeavesLoadResult, opts *io.LoadOptions) (*model.Ensemble, error) {
-	loadTransform := false
+	loadTransform := io.ResolveLoadTransformation(opts, result.Objective)
 	backend := tree.BackendNative
 	hint := tree.DefaultWorkloadHint()
 	if opts != nil {
-		loadTransform = opts.LoadTransformation
 		backend = opts.Backend
 		hint = opts.Workload
 	}

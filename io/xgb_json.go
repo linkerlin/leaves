@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/dmitryikh/leaves/internal/xgbin"
+	"github.com/dmitryikh/leaves/linear"
 	"github.com/dmitryikh/leaves/model"
 	"github.com/dmitryikh/leaves/tree"
 )
@@ -43,6 +44,7 @@ func parseXGBoostJSONBytes(data []byte) (*XGBoostLoadResult, error) {
 	if err := json.Unmarshal(data, &root); err != nil {
 		return nil, fmt.Errorf("invalid xgboost json: %w", err)
 	}
+	xgbVersion, _ := parseIntArray(root["version"])
 	learnerRaw, ok := root["learner"]
 	if !ok {
 		return nil, fmt.Errorf("missing learner field")
@@ -56,6 +58,7 @@ func parseXGBoostJSONBytes(data []byte) (*XGBoostLoadResult, error) {
 	if err != nil {
 		return nil, err
 	}
+	boostFromAverage := lmp.boostFromAverage
 
 	objName := ""
 	if objRaw, ok := learner["objective"]; ok {
@@ -77,14 +80,23 @@ func parseXGBoostJSONBytes(data []byte) (*XGBoostLoadResult, error) {
 		return nil, err
 	}
 	boosterName, _ := parseStringField(booster["name"])
-	modelRaw, ok := booster["model"]
-	if !ok {
-		return nil, fmt.Errorf("missing gradient_booster.model")
+	modelRaw, boosterWDRaw, err := resolveGBBoosterModel(booster)
+	if err != nil {
+		return nil, err
+	}
+
+	if boosterName == "gblinear" {
+		return parseXGBoostJSONGblinear(modelRaw, lmp, featureNames, featureTypes, objName, xgbVersion, boostFromAverage)
 	}
 
 	forest, err := parseGBTreeModel(modelRaw, lmp, boosterName)
 	if err != nil {
 		return nil, err
+	}
+	if boosterName == "dart" && len(boosterWDRaw) > 0 {
+		if wd, err := parseFloatArray(boosterWDRaw); err == nil && len(wd) == len(forest.Trees) {
+			forest.WeightDrop = wd
+		}
 	}
 	adjustBaseScoreForObjective(objName, forest)
 
@@ -113,17 +125,138 @@ func parseXGBoostJSONBytes(data []byte) (*XGBoostLoadResult, error) {
 			Forest:           forest,
 			FeatureNames:     featureNames,
 			FeatureTypes:     featureTypes,
+			XGBVersion:       xgbVersion,
+			XGBBoostFromAverage: boostFromAverage,
 		},
 		Objective: objName,
 	}, nil
 }
 
+func parseXGBoostJSONGblinear(
+	modelRaw json.RawMessage,
+	lmp learnerModelParam,
+	featureNames, featureTypes []string,
+	objName string,
+	xgbVersion []int,
+	boostFromAverage bool,
+) (*XGBoostLoadResult, error) {
+	lin, err := parseGBLinearModel(modelRaw, lmp)
+	if err != nil {
+		return nil, err
+	}
+	adjustLinearBaseScoreForObjective(objName, lin)
+
+	numClass := lmp.numClass
+	if numClass <= 0 {
+		numClass = lmp.numTarget
+	}
+	if numClass <= 0 {
+		numClass = lin.NumOutputGroups
+	}
+	if numClass <= 0 {
+		numClass = 1
+	}
+
+	return &XGBoostLoadResult{
+		IR: &model.ModelIR{
+			Kind:                model.KindGBLinear,
+			NumFeatures:         lin.NumFeatures,
+			NRawOutputGroups:    numClass,
+			NOutputGroups:       numClass,
+			Name:                "xgboost.gblinear",
+			Linear:              lin,
+			FeatureNames:        featureNames,
+			FeatureTypes:        featureTypes,
+			XGBVersion:          xgbVersion,
+			XGBBoostFromAverage: boostFromAverage,
+		},
+		Objective: objName,
+	}, nil
+}
+
+func resolveGBBoosterModel(booster map[string]json.RawMessage) (json.RawMessage, json.RawMessage, error) {
+	if raw, ok := booster["model"]; ok {
+		return raw, booster["weight_drop"], nil
+	}
+	if gbRaw, ok := booster["gbtree"]; ok {
+		var nested map[string]json.RawMessage
+		if err := json.Unmarshal(gbRaw, &nested); err != nil {
+			return nil, nil, err
+		}
+		if raw, ok := nested["model"]; ok {
+			return raw, booster["weight_drop"], nil
+		}
+	}
+	return nil, nil, fmt.Errorf("missing gradient_booster model")
+}
+
+func parseGBLinearModel(raw json.RawMessage, lmp learnerModelParam) (*linear.LinearIR, error) {
+	var obj map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &obj); err != nil {
+		return nil, err
+	}
+	weightsRaw, ok := obj["weights"]
+	if !ok {
+		return nil, fmt.Errorf("gblinear: missing weights")
+	}
+	weights, err := parseFloatArray(weightsRaw)
+	if err != nil {
+		return nil, fmt.Errorf("gblinear weights: %w", err)
+	}
+
+	nf := lmp.numFeatures
+	if nf <= 0 {
+		return nil, fmt.Errorf("gblinear: zero num_feature")
+	}
+	ng := lmp.numClass
+	if ng <= 0 {
+		ng = lmp.numTarget
+	}
+	if ng <= 0 {
+		ng = inferGBLinearOutputGroups(nf, len(weights))
+	}
+	expected := (nf + 1) * ng
+	if len(weights) != expected {
+		return nil, fmt.Errorf("gblinear: weights len %d != (%d+1)*%d", len(weights), nf, ng)
+	}
+
+	return &linear.LinearIR{
+		NumFeatures:     nf,
+		NumOutputGroups: ng,
+		BaseScore:       lmp.baseScore,
+		Weights:         weights,
+		Name:            "xgboost.gblinear",
+	}, nil
+}
+
+func inferGBLinearOutputGroups(numFeatures, weightLen int) int {
+	if numFeatures <= 0 || weightLen <= 0 {
+		return 1
+	}
+	denom := numFeatures + 1
+	if weightLen%denom != 0 {
+		return 1
+	}
+	return weightLen / denom
+}
+
+func adjustLinearBaseScoreForObjective(objective string, lin *linear.LinearIR) {
+	if lin == nil {
+		return
+	}
+	switch objective {
+	case "binary:logistic", "reg:logistic":
+		lin.BaseScore = probabilityToLogit(lin.BaseScore)
+	}
+}
+
 type learnerModelParam struct {
-	baseScore   float64
-	baseScores  []float64
-	numFeatures int
-	numClass    int
-	numTarget   int
+	baseScore         float64
+	baseScores        []float64
+	numFeatures       int
+	numClass          int
+	numTarget         int
+	boostFromAverage  bool
 }
 
 func parseLearnerModelParam(raw json.RawMessage) (learnerModelParam, error) {
@@ -161,6 +294,12 @@ func parseLearnerModelParam(raw json.RawMessage) (learnerModelParam, error) {
 		}
 		out.baseScore = bs
 		out.baseScores = scores
+	}
+	if v, ok := obj["boost_from_average"]; ok {
+		n, err := parseIntField(v)
+		if err == nil {
+			out.boostFromAverage = n != 0
+		}
 	}
 	return out, nil
 }
@@ -238,7 +377,12 @@ func parseGBTreeModel(raw json.RawMessage, lmp learnerModelParam, boosterName st
 	}
 	forest.WeightDrop = weightDrop
 
+	if catsRaw, ok := obj["cats"]; ok && len(catsRaw) > 0 {
+		forest.XGBCatsRaw = append([]byte(nil), catsRaw...)
+	}
+
 	for i, tr := range trees {
+		forest.XGBTreesRaw = append(forest.XGBTreesRaw, append([]byte(nil), tr...))
 		tm, catMeta, err := parseXGBTreeJSON(tr)
 		if err != nil {
 			return nil, fmt.Errorf("tree %d: %w", i, err)
@@ -621,7 +765,19 @@ func adjustBaseScoreForObjective(objective string, forest *tree.ForestIR) {
 		for i, s := range forest.BaseScores {
 			forest.BaseScores[i] = probabilityToLogit(s)
 		}
+	case "reg:gamma", "count:poisson", "reg:tweedie":
+		forest.BaseScore = responseMeanToLogMargin(forest.BaseScore)
+		for i, s := range forest.BaseScores {
+			forest.BaseScores[i] = responseMeanToLogMargin(s)
+		}
 	}
+}
+
+func responseMeanToLogMargin(m float64) float64 {
+	if m <= 0 {
+		return m
+	}
+	return math.Log(m)
 }
 
 func probabilityToLogit(p float64) float64 {
@@ -639,8 +795,12 @@ func ObjectiveToTransform(objective string, load bool) (tree.TransformType, tree
 	switch objective {
 	case "binary:logistic", "reg:logistic":
 		return tree.TransformLogistic, tree.ApplyTransformLogistic
-	case "multi:softmax", "multi:softprob":
+	case "multi:softprob":
 		return tree.TransformSoftmax, tree.ApplyTransformSoftmax
+	case "multi:softmax":
+		return tree.TransformArgmax, tree.ApplyTransformArgmax
+	case "reg:gamma", "count:poisson", "reg:tweedie":
+		return tree.TransformExponential, tree.ApplyTransformExponential
 	default:
 		return tree.TransformRaw, tree.ApplyTransformRaw
 	}
@@ -651,8 +811,14 @@ func NOutputGroupsForTransform(nRaw int, outputType tree.TransformType) int {
 	if outputType == tree.TransformLeafIndex {
 		return nRaw
 	}
+	if outputType == tree.TransformArgmax {
+		return 1
+	}
+	if outputType == tree.TransformSoftmax {
+		return nRaw
+	}
 	if outputType == tree.TransformRaw || outputType == tree.TransformLogistic || outputType == tree.TransformExponential {
 		return nRaw
 	}
-	return 1
+	return nRaw
 }

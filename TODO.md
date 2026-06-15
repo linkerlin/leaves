@@ -1,7 +1,7 @@
 # leaves 演进 TODO
 
-> **对齐文档**：[`演进计划.md`](演进计划.md) v4.1（文档与代码同步）  
-> **更新**：2026-06-15  
+> **对齐文档**：[`演进计划.md`](演进计划.md) v4.3（格式嗅探 + AutoTransform 默认）
+> **更新**：2026-06-15（P0–T5 + v3.1 已完成；backlog 已清空）
 > **原则**：Native golden 不变；Born 直读 `ForestIR`；不做分布式/serving 框架。
 
 **图例**：`[ ]` 待办 · `[~]` 进行中 · `[x]` 完成 · `[-]` 明确不做
@@ -24,7 +24,7 @@
 
 ```powershell
 go test ./... -count=1
-go test -tags born_train ./treebuilder/... -count=1
+go test ./treebuilder/... -count=1
 ```
 
 ---
@@ -128,8 +128,8 @@ go test ./train/... -run 'Rank|Monotone|Callback|Resume|Eval|MaxLeaves|Tweedie|S
 # 全量回归
 go test ./... -count=1
 
-# 训练 + Born 加速
-go test -tags born_train ./treebuilder/... -count=1
+# 训练 + WebGPU hist 加速（无需 born_train tag）
+go test ./treebuilder/... -count=1
 go test ./train/... -short -count=1
 
 # parity / 量化 / bench
@@ -137,3 +137,20 @@ go test -run Parity -count=1
 go test ./quantize/... -count=1
 go test -run TestBenchGateBornCPUSlowerBatch1 -count=1
 ```
+
+---
+
+## v3.1 后续（可选深化）
+
+> P0–T5 backlog 已清空；以下为产品化与互操作增强，按优先级排列。
+
+- [x] `data.FromLIBSVM` / `data.FromFile` 统一训练数据入口
+- [x] `survival:aft` 区间删失标签（`AFTIntervalMatrix` / `data.AFTDense`）
+- [x] `examples/http` 批预测 + JSON 矩阵输入
+- [x] WASM CI 体积报告（`leaves.wasm` 大小门禁 ≤16MiB，`TestWasmBinarySizeGate`）
+- [x] 根包 `train` 类型别名（`train_api.go`：`Learner`/`NewLearner`/`ResumeFit`/`FitExternal`）
+- [x] 训练数据内容嗅探（`data/sniff.go`：`FromFileAuto` / `LoadDataAuto`）
+- [x] 模型加载 `AutoTransform` 默认 + 经典 XGB 二进制 header 探测（`io/transform_auto.go`）
+- [x] `NewLearnerFromModelAndData` 端到端（`train/load_test.go`, `examples/train_from_model/`）
+- [x] 演进计划 v4.3 嗅探/AutoTransform 同步
+

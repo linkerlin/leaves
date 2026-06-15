@@ -226,3 +226,20 @@ func ApplyTransformExponential(rawPredictions []float64, outputPredictions []flo
 	}
 	return nil
 }
+
+// ApplyTransformArgmax multi:softmax 类索引输出。
+func ApplyTransformArgmax(rawPredictions []float64, outputPredictions []float64, startIndex int) error {
+	if len(rawPredictions) == 0 {
+		return nil
+	}
+	best := 0
+	bestVal := rawPredictions[0]
+	for i := 1; i < len(rawPredictions); i++ {
+		if rawPredictions[i] > bestVal {
+			bestVal = rawPredictions[i]
+			best = i
+		}
+	}
+	outputPredictions[startIndex] = float64(best)
+	return nil
+}
