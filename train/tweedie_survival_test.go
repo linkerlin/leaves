@@ -69,3 +69,29 @@ func TestSurvivalCoxTrainSmoke(t *testing.T) {
 		}
 	}
 }
+
+func TestSurvivalAFTTrainSmoke(t *testing.T) {
+	vals := []float64{
+		1, 0, 0, 1, 1, 1, 0, 0,
+		1, 0, 0, 1, 1, 1, 0, 0,
+	}
+	labels := []float64{1.5, -2, 3, -1, 2, -4, 1, -0.5}
+	dm, err := data.NewDense(vals, 8, 2, labels, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg := Config{
+		Objective:    ObjectiveSurvivalAFT,
+		NumRound:     2,
+		MaxDepth:     2,
+		LearningRate: 0.1,
+		TreeMethod:   TreeMethodExact,
+	}
+	learner, err := NewLearner(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := learner.Fit(dm); err != nil {
+		t.Fatal(err)
+	}
+}

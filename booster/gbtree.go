@@ -67,6 +67,21 @@ func NewGBTree(numFeatures int, baseScore float64, numOutputs int, cfg treebuild
 
 func (b *GBTree) Forest() *tree.ForestIR { return b.forest }
 
+// NewGBTreeFromForest 从已有 ForestIR 恢复 booster（checkpoint 续训）。
+func NewGBTreeFromForest(f *tree.ForestIR, cfg treebuilder.Config, treeMethod string, train TrainParams) *GBTree {
+	if train.NumParallelTree <= 0 {
+		train.NumParallelTree = 1
+	}
+	rng := rand.New(rand.NewSource(train.Seed))
+	return &GBTree{
+		cfg:        cfg,
+		treeMethod: treeMethod,
+		train:      train,
+		rng:        rng,
+		forest:     f,
+	}
+}
+
 func (b *GBTree) setLearningRate(lr float64) { b.cfg.LearningRate = lr }
 
 func (b *GBTree) NumOutputGroups() int { return b.forest.NumOutputGroups }

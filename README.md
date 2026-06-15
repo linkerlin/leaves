@@ -103,9 +103,21 @@ m, err := io.LoadFromFile("model.ubj", &io.LoadOptions{
 | **T3** | CV/早停/checkpoint + XGB 3.x JSON 导出 | ✅ |
 | **T4** | 全局分箱 + Born/WebGPU hist + GPU margin 预测 | ✅ |
 | **T5** | rank 训练 + 单调约束 | ✅ |
-| **T5** | survival / 外存 DMatrix / tweedie 训练 | tweedie + `survival:cox` ✅；外存 DMatrix 仍为接口草案 |
+| **T5** | survival / 外存 DMatrix / tweedie 训练 | tweedie + `survival:cox` + **外存 hist** ✅ |
 
 训练入口：`train.NewLearner` → `Learner.Fit` → `Learner.Save` / `io.ExportXGBoostJSON`。默认 `TreeMethod=auto`（小数据 exact，≥5 万行 hist）。验收：`go test ./train/...`。
+
+**外存 DMatrix**（多批次 hist，labels 在内存、特征按批 `RowAt`）：
+
+```go
+bm, _ := data.SplitDense(dense, batchRows) // 或 data.NewBatchedMatrix(batches, labels, weights)
+learner, _ := train.FitExternal(train.Config{
+    Objective:     train.ObjectiveBinaryLogistic,
+    TreeMethod:    train.TreeMethodHist,
+    HistBinPolicy: "global",
+    NumRound:      10,
+}, bm)
+```
 
 #### 训练加速（T4+）
 
@@ -239,7 +251,23 @@ m, _ := leaves.LoadFromFile("model.json", &io.LoadOptions{
 | 1 | ~3 µs/op | ~1.9 ms/op | ~1.1 s/op（含 WebGPU 初始化） |
 | 16 | ~82 µs/op | ~4.3 ms/op | ~1.7 s/op |
 
-小森林张量路径有固定开销；**生产选型建议**：默认 `BackendAuto` 或 `BackendNative`；大 batch 数值树再测 BornGPU。训练加速 benchmark：`LEAVES_BENCH=1 go test ./train/... -run TestMSLTRTrainAccelBenchmark -v`
+小森林张量路径有固定开销；**生产选型建议**：默认 `BackendAuto`（`DefaultLoadOptions()` 已启用）；小 batch / 低延迟走 Native，大 batch 数值树再测 BornGPU。CI 门禁 `TestBenchGateBornCPUSlowerBatch1` 保证 batch=1 时 BornCPU ≥20× 慢于 Native。训练加速 benchmark：`LEAVES_BENCH=1 go test ./train/... -run TestMSLTRTrainAccelBenchmark -v`
+
+#### 后端选型速查
+
+| 场景 | 推荐 Backend | 说明 |
+|------|--------------|------|
+| 在线单条 / batch≤8 | `BackendAuto` 或 `BackendNative` | 延迟优先 |
+| 批推理 ≥256 行、纯数值树 | `BackendAuto` + `Workload.BatchSize` | Windows 可试 BornGPU |
+| WASM / js | `BackendNative` | Born 在 js 回退 Native |
+| 含 LGB cat-small | `BackendNative` | Born 不支持 |
+
+```go
+m, _ := leaves.LoadFromFile("model.json", &io.LoadOptions{
+    Backend: io.BackendAuto,
+    Workload: tree.WorkloadHint{BatchSize: 1024, HasGPU: true},
+})
+```
 
 ### Tree SHAP 与可解释性（v1.1+）
 

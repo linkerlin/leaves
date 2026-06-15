@@ -10,6 +10,7 @@ import (
 // Config 树构建超参。
 type Config struct {
 	MaxDepth       int
+	MaxLeaves      int // lossguide：单棵树最大叶子数；0=不限
 	MinHessian     float64
 	Lambda         float64
 	Gamma          float64
@@ -49,7 +50,7 @@ func BuildExact(dm data.Matrix, indices []int, grad, hess []float64, cfg Config)
 	if cfg.LearningRate <= 0 {
 		cfg.LearningRate = 0.3
 	}
-	root := buildNode(dm, indices, grad, hess, 0, cfg)
+	root := buildNode(dm, indices, grad, hess, 0, cfg, intPtr1())
 	if root == nil {
 		w := leafWeight(indices, grad, hess, cfg.Lambda) * cfg.LearningRate
 		return tree.BuildTreeIR(nil, []float64{w}, nil, nil, 0)
@@ -69,9 +70,9 @@ type node struct {
 	catSmall  bool
 }
 
-func buildNode(dm data.Matrix, idx []int, grad, hess []float64, depth int, cfg Config) *node {
+func buildNode(dm data.Matrix, idx []int, grad, hess []float64, depth int, cfg Config, leaves *int) *node {
 	sumG, sumH := sumGradHess(idx, grad, hess)
-	if sumH < cfg.MinHessian || depth >= cfg.MaxDepth || len(idx) <= 1 {
+	if sumH < cfg.MinHessian || depth >= cfg.MaxDepth || len(idx) <= 1 || leafBudgetExceeded(cfg, leaves) {
 		return &node{
 			leaf:    true,
 			leafVal: leafWeightFromSums(sumG, sumH, cfg.Lambda) * cfg.LearningRate,
@@ -145,8 +146,8 @@ func buildNode(dm data.Matrix, idx []int, grad, hess []float64, depth int, cfg C
 	return &node{
 		feat:      bestFeat,
 		threshold: bestThr,
-		left:      buildNode(dm, bestLeft, grad, hess, depth+1, cfg),
-		right:     buildNode(dm, bestRight, grad, hess, depth+1, cfg),
+		left:      buildNode(dm, bestLeft, grad, hess, depth+1, cfg, splitBudget(cfg, leaves)),
+		right:     buildNode(dm, bestRight, grad, hess, depth+1, cfg, leaves),
 		sumHess:   sumH,
 		catSmall:  bestCat,
 	}

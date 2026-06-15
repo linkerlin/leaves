@@ -38,7 +38,7 @@ jobs:
         run: go build -o examples/wasm/leaves.wasm ./examples/wasm
 
   bench-gate:
-    name: backend bench smoke
+    name: backend bench gate
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -47,10 +47,5 @@ jobs:
         with:
           go-version: "1.26.0"
 
-      - name: batch=1 Native faster than BornCPU
-        shell: pwsh
-        run: |
-          $out = go test -bench="BenchmarkBreastCancerBackend/batch=1" -run=^$ -benchtime=100ms 2>&1
-          Write-Output $out
-          if ($out -notmatch "batch=1/Native") { throw "missing Native bench" }
-          if ($out -notmatch "batch=1/BornCPU") { throw "missing BornCPU bench" }
+      - name: batch=1 BornCPU slower than Native (>=20x)
+        run: go test -run TestBenchGateBornCPUSlowerBatch1 -count=1 -timeout 5m

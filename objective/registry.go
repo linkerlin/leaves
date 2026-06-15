@@ -6,7 +6,7 @@ type factory func(numClass int) (Func, error)
 
 var extra = map[string]factory{}
 
-// Register 注册自定义目标（T5 插件化预备；内置目标仍走 switch）。
+// Register 注册自定义目标。内置标量目标见 builtins.go init()；多分类 / 排序仍由 ByNameWithClass switch 构造（需 numClass / RankConfig）。
 func Register(name string, f factory) {
 	extra[name] = f
 }
@@ -40,6 +40,8 @@ func ByNameWithClass(name string, numClass int) (Func, error) {
 		return NewTweedie(defaultTweediePower), nil
 	case "survival:cox":
 		return Cox{}, nil
+	case "survival:aft":
+		return AFTNormal{}, nil
 	case "rank:pairwise":
 		return NewRankPairwise(RankTrainConfig{
 			PairMethod:          RankPairTopK,

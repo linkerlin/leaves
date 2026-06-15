@@ -34,6 +34,7 @@ const (
 	ObjectivePoisson         = "count:poisson"
 	ObjectiveTweedie         = "reg:tweedie"
 	ObjectiveSurvivalCox     = "survival:cox"
+	ObjectiveSurvivalAFT     = "survival:aft"
 	ObjectiveRankPairwise    = "rank:pairwise"
 	ObjectiveRankNDCG        = "rank:ndcg"
 	ObjectiveRankListwise     = "rank:listwise"

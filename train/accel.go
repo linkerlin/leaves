@@ -61,6 +61,7 @@ func (l *Learner) treebuilderCfg(dm data.Matrix) treebuilder.Config {
 		Gamma:         l.cfg.Gamma,
 		LearningRate:  l.cfg.LearningRate,
 		MaxBin:        l.cfg.MaxBin,
+		MaxLeaves:     l.cfg.MaxLeaves,
 		NumThreads:    l.cfg.NumThreads,
 		UseGPUHist:    l.useGPUHist,
 		AccelMode:           accel,
@@ -76,7 +77,11 @@ func (l *Learner) treebuilderCfg(dm data.Matrix) treebuilder.Config {
 			cfg.HistBinPolicy = treebuilder.HistBinGlobal
 		}
 		if cfg.HistBinPolicy == treebuilder.HistBinGlobal {
-			cfg.GlobalBins = treebuilder.BuildGlobalHistBins(dm, l.cfg.MaxBin, nil)
+			if em, ok := dm.(data.ExternalMemoryMatrix); ok && em.NumBatches() > 1 {
+				cfg.GlobalBins = treebuilder.BuildGlobalHistBinsExternal(em, l.cfg.MaxBin, nil)
+			} else {
+				cfg.GlobalBins = treebuilder.BuildGlobalHistBins(dm, l.cfg.MaxBin, nil)
+			}
 		}
 	}
 	return cfg

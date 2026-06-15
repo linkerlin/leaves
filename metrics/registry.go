@@ -20,21 +20,17 @@ func Resolve(name string, opt Options) (Metric, error) {
 	if key == "" {
 		return nil, fmt.Errorf("metrics: empty name")
 	}
+	if f, ok := extraMetrics[key]; ok {
+		return f(opt)
+	}
+	if strings.HasPrefix(key, "ndcg@") {
+		k, err := strconv.Atoi(key[5:])
+		if err != nil || k <= 0 {
+			return nil, fmt.Errorf("metrics: invalid %q", name)
+		}
+		return NDCG{RankingMetric: RankingMetric{Groups: opt.Groups, K: k}}, nil
+	}
 	switch key {
-	case "rmse":
-		return RMSE{}, nil
-	case "mae":
-		return MAE{}, nil
-	case "mape":
-		return MAPE{}, nil
-	case "rmsle":
-		return RMSLE{}, nil
-	case "logloss":
-		return LogLoss{}, nil
-	case "error", "binary_error":
-		return Error{}, nil
-	case "auc", "aucpr":
-		return AUC{}, nil
 	case "mlogloss":
 		if opt.NumClass < 2 {
 			return nil, fmt.Errorf("metrics: mlogloss needs num_class >= 2")
@@ -45,18 +41,7 @@ func Resolve(name string, opt Options) (Metric, error) {
 			return nil, fmt.Errorf("metrics: merror needs num_class >= 2")
 		}
 		return MError{NumClass: opt.NumClass}, nil
-	case "ndcg":
-		return NDCG{RankingMetric: RankingMetric{Groups: opt.Groups, K: opt.NDCGK}}, nil
-	case "map":
-		return MAP{RankingMetric: RankingMetric{Groups: opt.Groups, K: opt.NDCGK}}, nil
 	default:
-		if strings.HasPrefix(key, "ndcg@") {
-			k, err := strconv.Atoi(key[5:])
-			if err != nil || k <= 0 {
-				return nil, fmt.Errorf("metrics: invalid %q", name)
-			}
-			return NDCG{RankingMetric: RankingMetric{Groups: opt.Groups, K: k}}, nil
-		}
 		return nil, fmt.Errorf("metrics: unsupported %q", name)
 	}
 }

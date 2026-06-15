@@ -93,6 +93,10 @@ func ensureGlobalBins(dm data.Matrix, cfg *Config) {
 	if cfg.GlobalBins != nil {
 		return
 	}
+	if em, ok := dm.(data.ExternalMemoryMatrix); ok && em.NumBatches() > 1 {
+		cfg.GlobalBins = BuildGlobalHistBinsExternal(em, cfg.MaxBin, featureList(*cfg, dm.NumCol()))
+		return
+	}
 	cfg.GlobalBins = BuildGlobalHistBins(dm, cfg.MaxBin, featureList(*cfg, dm.NumCol()))
 }
 

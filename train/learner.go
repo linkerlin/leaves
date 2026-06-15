@@ -20,6 +20,7 @@ type Config struct {
 	NumClass        int
 	NumRound        int
 	MaxDepth        int
+	MaxLeaves       int // lossguide：0=仅 MaxDepth 限制
 	LearningRate    float64
 	Lambda          float64
 	MinHessian      float64
@@ -70,6 +71,7 @@ type Learner struct {
 	marginGPULogged    bool
 	marginPredictGPU   int
 	marginPredictCPU   int
+	resumeFromRound    int // LoadCheckpoint 后续训起始轮（0-based，已完成的轮数）
 }
 
 // NewLearner 创建 Learner。
@@ -131,10 +133,14 @@ func NewLearner(cfg Config) (*Learner, error) {
 	return &Learner{cfg: cfg, obj: obj, numGroups: numGroups, metric: metric, baseLearningRate: baseLR}, nil
 }
 
-// Fit 在 Matrix 上训练。
+// Fit 在 Matrix 上训练；支持 ExternalMemoryMatrix 多批次 hist 路径。
 func (l *Learner) Fit(dm data.Matrix) error {
 	if dm == nil {
 		return fmt.Errorf("train: nil matrix")
+	}
+	dm, err := l.resolveTrainMatrix(dm)
+	if err != nil {
+		return err
 	}
 	l.beginTrainAccel(dm)
 	defer func() {
@@ -170,7 +176,7 @@ func (l *Learner) Fit(dm data.Matrix) error {
 
 	mc, isMC := objective.IsMulticlass(l.obj)
 
-	for round := 0; round < l.cfg.NumRound; round++ {
+	for round := l.resumeFromRound; round < l.cfg.NumRound; round++ {
 		l.onRoundStart(round)
 		l.predictMarginsInternal(dm, preds, false)
 		if isMC {
@@ -224,6 +230,9 @@ func (l *Learner) Fit(dm data.Matrix) error {
 }
 
 func (l *Learner) initBooster(dm data.Matrix, labels []float64) error {
+	if l.booster != nil {
+		return nil
+	}
 	tbCfg := l.treebuilderCfg(dm)
 	trainParams := booster.TrainParams{
 		Subsample:       l.cfg.Subsample,

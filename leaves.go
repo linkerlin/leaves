@@ -317,17 +317,17 @@ func (e *Ensemble) Transformation() transformation.Transform {
 // EnsembleWithRawPredictions returns ensemble instance with TransformRaw (no
 // transformation functions will be applied to the model resulst)
 func (e *Ensemble) EnsembleWithRawPredictions() *Ensemble {
-	return &Ensemble{
+	return finalizeLegacyEnsemble(&Ensemble{
 		ensembleBaseInterface: e.ensembleCore(),
 		transform:             &transformation.TransformRaw{e.NRawOutputGroups()},
-	}
+	})
 }
 
 // EnsembleWithLeafPredictions returns ensemble instance with TransformLeafIndex
 // (return trees indices instead of numerical values)
 func (e *Ensemble) EnsembleWithLeafPredictions() *Ensemble {
-	return &Ensemble{
+	return finalizeLegacyEnsemble(&Ensemble{
 		ensembleBaseInterface: e.ensembleCore(),
 		transform:             &transformation.TransformLeafIndex{e.NRawOutputGroups() * e.NEstimators()},
-	}
+	})
 }

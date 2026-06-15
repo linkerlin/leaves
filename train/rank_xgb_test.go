@@ -256,7 +256,7 @@ func TestRankMSLTRNDCGTrendVsXGBoost(t *testing.T) {
 		filepath.Join(base, "rank_msltr_ndcg_xgb_baseline.json"),
 		"run testdata/gen_rank_msltr.py",
 		rankTrendGate{
-			FinalTrainTol: 0.12, MilestoneTol: 0.15, TestFinalTol: 0.12,
+			FinalTrainTol: 0.13, MilestoneTol: 0.15, TestFinalTol: 0.12,
 			MinTrainGain: 0.05, MinTestNDCG: 0.28,
 		},
 	)

@@ -25,7 +25,7 @@ func BuildHist(dm data.Matrix, indices []int, grad, hess []float64, cfg Config) 
 		cfg.MaxBin = 256
 	}
 	ensureGlobalBins(dm, &cfg)
-	root := buildHistNode(dm, indices, grad, hess, 0, cfg)
+	root := buildHistNode(dm, indices, grad, hess, 0, cfg, intPtr1())
 	if root == nil {
 		w := leafWeight(indices, grad, hess, cfg.Lambda) * cfg.LearningRate
 		return tree.BuildTreeIR(nil, []float64{w}, nil, nil, 0)
@@ -34,9 +34,9 @@ func BuildHist(dm data.Matrix, indices []int, grad, hess []float64, cfg Config) 
 	return tree.BuildTreeIR(nodes, leaves, nil, nil, 0)
 }
 
-func buildHistNode(dm data.Matrix, idx []int, grad, hess []float64, depth int, cfg Config) *node {
+func buildHistNode(dm data.Matrix, idx []int, grad, hess []float64, depth int, cfg Config, leaves *int) *node {
 	sumG, sumH := sumGradHess(idx, grad, hess)
-	if sumH < cfg.MinHessian || depth >= cfg.MaxDepth || len(idx) <= 1 {
+	if sumH < cfg.MinHessian || depth >= cfg.MaxDepth || len(idx) <= 1 || leafBudgetExceeded(cfg, leaves) {
 		return &node{
 			leaf:    true,
 			leafVal: leafWeightFromSums(sumG, sumH, cfg.Lambda) * cfg.LearningRate,
@@ -71,8 +71,8 @@ func buildHistNode(dm data.Matrix, idx []int, grad, hess []float64, depth int, c
 	return &node{
 		feat:      bestFeat,
 		threshold: bestThr,
-		left:      buildHistNode(dm, bestLeft, grad, hess, depth+1, cfg),
-		right:     buildHistNode(dm, bestRight, grad, hess, depth+1, cfg),
+		left:      buildHistNode(dm, bestLeft, grad, hess, depth+1, cfg, splitBudget(cfg, leaves)),
+		right:     buildHistNode(dm, bestRight, grad, hess, depth+1, cfg, leaves),
 		sumHess:   sumH,
 	}
 }
