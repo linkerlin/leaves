@@ -1,6 +1,7 @@
 package data
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 )
@@ -89,5 +90,44 @@ func TestDetectFileFormatExtFallback(t *testing.T) {
 	path := filepath.Join("..", "testdata", "csrmat.libsvm")
 	if got := DetectFileFormat(path); got != FormatLIBSVM {
 		t.Fatalf("DetectFileFormat=%v want LIBSVM", got)
+	}
+}
+
+func TestSniffCSVWithHeader(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "train.csv")
+	content := "feat0,feat1,label\n1,2,0\n3,4,1\n"
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatal(err)
+	}
+	sniff, err := SniffFileFormat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sniff.Format != FormatCSV {
+		t.Fatalf("format=%v want CSV", sniff.Format)
+	}
+	if !sniff.CSV.HasHeader || !sniff.CSV.HasLabelColumn {
+		t.Fatalf("csv opts=%+v", sniff.CSV)
+	}
+	m, err := FromFileAuto(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m.NumRow() != 2 || m.NumCol() != 2 {
+		t.Fatalf("shape %dx%d", m.NumRow(), m.NumCol())
+	}
+}
+
+func TestFromFileExplicitFormatOverridesSniff(t *testing.T) {
+	path := filepath.Join("..", "testdata", "breast_cancer_train.tsv")
+	m, err := FromFile(path, FileLoadOptions{
+		Format: FormatTSVLabelLast,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m.NumRow() == 0 {
+		t.Fatal("empty")
 	}
 }

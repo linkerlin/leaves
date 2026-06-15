@@ -1,0 +1,8 @@
+# 记忆索引 — L1（自动维护，勿手动编辑）
+# 格式：场景关键词 → 记忆位置 | R: 红线规则
+
+## 场景映射
+版,并,依,据,现,bash,ls,read,todos,write,lua_exec,view,在,的,和,edit → C:\GitHub\leaves\.chong\memory\sop\___sop.md
+
+## RULES（红线）
+R: 执行成功

@@ -143,8 +143,12 @@ func detectBinaryFormat(filename string) (Format, error) {
 		return FormatXGBoost, nil
 	}
 
-	// pickle 魔数
+	// pickle 魔数（protocol 2+）
 	if n >= 2 && buf[0] == 0x80 && buf[1] >= 0x02 {
+		return FormatSklearn, nil
+	}
+	// pickle protocol 0（文本 opcode，如 ccopy_reg）
+	if n >= 4 && buf[0] == 'c' && string(buf[:4]) == "ccop" {
 		return FormatSklearn, nil
 	}
 
@@ -161,13 +165,29 @@ func detectBinaryFormat(filename string) (Format, error) {
 		}
 	}
 
-	// 经典 XGB 二进制无固定魔数：尝试解析 header
-	if _, err := f.Seek(0, 0); err == nil {
-		if _, err := xgbin.ReadModelHeader(bufio.NewReader(f)); err == nil {
-			return FormatXGBoost, nil
-		}
+	// 经典 XGB 二进制无固定魔数：尝试解析 header（无效数据不得 panic）
+	if probeXGBBinaryHeader(f) {
+		return FormatXGBoost, nil
 	}
 	return FormatUnknown, fmt.Errorf("io: unrecognized model format for %q (try .json / .ubj / .model)", filename)
+}
+
+func probeXGBBinaryHeader(f *os.File) bool {
+	if _, err := f.Seek(0, 0); err != nil {
+		return false
+	}
+	ok := false
+	func() {
+		defer func() {
+			if recover() != nil {
+				ok = false
+			}
+		}()
+		if _, err := xgbin.ReadModelHeader(bufio.NewReader(f)); err == nil {
+			ok = true
+		}
+	}()
+	return ok
 }
 
 // LoadFromFile 从文件自动检测格式并加载模型。

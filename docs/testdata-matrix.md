@@ -41,10 +41,12 @@
 | survival:cox/aft | 合成 Dense / AFTInterval | `TestSurvivalCoxTrainSmoke`, `TestSurvivalAFTIntervalTrainSmoke` |
 | checkpoint 续训 | 临时 ckpt | `train/resume_test.go` |
 | Eval API | 合成 Dense | `train/eval_test.go` `TestLearnerEval` |
-| FromFile 嗅探 | libsvm / rank TSV / breast_cancer TSV | `data/fromfile_test.go` |
-| AutoTransform 默认 | — | `io/transform_auto_test.go` |
-| InferObjective + 便利训练 | `xgboost_smoke.json` + `breast_cancer_train.tsv` | `train/load_test.go` |
-| train_from_model demo | 同上 | `examples/train_from_model/`（手工 `go run`） |
+| FromFile 嗅探 | libsvm / rank TSV / breast_cancer TSV / CSV header | `data/fromfile_test.go` |
+| AutoTransform 默认 | `xgboost_smoke.json` | `io/load_detect_test.go`, `io/transform_auto_test.go` |
+| 格式探测 | sklearn `.model`、数值 `.txt` 误用 | `io/load_detect_test.go` |
+| InferObjective + 便利训练 | JSON/UBJ/leaves + `SaveTrainModel` | `train/load_test.go` |
+| 根包 train 桥接 | `LoadDataAuto` / `DefaultLoadOptions` | `train_bridge_test.go` |
+| rankutil demo | `rank_smoke_train.tsv` | `demos/movielens/rankutil/*_test.go` |
 | FromFile 显式格式 | CSV/libsvm | `data/csv_test.go`, `data/libsvm_test.go` |
 | WASM 体积 | `examples/wasm` 构建产物 | `wasm_size_gate_test.go` |
 
