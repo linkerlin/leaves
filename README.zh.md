@@ -484,4 +484,4 @@ Born 后端的微基准（Windows / WebGPU）见 [docs/benchmark-baseline.md](do
 
 ## 许可证
 
-[MIT](LICENSE.md) —— Copyright (c) 2018 Dmitry Khominich。
+[MIT](LICENSE.md) —— Copyright (c) 2018 Steper Lin。

@@ -552,4 +552,4 @@ For questions or collaboration, email **steper@foxmail.com**.
 
 ## License
 
-[MIT](LICENSE.md) — Copyright (c) 2018 Dmitry Khominich.
+[MIT](LICENSE.md) — Copyright (c) 2018 Steper Lin.
