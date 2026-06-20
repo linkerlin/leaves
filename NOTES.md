@@ -1,6 +1,6 @@
 ## 2026年6月15日 — v4.3 格式嗅探与 AutoTransform 默认
 
-**状态**：训练数据内容嗅探、模型 `AutoTransform` 默认开启、训练便利 API 已落地（见 [`演进计划.md`](演进计划.md) v4.3）。
+**状态**：训练数据内容嗅探、模型 `AutoTransform` 默认开启、训练便利 API 已落地；路线图已切到 [`演进计划.md`](演进计划.md) v5.0。
 
 | 交付 | 说明 |
 |------|------|
@@ -51,7 +51,7 @@ m, err := leaves.LoadFromFile(path, &leaves.LoadOptions{AutoTransform: false})
 | 正确性 golden | `NativeEngine` 不变 |
 | 删除 | `scripts/install_pjrt.go`、`scripts/verify_pjrt.go` |
 
-详见 `演进计划.md` §3.6 与附录 C/F；执行 backlog 见 [`TODO.md`](TODO.md)。
+详见 [`演进计划.md`](演进计划.md) 的当前状态摘要与年度路线图；执行 backlog 见 [`TODO.md`](TODO.md)。
 
 **v4.0**（同日）：对标 XGBoost 3.3 全链路审计——训练 T1–T4 已落地；推理 Phase 0.5–3 代码超前于旧文档。  
 **v4.2**（2026-06-15）：P0（contrib + Born B4）与 T5/v3.1 全部闭合；本文档与 `演进计划.md` 已同步实态。  

@@ -18,7 +18,7 @@
 - 推理：`leaves.LoadFromFile`（默认开启 `AutoTransform`），或者沿用旧的 `leaves.LGEnsembleFromFile` / `leaves.XGEnsembleFromFile`。
 - 训练：`leaves.NewLearner` / `train.NewLearner`、`leaves.LoadDataAuto` / `data.FromFileAuto`（带内容嗅探），以及便利函数 `leaves.NewLearnerFromModelAndData` —— 它能从参考模型里反推出 objective。
 
-回归矩阵见 [docs/testdata-matrix.md](docs/testdata-matrix.md)，全链路路线图见 [演进计划.md](演进计划.md)（v4.3），可执行 backlog 见 [TODO.md](TODO.md)。
+回归矩阵见 [docs/testdata-matrix.md](docs/testdata-matrix.md)，现状审计与未来 12 个月路线图见 [演进计划.md](演进计划.md)（v5.0），已完成 backlog 见 [TODO.md](TODO.md)。
 
 ## 特性
 
@@ -425,9 +425,9 @@ model.NewEnsemble(eng) // 替换线上 Ensemble 引擎
 | 文档                                            | 说明                                                  |
 | ----------------------------------------------- | ----------------------------------------------------- |
 | [godoc](https://pkg.go.dev/github.com/linkerlin/leaves) | API 参考                                              |
-| [演进计划.md](演进计划.md)                       | 全链路路线图（**v4.3**，与代码同步）                  |
-| [TODO.md](TODO.md)                              | 可执行 backlog（P0–T5 + v3.1 已清空）                 |
-| [NOTES.md](NOTES.md)                            | 版本与兼容性说明（含 v4.3 `AutoTransform`）           |
+| [演进计划.md](演进计划.md)                       | 现状审计 + 未来 12 个月路线图（**v5.0**）             |
+| [TODO.md](TODO.md)                              | 已完成 backlog 存档（P0–T5 + v3.1 已清空）            |
+| [NOTES.md](NOTES.md)                            | 版本与兼容性说明（`AutoTransform`、Born、兼容说明）   |
 | [compatibility.md](compatibility.md)            | 外部 GBRT 库正确性校验                                |
 | [AGENTS.md](AGENTS.md)                          | 项目规约与计算底座决策                                |
 | [docs/testdata-matrix.md](docs/testdata-matrix.md) | 回归测试矩阵                                       |
@@ -476,7 +476,7 @@ Born 后端的微基准（Windows / WebGPU）见 [docs/benchmark-baseline.md](do
 
 ## 项目演进
 
-全链路路线图（对标 XGBoost 3.3 的训练、推理、服务、观测四个维度）见 [演进计划.md](演进计划.md) —— **v4.3** 落地了格式嗅探、`AutoTransform` 默认开启、训练便利 API。可执行 backlog 见 [TODO.md](TODO.md)（P0–T5 已全部关闭）。
+路线图现已转为“当前代码库审计 + 下一年演进计划”的写法。见 [演进计划.md](演进计划.md) 的 **v5.0**，以及作为历史已完成清单的 [TODO.md](TODO.md)。
 
 ## 联系方式
 

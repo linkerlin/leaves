@@ -23,11 +23,11 @@
 
 ## 文档
 
-- 战略路线图：[`演进计划.md`](演进计划.md) v4.3
+- 战略路线图：[`演进计划.md`](演进计划.md) v5.0
 - 可执行 backlog：[`TODO.md`](TODO.md)（P0–T5 + v3.1 已完成）
 - 回归矩阵：[`docs/testdata-matrix.md`](docs/testdata-matrix.md)
 
-## 格式与 IO（v4.3）
+## 格式与 IO（当前）
 
 - **训练数据**：`data/sniff.go` + `data/fromfile.go`（`FromFileAuto` / `LoadDataAuto`）
 - **模型加载**：`io/load.go`（格式探测）、`io/transform_auto.go`（`AutoTransform` 默认 true）

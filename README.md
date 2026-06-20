@@ -26,8 +26,9 @@ scikit-learn models out of the box, and ships a complete in-Go training loop
   reference model.
 
 See [docs/testdata-matrix.md](docs/testdata-matrix.md) for the regression
-matrix, [演进计划.md](演进计划.md) for the roadmap (v4.3), and
-[TODO.md](TODO.md) for the executable backlog.
+matrix, [演进计划.md](演进计划.md) for the current-state audit and next
+12-month roadmap (v5.0), and [TODO.md](TODO.md) for the historical
+executable backlog.
 
 ## Features
 
@@ -475,9 +476,9 @@ model.NewEnsemble(eng) // swap the live engine
 | Document                                      | Description                                                  |
 | --------------------------------------------- | ------------------------------------------------------------ |
 | [godoc](https://pkg.go.dev/github.com/linkerlin/leaves) | API reference                                         |
-| [演进计划.md](演进计划.md)                       | End-to-end roadmap (**v4.3**, in sync with code)             |
-| [TODO.md](TODO.md)                            | Executable backlog (P0–T5 + v3.1 cleared)                    |
-| [NOTES.md](NOTES.md)                          | Version and compatibility notes (incl. v4.3 `AutoTransform`) |
+| [演进计划.md](演进计划.md)                       | Current-state audit + next 12-month roadmap (**v5.0**)       |
+| [TODO.md](TODO.md)                            | Historical executable backlog (P0–T5 + v3.1 cleared)         |
+| [NOTES.md](NOTES.md)                          | Version and compatibility notes (`AutoTransform`, Born, compat) |
 | [compatibility.md](compatibility.md)          | External GBRT library correctness sweep                      |
 | [AGENTS.md](AGENTS.md)                        | Project conventions & compute substrate decisions            |
 | [docs/testdata-matrix.md](docs/testdata-matrix.md) | Regression test matrix                                    |
@@ -540,11 +541,10 @@ For a Born-backend microbench (Windows / WebGPU) see
 
 ## Roadmap
 
-The end-to-end roadmap (parity with XGBoost 3.3 across training,
-inference, serving, and observability) lives in
-[演进计划.md](演进计划.md) — **v4.3** lands format sniffing,
-`AutoTransform` by default, and a training convenience API. The
-executable backlog is in [TODO.md](TODO.md) (P0–T5 are closed).
+The roadmap now focuses on the current codebase audit and the next 12
+months of work after P0–T5 / v3.1 were delivered. See
+[演进计划.md](演进计划.md) for the **v5.0** plan, and [TODO.md](TODO.md)
+for the closed historical backlog.
 
 ## Contact
 
