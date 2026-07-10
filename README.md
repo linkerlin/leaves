@@ -1,4 +1,4 @@
-# leaves（中文）
+# leaves
 
 [English](README.md) | **中文**
 
