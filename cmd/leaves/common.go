@@ -13,34 +13,91 @@ import (
 	"github.com/linkerlin/leaves/metrics"
 )
 
+// paramsRecord 记录当次 train 全部 CLI 旋钮，供 Agent 从 runs.jsonl 完整复现。
+// 字段与 skills/leaves-autotrain/cli.md、演进方案 WP-02 对齐。
 type paramsRecord struct {
-	Rounds     int     `json:"rounds"`
-	Depth      int     `json:"depth"`
-	MaxLeaves  int     `json:"max_leaves,omitempty"`
-	LR         float64 `json:"lr"`
-	Lambda     float64 `json:"lambda"`
-	TreeMethod string  `json:"tree_method"`
-	Seed       int64   `json:"seed"`
+	Rounds         int     `json:"rounds"`
+	Depth          int     `json:"depth"`
+	MaxLeaves      int     `json:"max_leaves,omitempty"`
+	LR             float64 `json:"lr"`
+	Lambda         float64 `json:"lambda"`
+	MinChildWeight float64 `json:"min_child_weight"`
+	Gamma          float64 `json:"gamma"`
+	MaxBin         int     `json:"max_bin"`
+	Subsample      float64 `json:"subsample"`
+	Colsample      float64 `json:"colsample"`
+	TreeMethod     string  `json:"tree_method"`
+	Seed           int64   `json:"seed"`
+	NumClass       int     `json:"num_class,omitempty"`
+	NDCGK          int     `json:"ndcg_k,omitempty"`
+	EarlyStop      int     `json:"early_stop,omitempty"`
+	CVFolds        int     `json:"cv_folds,omitempty"`
+	EvalMetric     string  `json:"eval_metric,omitempty"`
 }
+
+// metricsSchemaVersion 是 metrics/sniff 等 Agent 信号 JSON 的契约版本（WP-18）。
+const metricsSchemaVersion = 1
 
 // metricsDoc 是 Agent 闭环的唯一信号契约（见 skills/leaves-autotrain/cli.md）。
 type metricsDoc struct {
-	Objective   string        `json:"objective"`
-	Metric      string        `json:"metric"`
-	Value       float64       `json:"value"`
-	Maximize    bool          `json:"maximize"`
-	NRows       int           `json:"n_rows"`
-	NFeatures   int           `json:"n_features,omitempty"`
-	CVFolds     int           `json:"cv_folds,omitempty"`
-	CVMean      float64       `json:"cv_mean,omitempty"`
-	CVStd       float64       `json:"cv_std,omitempty"`
-	FoldMetrics []float64     `json:"fold_metrics,omitempty"`
-	TrainMetric float64       `json:"train_metric,omitempty"`
-	BestRound   int           `json:"best_round,omitempty"`
-	Params      *paramsRecord `json:"params,omitempty"`
+	SchemaVersion int           `json:"schema_version"`
+	Objective     string        `json:"objective"`
+	Metric        string        `json:"metric"`
+	Value         float64       `json:"value"`
+	Maximize      bool          `json:"maximize"`
+	NRows         int           `json:"n_rows"`
+	NFeatures     int           `json:"n_features,omitempty"`
+	CVFolds       int           `json:"cv_folds,omitempty"`
+	CVMean        float64       `json:"cv_mean,omitempty"`
+	CVStd         float64       `json:"cv_std,omitempty"`
+	FoldMetrics   []float64     `json:"fold_metrics,omitempty"`
+	TrainMetric   float64       `json:"train_metric,omitempty"`
+	BestRound     int           `json:"best_round,omitempty"`
+	StoppedRound  int           `json:"stopped_round,omitempty"`
+	ModelRound    int           `json:"model_round,omitempty"`
+	Params        *paramsRecord `json:"params,omitempty"`
+}
+
+// newParamsRecord 从 train CLI 旋钮组装完备 params（Agent 账本复现用）。
+func newParamsRecord(
+	rounds, depth, maxLeaves int,
+	lr, lambda, minChildWeight, gamma float64,
+	maxBin int,
+	subsample, colsample float64,
+	treeMethod string,
+	seed int64,
+	numClass, ndcgK, earlyStop, cv int,
+	evalMetric string,
+) *paramsRecord {
+	p := &paramsRecord{
+		Rounds:         rounds,
+		Depth:          depth,
+		MaxLeaves:      maxLeaves,
+		LR:             lr,
+		Lambda:         lambda,
+		MinChildWeight: minChildWeight,
+		Gamma:          gamma,
+		MaxBin:         maxBin,
+		Subsample:      subsample,
+		Colsample:      colsample,
+		TreeMethod:     treeMethod,
+		Seed:           seed,
+		NumClass:       numClass,
+		EarlyStop:      earlyStop,
+		CVFolds:        cv,
+		EvalMetric:     evalMetric,
+	}
+	// ndcg_k 仅对排序任务有意义；调用方在非排序时可传 0 省略。
+	if ndcgK > 0 {
+		p.NDCGK = ndcgK
+	}
+	return p
 }
 
 func writeMetrics(path string, doc metricsDoc) error {
+	if doc.SchemaVersion == 0 {
+		doc.SchemaVersion = metricsSchemaVersion
+	}
 	b, err := json.MarshalIndent(doc, "", "  ")
 	if err != nil {
 		return err
@@ -56,15 +113,16 @@ func writeMetrics(path string, doc metricsDoc) error {
 
 // runRecord 是运行账本 runs.jsonl 的单行（Agent 跨迭代优化的持久记忆）。
 type runRecord struct {
-	Tag      string        `json:"tag"`
-	TS       string        `json:"ts"`
-	Model    string        `json:"model,omitempty"`
-	Metric   string        `json:"metric"`
-	Value    float64       `json:"value"`
-	Maximize bool          `json:"maximize"`
-	CVMean   float64       `json:"cv_mean,omitempty"`
-	CVStd    float64       `json:"cv_std,omitempty"`
-	Params   *paramsRecord `json:"params,omitempty"`
+	Tag       string        `json:"tag"`
+	TS        string        `json:"ts"`
+	Model     string        `json:"model,omitempty"`
+	Objective string        `json:"objective,omitempty"` // WP-17：供 --from-run 复现
+	Metric    string        `json:"metric"`
+	Value     float64       `json:"value"`
+	Maximize  bool          `json:"maximize"`
+	CVMean    float64       `json:"cv_mean,omitempty"`
+	CVStd     float64       `json:"cv_std,omitempty"`
+	Params    *paramsRecord `json:"params,omitempty"`
 }
 
 // appendRun 把本次训练记录追加到 JSONL 账本（不存在则创建）。
@@ -73,15 +131,16 @@ func appendRun(runsPath, tag, modelPath string, doc metricsDoc) error {
 		return nil
 	}
 	rec := runRecord{
-		Tag:      tag,
-		TS:       time.Now().UTC().Format(time.RFC3339),
-		Model:    modelPath,
-		Metric:   doc.Metric,
-		Value:    doc.Value,
-		Maximize: doc.Maximize,
-		CVMean:   doc.CVMean,
-		CVStd:    doc.CVStd,
-		Params:   doc.Params,
+		Tag:       tag,
+		TS:        time.Now().UTC().Format(time.RFC3339),
+		Model:     modelPath,
+		Objective: doc.Objective,
+		Metric:    doc.Metric,
+		Value:     doc.Value,
+		Maximize:  doc.Maximize,
+		CVMean:    doc.CVMean,
+		CVStd:     doc.CVStd,
+		Params:    doc.Params,
 	}
 	b, err := json.Marshal(rec)
 	if err != nil {

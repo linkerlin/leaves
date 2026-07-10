@@ -2,64 +2,34 @@ package objective
 
 import "fmt"
 
+// factory 按名称构造目标；numClass 仅 multi:* 使用，其它可忽略。
 type factory func(numClass int) (Func, error)
 
 var extra = map[string]factory{}
 
-// Register 注册自定义目标。内置标量目标见 builtins.go init()；多分类 / 排序仍由 ByNameWithClass switch 构造（需 numClass / RankConfig）。
+// Register 注册自定义或覆盖内置目标。
+// 内置目标在 builtins.go init() 中注册（含 multi:* / rank:*）。
+// 训练侧排序超参仍经 ConfigureRanking 覆盖默认 RankTrainConfig。
 func Register(name string, f factory) {
 	extra[name] = f
 }
 
-// ByNameWithClass 解析目标函数（多分类需 numClass）。
+// RegisteredNames 返回当前已注册目标名（无序；含空串别名时出现 ""）。
+func RegisteredNames() []string {
+	out := make([]string, 0, len(extra))
+	for k := range extra {
+		out = append(out, k)
+	}
+	return out
+}
+
+// ByNameWithClass 解析目标函数（多分类需 numClass >= 2）。
 // 排序目标使用默认 RankOptions；训练侧通过 ConfigureRanking 覆盖。
 func ByNameWithClass(name string, numClass int) (Func, error) {
 	if f, ok := extra[name]; ok {
 		return f(numClass)
 	}
-	switch name {
-	case "reg:squarederror", "":
-		return SquaredError{}, nil
-	case "binary:logistic":
-		return BinaryLogistic{}, nil
-	case "multi:softmax":
-		if numClass < 2 {
-			return nil, fmt.Errorf("objective: multi:softmax needs num_class >= 2")
-		}
-		return Multiclass{NumClass: numClass}, nil
-	case "multi:softprob":
-		if numClass < 2 {
-			return nil, fmt.Errorf("objective: multi:softprob needs num_class >= 2")
-		}
-		return Multiclass{NumClass: numClass, Softprob: true}, nil
-	case "reg:gamma":
-		return Gamma{}, nil
-	case "count:poisson":
-		return Poisson{}, nil
-	case "reg:tweedie":
-		return NewTweedie(defaultTweediePower), nil
-	case "survival:cox":
-		return Cox{}, nil
-	case "survival:aft":
-		return AFTNormal{}, nil
-	case "rank:pairwise":
-		return NewRankPairwise(RankTrainConfig{
-			PairMethod:          RankPairTopK,
-			NumPairPerSample:    defaultTopKPairs,
-			LambdaNormalization: true,
-		}), nil
-	case "rank:ndcg":
-		return NewRankNDCG(RankTrainConfig{
-			LambdaNorm:          true,
-			PairMethod:          RankPairTopK,
-			NumPairPerSample:    defaultTopKPairs,
-			LambdaNormalization: true,
-		}), nil
-	case "rank:listwise":
-		return NewRankListwise(RankTrainConfig{}), nil
-	default:
-		return nil, fmt.Errorf("objective: unsupported %q", name)
-	}
+	return nil, fmt.Errorf("objective: unsupported %q (register with objective.Register)", name)
 }
 
 // ConfigureRanking 用训练超参覆盖排序目标选项。

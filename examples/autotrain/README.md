@@ -46,8 +46,10 @@ go run ./cmd/leaves publish `
 
 把上面的命令交给任意 Agent（读 [`SKILL.md`](../../skills/leaves-autotrain/SKILL.md)），它会：
 
-1. 读 `m1.json` 的 `value`/`cv_mean`，按 SKILL §四.4 决策表选下一组超参；
+1. 读 `metrics.json` 的 `value`/`cv_mean`，按 SKILL §四.4 决策表选下一组超参；
 2. 再 `train` 一轮、`--tag tune1`、追加进同一个 `runs.jsonl`；
 3. 比较账本取最优，达 §五 收敛判据后 `publish`。
+4. 定稿复现可用：`train --data ... --from-run $RUNS/runs.jsonl --tag <最优> --out-model ...`（CLI flag 覆盖账本）。
 
-> 提示：训练的加速日志打到 stderr，指标只进 `--metrics` 文件或 stdout（JSON）。Agent 读文件即可，无需解析日志。
+> 提示：训练的加速日志打到 stderr，指标只进 `--metrics` 文件或 stdout（JSON）。Agent 读文件即可，无需解析日志。  
+> **路径纪律**：`--out-model` 与 `--metrics` 必须是不同路径（同一路径会被 CLI 拒绝，因 metrics 会覆盖模型）。

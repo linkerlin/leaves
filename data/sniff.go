@@ -309,6 +309,8 @@ func mergeSniffedOpts(user FileLoadOptions, sniff SniffResult) FileLoadOptions {
 	}
 	out := user
 	out.Format = sniff.Format
+	// CLI 传入的 NAPolicy 始终保留（嗅探不得覆盖）。
+	userNA := user.CSV.NAPolicy
 	switch sniff.Format {
 	case FormatLIBSVM:
 		if !user.libsvmConfigured() {
@@ -321,10 +323,14 @@ func mergeSniffedOpts(user FileLoadOptions, sniff SniffResult) FileLoadOptions {
 			out.CSV.Delim = sniff.CSV.Delim
 		}
 	}
+	if userNA != "" {
+		out.CSV.NAPolicy = userNA
+	}
 	return out
 }
 
 func (o FileLoadOptions) csvConfigured() bool {
+	// NAPolicy 单独设置不算「完整 CSV 配置」，仍允许嗅探 header/label。
 	return o.CSV.HasHeader || o.CSV.HasLabelColumn || o.CSV.Delim != 0 || len(o.CSV.SkipCols) > 0
 }
 

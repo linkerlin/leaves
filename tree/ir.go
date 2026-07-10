@@ -71,6 +71,35 @@ func (f *ForestIR) TreeCountForNEstimators(nEstimators int) int {
 	return nEstimators * f.NumOutputGroups
 }
 
+// TruncateToNEstimators 就地截断为前 n 轮 boosting（n 与 BestRound 同为 1-based 轮数）。
+// 用于早停后保留 best_round 模型，避免 final-round 过拟合写入磁盘。
+// n<=0 或 n>=当前轮数时为 no-op。
+func (f *ForestIR) TruncateToNEstimators(n int) {
+	if f == nil || n <= 0 {
+		return
+	}
+	if n >= f.NEstimators() {
+		return
+	}
+	end := f.TreeCountForNEstimators(n)
+	if end < 0 || end > len(f.Trees) {
+		return
+	}
+	f.Trees = f.Trees[:end]
+	if len(f.WeightDrop) >= end {
+		f.WeightDrop = f.WeightDrop[:end]
+	}
+	if len(f.TreeInfo) >= end {
+		f.TreeInfo = f.TreeInfo[:end]
+	}
+	if len(f.XGBTreesRaw) >= end {
+		f.XGBTreesRaw = f.XGBTreesRaw[:end]
+	}
+	if len(f.IterationIndptr) > n {
+		f.IterationIndptr = append([]int(nil), f.IterationIndptr[:n+1]...)
+	}
+}
+
 // NLeaves 返回每棵树的叶子数，长度 = NumOutputGroups * NEstimators()。
 func (f *ForestIR) NLeaves() []int {
 	n := make([]int, len(f.Trees))

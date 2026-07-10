@@ -22,7 +22,7 @@ const (
 // WorkloadHint 推理 workload 提示（BackendAuto 时使用）。
 type WorkloadHint = tree.WorkloadHint
 
-// LoadFromFile 自动检测格式并加载模型（v1.0 推荐入口）。
+// LoadFromFile 自动检测格式并加载模型（v2.x 推荐入口；见 docs/api-surface.md）。
 func LoadFromFile(filename string, opts *LoadOptions) (*model.Ensemble, error) {
 	return io.LoadFromFile(filename, opts)
 }

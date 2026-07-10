@@ -41,6 +41,9 @@ func DetectFormat(filename string) (Format, error) {
 		return FormatXGBoostUBJSON, nil
 	case ".pkl", ".joblib":
 		return FormatSklearn, nil
+	case ".onnx":
+		// 占位：明确识别，避免落入 unrecognized 杂讯。
+		return FormatONNX, nil
 	case ".model", ".bin":
 		return detectBinaryFormat(filename)
 	case ".txt":
@@ -67,7 +70,14 @@ func detectTextFormat(filename string) (Format, error) {
 		}
 		// 数值 TSV/CSV 训练数据误用 .txt：给出明确提示
 		if looksLikeNumericTableLine(line) {
-			return FormatUnknown, fmt.Errorf("io: %q looks like tabular training data; use data.FromFile for training, not io.LoadFromFile", filename)
+			return FormatUnknown, &LoadError{
+				Path:   filename,
+				Format: FormatUnknown,
+				Level:  SupportUnsupported,
+				Op:     "detect",
+				Msg:    "looks like tabular training data, not a model file",
+				Hint:   "训练数据请用 data.FromFile / leaves train --data；模型请用 LGB/XGB/leaves.json",
+			}
 		}
 		break
 	}
@@ -169,7 +179,15 @@ func detectBinaryFormat(filename string) (Format, error) {
 	if probeXGBBinaryHeader(f) {
 		return FormatXGBoost, nil
 	}
-	return FormatUnknown, fmt.Errorf("io: unrecognized model format for %q (try .json / .ubj / .model)", filename)
+	sup := SupportOf(FormatUnknown)
+	return FormatUnknown, &LoadError{
+		Path:   filename,
+		Format: FormatUnknown,
+		Level:  SupportUnsupported,
+		Op:     "detect",
+		Msg:    "unrecognized model format",
+		Hint:   sup.Hint,
+	}
 }
 
 func probeXGBBinaryHeader(f *os.File) bool {
@@ -191,6 +209,7 @@ func probeXGBBinaryHeader(f *os.File) bool {
 }
 
 // LoadFromFile 从文件自动检测格式并加载模型。
+// 失败时返回 *LoadError（含 support level 与 hint），便于 Agent/人类排障。
 func LoadFromFile(filename string, opts *LoadOptions) (*model.Ensemble, error) {
 	if opts == nil {
 		opts = DefaultLoadOptions()
@@ -199,12 +218,31 @@ func LoadFromFile(filename string, opts *LoadOptions) (*model.Ensemble, error) {
 		return nil, fmt.Errorf("io loader not registered: import github.com/linkerlin/leaves to enable")
 	}
 
+	// 先探测：ONNX 等占位格式直接可操作失败，不进入遗留 loader。
+	format, derr := DetectFormat(filename)
+	if derr != nil {
+		return nil, wrapDetectError(filename, derr)
+	}
+	if format == FormatONNX {
+		return nil, newPlaceholderError(filename, FormatONNX)
+	}
+
 	legacy, err := registeredLoader(filename, opts)
 	if err != nil {
-		return nil, err
+		// 探测与 loader 可能不一致时，以探测结果标注等级；未知则再探测一次。
+		if format == FormatUnknown {
+			if f2, e2 := DetectFormat(filename); e2 == nil {
+				format = f2
+			}
+		}
+		return nil, wrapLoadError(filename, format, err)
 	}
 	if legacy == nil {
-		return nil, fmt.Errorf("loader returned nil model for %s", filename)
+		return nil, wrapLoadError(filename, format, fmt.Errorf("loader returned nil model"))
 	}
-	return registeredBuilder(legacy, opts)
+	ens, err := registeredBuilder(legacy, opts)
+	if err != nil {
+		return nil, wrapLoadError(filename, format, err)
+	}
+	return ens, nil
 }

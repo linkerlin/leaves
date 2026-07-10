@@ -34,9 +34,14 @@ func TestSelectBackendFromIR(t *testing.T) {
 			want: tree.BackendBornCPU,
 		},
 		{
-			name: "large batch gpu",
-			hint: tree.WorkloadHint{BatchSize: 512, HasGPU: true},
-			want: tree.BackendBornGPU,
+			name: "large batch no gpu → born cpu",
+			hint: tree.WorkloadHint{BatchSize: 512, HasGPU: false},
+			want: tree.BackendBornCPU,
+		},
+		{
+			name: "mid batch cpu",
+			hint: tree.WorkloadHint{BatchSize: 64},
+			want: tree.BackendBornCPU,
 		},
 	}
 	for _, c := range cases {
@@ -47,6 +52,17 @@ func TestSelectBackendFromIR(t *testing.T) {
 			}
 		})
 	}
+	// large batch + GPU：有 WebGPU → BornGPU，否则 BornCPU
+	t.Run("large batch gpu", func(t *testing.T) {
+		got := io.SelectBackend(result.IR, tree.WorkloadHint{BatchSize: 512, HasGPU: true})
+		if tree.BornWebGPUAvailable() {
+			if got != tree.BackendBornGPU {
+				t.Errorf("want BornGPU, got %v", got)
+			}
+		} else if got != tree.BackendBornCPU {
+			t.Errorf("want BornCPU fallback, got %v", got)
+		}
+	})
 }
 
 func TestLoadFromFileBackendAutoNative(t *testing.T) {

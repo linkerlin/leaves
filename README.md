@@ -1,6 +1,6 @@
 # leaves
 
-[English](README.md) | **中文**
+[English](README.en.md) | **中文**
 
 [![版本](https://img.shields.io/badge/版本-v2.x--dev-blue.svg)](https://semver.org)
 [![CI](https://github.com/linkerlin/leaves/actions/workflows/ci.yml/badge.svg)](https://github.com/linkerlin/leaves/actions/workflows/ci.yml)
@@ -18,7 +18,7 @@
 - 推理：`leaves.LoadFromFile`（默认开启 `AutoTransform`），或者沿用旧的 `leaves.LGEnsembleFromFile` / `leaves.XGEnsembleFromFile`。
 - 训练：`leaves.NewLearner` / `train.NewLearner`、`leaves.LoadDataAuto` / `data.FromFileAuto`（带内容嗅探），以及便利函数 `leaves.NewLearnerFromModelAndData` —— 它能从参考模型里反推出 objective。
 
-回归矩阵见 [docs/testdata-matrix.md](docs/testdata-matrix.md)，现状审计与未来 12 个月路线图见 [演进计划.md](演进计划.md)（v5.0），已完成 backlog 见 [TODO.md](TODO.md)。
+回归矩阵见 [docs/testdata-matrix.md](docs/testdata-matrix.md)；路线图 [演进计划.md](演进计划.md)（v5.1）；Agent 契约 [演进方案.md](演进方案.md)；扩展 objective/metric 见 [docs/extension-points.md](docs/extension-points.md)；backlog [TODO.md](TODO.md)。
 
 ## 特性
 
@@ -101,17 +101,21 @@ func main() {
 
 旧 API 仍兼容：`leaves.LGEnsembleFromFile(path, loadTransformation)` 和 `leaves.XGEnsembleFromFile(...)`，行为不变。
 
-### 格式自动识别（v4.3）
+### 格式自动识别与支持等级
 
-`io.LoadFromFile`（和 `io.DetectFormat`）会同时看扩展名和文件头。经典 XGBoost 二进制没有魔数，靠内容嗅探识别；`.pkl` / `.joblib` 会路由到 scikit-learn；数值表被错当成 `.txt` 模型时会给出明确报错。
+`io.LoadFromFile` / `DetectFormat` 看扩展名与文件头。完整等级表见 **[docs/interop-matrix.md](docs/interop-matrix.md)**（稳定 / 实验 / 占位）。
 
-| 格式             | 扩展名                       | 说明                                                              |
-| ---------------- | ---------------------------- | ----------------------------------------------------------------- |
-| XGBoost JSON     | `.json`                      | 3.x `save_model` 默认格式；logistic 目标下 `base_score` 自动转 margin |
-| XGBoost UBJSON   | `.ubj`                       | JSON 的二进制等价形式；预测结果与 JSON 路径完全一致                  |
-| XGBoost binary   | （无）/ `.bin` / `.model`    | 经典 `xgb.Booster.save_model`；无魔数时按 header 探测              |
-| LightGBM         | `.txt` / `.model` / `.json`  | text 与 JSON 两种格式都支持                                        |
-| scikit-learn     | `.pkl` / `.joblib`           | 通过 pickle 魔数识别                                              |
+| 格式 | 等级 | 扩展名 / 探测 | 说明 |
+|------|------|---------------|------|
+| leaves.json | **稳定** | `leaves_version` | 训练主产物；推荐部署 |
+| XGBoost JSON | **稳定** | `.json` + `learner` | 3.x 默认；`base_score`→margin |
+| XGBoost UBJSON | **稳定** | `.ubj` | 与 JSON 预测一致 |
+| XGBoost binary | **稳定** | `binf` / header | 经典 Booster；优先改用 JSON |
+| LightGBM text/JSON | **稳定** | `tree=` / `tree_info` | text 与 JSON |
+| scikit-learn | **实验** | `.pkl` / `.joblib` | 窄协议；生产请转 XGB/leaves JSON |
+| ONNX | **占位** | `.onnx` | 不实现导入；先转 JSON/leaves |
+
+加载失败返回 `*io.LoadError`（含 `hint:` 下一步）。数值表误用 `.txt` 会提示改用 `data.FromFile`。
 
 ```go
 import "github.com/linkerlin/leaves/io"
@@ -241,24 +245,27 @@ _ = learner.Fit(dm)
 
 ## 计算底座 —— [Born](https://github.com/born-ml/born)
 
-推理与训练加速都构建在 [Born](https://github.com/born-ml/born) 之上（CPU SIMD + WebGPU）。`NativeEngine` 是 golden 基准；`BackendAuto` 会在划算时自动派发到 `BackendBornCPU` / `BackendBornGPU`（Windows DX12）。
+推理与训练加速都构建在 [Born](https://github.com/born-ml/born) 之上（CPU SIMD + WebGPU）。`NativeEngine` 是 golden 基准；`BackendAuto`（**2.0**）按 workload 派发 BornCPU / BornGPU。完整决策表：[docs/backend-auto.md](docs/backend-auto.md)。
 
 ```go
 m, _ := leaves.LoadFromFile("model.json", &io.LoadOptions{
-	Backend: io.BackendBornCPU,
+	Backend:  io.BackendAuto,
+	Workload: tree.WorkloadHint{BatchSize: 256, HasGPU: true},
 })
+// 可解释选型：tree.SelectBackendExplained(caps, hint) → Rule / Reason
 ```
 
 parity 门禁 `TestBornParityFormatMatrix` 覆盖 LGB text/JSON、XGB bin/json/ubj、scikit-learn pickle × batch `{1, 16, 256}` × `BornCPU` / `BornGPU`，容差 `1e-5`（相对 Native）。
 
-### 后端选型速查
+### 后端选型速查（BackendAuto 2.0）
 
-| 场景                                       | 推荐 `Backend`               | 原因                                |
-| ------------------------------------------ | ---------------------------- | ----------------------------------- |
-| 在线单条 / batch ≤ 8                       | `BackendAuto` 或 `BackendNative` | 延迟优先                        |
-| 批量推理 ≥ 256 行，纯数值树                | `BackendAuto` + `Workload` 提示 | Windows 可尝试 `BackendBornGPU`    |
-| WASM / js                                  | `BackendNative`              | Born 在 js 下回退到 Native           |
-| LightGBM `cat`-small 类特征                | `BackendNative`              | Born 暂未支持                       |
+| 场景 | Auto 结果 | 说明 |
+|------|-----------|------|
+| 在线单条 / batch &lt; 64 | **Native** | 延迟优先；Born 单条更慢 |
+| 批量 ≥ 64，纯数值树 | **BornCPU** | SIMD 批推理 |
+| 批量 ≥ 256 + HasGPU（Windows WebGPU） | **BornGPU** | 不可用则回落 BornCPU |
+| WASM + 数值树 | **BornCPU**（支持时） | 无 GPU；cat-small → Native |
+| 稀疏 `SparseDensity∈(0,0.15)` / cat-small | **Native** | Born 未优化 / 不支持 |
 
 ## Tree SHAP 与可解释性
 
@@ -422,53 +429,61 @@ model.NewEnsemble(eng) // 替换线上 Ensemble 引擎
 
 ## Agent 自动化（SKILL 驱动，无 MCP）
 
-Agent 通过 **SKILL 指导 + `leaves` CLI + metrics.json** 即可完成全自动「训练→指标优化→发布」。**Agent 即优化器**：搜索逻辑在 SKILL 文本里，不在 leaves 代码里（与「不内置搜索」哲学一致）。
+> **Agentic 契约已达成**（见 [`演进方案.md`](演进方案.md) v1.3 DoD）。  
+> 库整体 12 个月路线图见 [`演进计划.md`](演进计划.md) v5.0 — 二者互补，不互相替代。
 
-- **SKILL**：[`skills/leaves-autotrain/SKILL.md`](skills/leaves-autotrain/SKILL.md)（任意监督学习任务，含决策表与搜索策略）
-- **CLI 参考**：[`skills/leaves-autotrain/cli.md`](skills/leaves-autotrain/cli.md)（flag 全表 + metrics.json schema）
-- **零准备 demo**：[`examples/autotrain/`](examples/autotrain/README.md)（抄走即跑）
+Agent 通过 **SKILL + `leaves` CLI + metrics.json** 完成「训练→调参→发布」；**Agent 即优化器**（搜索逻辑在 SKILL，库不内置 HPO）。
 
-闭环：
+| 文档 | 用途 |
+|------|------|
+| [`演进方案.md`](演进方案.md) | Agentic 契约 / WP / 验收 DoD |
+| [`skills/leaves-autotrain/SKILL.md`](skills/leaves-autotrain/SKILL.md) | 决策表与闭环策略 |
+| [`skills/leaves-autotrain/cli.md`](skills/leaves-autotrain/cli.md) | flag + metrics schema |
+| [`examples/autotrain/`](examples/autotrain/README.md) | 零准备 demo |
 
 ```
-sniff（自动识别任务→objective）→ train(--cv --runs --tag) → 读 metrics.json/runs.jsonl
-  → 按 SKILL 决策表调参 → 再训 → 收敛 → inspect 复核 → publish
+sniff → train(--cv --runs --tag [--early-stop 默认 save-best] [--from-run])
+  → 读 metrics/runs → 决策表调参 → 收敛 → inspect → publish(--emit-repro-script)
 ```
 
-6 个子命令对应工作流六步（识别 / 训练 / 评估 / 预测 / 复核 / 发布），每步输出结构化 JSON：
+边界：**本地工件包**（非 registry）；不内置 HPO；CSV 默认无缺失（`--na-policy skip-row` 可丢行，不做插补）。
 
 ```powershell
-go run ./cmd/leaves sniff   --data train.csv                       # 数据画像 → 推荐 objective
-go run ./cmd/leaves train   --data train.csv --objective ... --cv 5 --runs runs.jsonl --tag ...
-go run ./cmd/leaves eval    --model m.leaves.json --data holdout.csv
-go run ./cmd/leaves predict --model m.leaves.json --data holdout.csv --out pred.jsonl
-go run ./cmd/leaves inspect --model m.leaves.json
-go run ./cmd/leaves publish --model m.leaves.json --out-dir release/ --quantize --export-xgb
+go run ./cmd/leaves --error-format json sniff --data train.csv
+go run ./cmd/leaves train --data train.csv --objective reg:squarederror --cv 5 --runs runs.jsonl --tag baseline
+go run ./cmd/leaves train --data train.csv --from-run runs.jsonl --tag baseline --out-model m.leaves.json --metrics metrics.json
+go run ./cmd/leaves publish --model m.leaves.json --out-dir release/ --quantize --export-xgb --metrics metrics.json --emit-repro-script both
 ```
-
-`publish --quantize` 会持久化 int8 量化侧车（`model.quant.json`，可被 `predict` 重建并在 parity 门禁内对齐原模型）。
+`publish --quantize` 会持久化 int8 量化侧车（`model.quant.json`）；`manifest.json` 含 `reproduce` 复现命令与文件 sha256。
 
 ## 文档
 
-| 文档                                            | 说明                                                  |
-| ----------------------------------------------- | ----------------------------------------------------- |
-| [godoc](https://pkg.go.dev/github.com/linkerlin/leaves) | API 参考                                              |
-| [演进计划.md](演进计划.md)                       | 现状审计 + 未来 12 个月路线图（**v5.0**）             |
-| [TODO.md](TODO.md)                              | 已完成 backlog 存档（P0–T5 + v3.1 已清空）            |
-| [NOTES.md](NOTES.md)                            | 版本与兼容性说明（`AutoTransform`、Born、兼容说明）   |
-| [compatibility.md](compatibility.md)            | 外部 GBRT 库正确性校验                                |
-| [AGENTS.md](AGENTS.md)                          | 项目规约与计算底座决策                                |
-| [docs/testdata-matrix.md](docs/testdata-matrix.md) | 回归测试矩阵                                       |
-| [docs/benchmark-baseline.md](docs/benchmark-baseline.md) | Benchmark 与 CI 门禁                            |
-| [examples/wasm/README.md](examples/wasm/README.md)        | WASM 部署指南                              |
-| [examples/http/README.md](examples/http/README.md)        | HTTP embed 批预测 demo                       |
-| [examples/train_from_model/README.md](examples/train_from_model/README.md) | 嗅探 + objective 推断的训练 demo |
-| [demos/movielens/README.md](demos/movielens/README.md)    | MovieLens 100K 排序流程                     |
-| [leaves_test.go](leaves_test.go)                | 更多用法示例                                          |
+| 文档 | 说明 |
+|------|------|
+| [godoc](https://pkg.go.dev/github.com/linkerlin/leaves) | API 参考 |
+| [docs/api-surface.md](docs/api-surface.md) | **推荐 / 兼容 / 实验** API 分层与迁移 |
+| [docs/versioning.md](docs/versioning.md) | v2.x 允许改什么 |
+| [docs/release-checklist.md](docs/release-checklist.md) | **v2.1 发版检查表** |
+| [CHANGELOG.md](CHANGELOG.md) | 面向用户的变更记录（Unreleased → tag） |
+| [docs/interop-matrix.md](docs/interop-matrix.md) | 格式支持等级 |
+| [docs/backend-auto.md](docs/backend-auto.md) | BackendAuto 2.0 决策表 |
+| [docs/extension-points.md](docs/extension-points.md) | 自定义 objective/metric |
+| [演进计划.md](演进计划.md) | 库 12 个月路线（v5.4） |
+| [演进方案.md](演进方案.md) | Agent 闭环契约（已达成） |
+| [TODO.md](TODO.md) | 可执行 backlog |
+| [NOTES.md](NOTES.md) | 仍有效的兼容注记（AutoTransform 等） |
+| [compatibility.md](compatibility.md) | 外部 GBRT 库正确性矩阵 |
+| [AGENTS.md](AGENTS.md) | 项目规约 |
+| [docs/testdata-matrix.md](docs/testdata-matrix.md) | 回归矩阵 |
+| [docs/benchmark-baseline.md](docs/benchmark-baseline.md) | Bench 门禁 |
+| [examples/](examples/) | autotrain / wasm / http / train_from_model |
 
 ## 兼容性
 
-大部分特性都做过多版本 GBRT 库回归测试。完整的正确性矩阵（XGBoost 0.72–0.90、LightGBM 2.0.10–2.3.0）见 [compatibility.md](compatibility.md)。新行为与向后兼容说明放在 [NOTES.md](NOTES.md)。
+- **API 分层与迁移**：[docs/api-surface.md](docs/api-surface.md)  
+- **版本策略**：[docs/versioning.md](docs/versioning.md)  
+- **行为注记**（AutoTransform 默认等）：[NOTES.md](NOTES.md)  
+- **外部库版本矩阵**：[compatibility.md](compatibility.md)  
 
 ## 性能
 

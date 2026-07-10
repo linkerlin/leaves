@@ -52,6 +52,20 @@ func FromFileAuto(path string) (Matrix, error) {
 	return FromFile(path, DefaultFileLoadOptions())
 }
 
+// FromFileAutoNA 同 FromFileAuto，并应用 CSV NA 策略（error|skip-row）。
+// 非 CSV 格式忽略 naPolicy（LIBSVM/ranking 无单元格缺失语义）。
+func FromFileAutoNA(path, naPolicy string) (Matrix, error) {
+	opts := DefaultFileLoadOptions()
+	if naPolicy != "" {
+		p, err := NormalizeNAPolicy(naPolicy)
+		if err != nil {
+			return nil, err
+		}
+		opts.CSV.NAPolicy = p
+	}
+	return FromFile(path, opts)
+}
+
 // DetectFileFormat 返回嗅探到的格式（失败时回退扩展名）。
 func DetectFileFormat(path string) FileFormat {
 	sniff, err := SniffFileFormat(path)

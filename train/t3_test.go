@@ -82,6 +82,18 @@ func TestEarlyStopping(t *testing.T) {
 	if learner.BestRound() <= 0 {
 		t.Errorf("expected positive best round")
 	}
+	// ApplyBestRound 截断后 BoostRounds == BestRound
+	stopped := learner.BoostRounds()
+	br := learner.BestRound()
+	got := learner.ApplyBestRound()
+	if br > 0 && stopped > br {
+		if got != br {
+			t.Errorf("ApplyBestRound returned %d want best=%d (stopped was %d)", got, br, stopped)
+		}
+		if learner.BoostRounds() != br {
+			t.Errorf("after ApplyBestRound BoostRounds=%d want %d", learner.BoostRounds(), br)
+		}
+	}
 }
 
 func TestDARTTraining(t *testing.T) {

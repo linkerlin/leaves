@@ -26,10 +26,12 @@ const (
 	FormatXGBoostJSON
 	// FormatXGBoostUBJSON UBJSON 格式（XGBoost 3.x 默认二进制序列化）。
 	FormatXGBoostUBJSON
-	// FormatSklearn pickle 格式。
+	// FormatSklearn pickle 格式（实验性）。
 	FormatSklearn
 	// FormatLeavesJSON leaves 训练产出 JSON。
 	FormatLeavesJSON
+	// FormatONNX ONNX 占位（不实现导入；见 SupportOf）。
+	FormatONNX
 )
 
 // Backend 推理后端选择。

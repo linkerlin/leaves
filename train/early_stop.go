@@ -3,6 +3,7 @@ package train
 import (
 	"fmt"
 
+	"github.com/linkerlin/leaves/booster"
 	"github.com/linkerlin/leaves/data"
 	"github.com/linkerlin/leaves/metrics"
 )
@@ -56,6 +57,37 @@ func (es *EarlyStopping) update(score float64, round int) bool {
 
 // BestRound 返回最优轮次（1-based）。
 func (es *EarlyStopping) BestRound() int { return es.bestRound }
+
+// ApplyBestRound 将 GBTree 森林截断到早停 best_round（就地修改 booster 内 ForestIR）。
+// 无早停、best_round<=0 或非树模型时为 no-op，返回实际保留的 boosting 轮数。
+func (l *Learner) ApplyBestRound() int {
+	br := l.BestRound()
+	if br <= 0 || l.booster == nil {
+		return 0
+	}
+	if b, ok := l.booster.(*booster.GBTree); ok {
+		f := b.Forest()
+		if f == nil {
+			return 0
+		}
+		f.TruncateToNEstimators(br)
+		return f.NEstimators()
+	}
+	return 0
+}
+
+// BoostRounds 返回当前模型 boosting 轮数（树模型）；线性模型返回 0。
+func (l *Learner) BoostRounds() int {
+	if l == nil || l.booster == nil {
+		return 0
+	}
+	if b, ok := l.booster.(*booster.GBTree); ok {
+		if f := b.Forest(); f != nil {
+			return f.NEstimators()
+		}
+	}
+	return 0
+}
 
 func evalMetricOnSet(l *Learner, dm data.Matrix) (float64, error) {
 	if l.metric == nil || dm == nil {

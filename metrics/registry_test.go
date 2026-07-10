@@ -47,6 +47,36 @@ func TestNormalizeNameAliases(t *testing.T) {
 	}
 }
 
+// TestResolveViaRegistryOnly 锁定 Phase B：mlogloss/merror/ndcg@ 均走 Register。
+func TestResolveViaRegistryOnly(t *testing.T) {
+	m, err := metrics.Resolve("merror", metrics.Options{NumClass: 4})
+	if err != nil || m.Name() != "merror" {
+		t.Fatalf("merror: %v %#v", err, m)
+	}
+	// map@3 与 ndcg@3 前缀解析
+	m, err = metrics.Resolve("map@3", metrics.Options{Groups: []int{3, 3}})
+	if err != nil || m.Name() != "map" {
+		t.Fatalf("map@3: %v %#v", err, m)
+	}
+	// 自定义指标
+	metrics.Register("custom_metric", func(o metrics.Options) (metrics.Metric, error) {
+		return metrics.RMSE{}, nil
+	})
+	m, err = metrics.Resolve("custom_metric", metrics.Options{})
+	if err != nil || m.Name() != "rmse" {
+		t.Fatalf("custom: %v", err)
+	}
+	reg := map[string]bool{}
+	for _, n := range metrics.RegisteredNames() {
+		reg[n] = true
+	}
+	for _, need := range []string{"rmse", "mlogloss", "merror", "ndcg", "map"} {
+		if !reg[need] {
+			t.Errorf("RegisteredNames missing %q", need)
+		}
+	}
+}
+
 func TestXGBoostTrendRMSELogLoss(t *testing.T) {
 	// 与 XGBoost 同公式；训练 float 序差异允许 ±1e-9（单测级）。
 	yTrue := []float64{1, 2, 3}

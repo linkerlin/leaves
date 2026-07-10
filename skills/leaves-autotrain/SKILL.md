@@ -49,6 +49,7 @@ description: >-
 Agent 每轮决策前 `Get-Content runs.jsonl`（或读全文件）：
 
 - **选最优**：按 `maximize` 在所有记录里取 `value` 最优的一组 `params`，作为下一轮起点与发布候选。
+- **一键复现**：`leaves train --data X --from-run runs.jsonl --tag <最优tag> --out-model ...`（无 `--tag` 则自动取最优行；其余 CLI flag 覆盖账本）。
 - **避免重复**：若新提议的 `params` 已在账本中且更差，跳过。
 - **可恢复**：长会话中断后，Agent 从账本续起，无需重头搜。
 - **收敛判据**（§五）的「连续 3 次改进 <0.5%」直接读账本尾部判定。
@@ -170,7 +171,7 @@ leaves publish --model m.leaves.json --out-dir release/v1 `
 - `train` 与 `val/CV` 差距开始单调放大（过拟合主导），取此前的最佳 metrics.json。
 - 指标已达用户目标值。
 
-> **定稿前必做**：若用了 `--early-stop`，leaves 早停**不回滚模型**——saved model 是 final-round 而非 best-round。用 `--rounds <best_round>` 重训一次获取最优模型再 publish（见附录 walkthrough）。
+> **定稿语义（默认已安全）**：`--early-stop` 时默认 `--save-best`（可省略），磁盘模型截断为 **best_round**，metrics 中 `model_round == best_round`。仅当需要 final-round 轨迹研究时显式 `--save-best=false`。旧版「必须按 best_round 重训」流程已不需要。
 
 > 用 `--cv 5` 时以 `cv_mean` 为主、`cv_std` 看稳定性；`cv_std` 大说明对切分敏感，优先加正则而非堆轮数。
 
@@ -197,22 +198,33 @@ leaves publish --model m.leaves.json --out-dir release/v1 `
 - 不内置网格/贝义斯搜索（搜索逻辑在 Agent 文本里，不在 leaves 代码里——设计如此）
 - 不做分布式训练 / 实时在线学习 / serving 框架 / registry 推送
 - 召回算法 / 发牌策略属推荐系统，见 `recsys-*` SKILL
-- **数据要求**：数值型 CSV（表头可选，label 列名含 label/target/y/class 时自动识别）/ LIBSVM / 排序 TSV（qid label feat…）。CSV 须无缺失值（空单元格会报错）；非数值列须预先编码。
+- **数据要求**：数值型 CSV（表头可选，label 列名含 label/target/y/class 时自动识别）/ LIBSVM / 排序 TSV（qid label feat…）。默认 `--na-policy error`（空/NA 单元格失败）；可选 `skip-row` 丢弃含缺失的整行（**不做插补**）。非数值列须预先编码。`sniff` 的 `data_quality.warnings` 可预知常数列/不均衡/小样本。
+
+### 何时用 autotrain vs recsys
+
+| 场景 | 用哪套 |
+|------|--------|
+| 任意监督表 / 单模型调参发布 | **本 SKILL**（leaves-autotrain） |
+| 召回→LTR→发牌全链路 | [`recsys-orchestrator`](../recsys-orchestrator/SKILL.md) |
+| 仅精排（数据已是 ranking TSV） | autotrain 或 [`recsys-rank`](../recsys-rank/SKILL.md) |
 
 CLI flag 全表与 metrics.json schema 见 [`cli.md`](cli.md)。零代码 demo 见 [`examples/autotrain/README.md`](../../examples/autotrain/README.md)。
 
 ---
 
-## 附录：Agent 推理 walkthrough（`examples/autotrain/` 实战，数字已验证）
+## 附录：Agent 推理 walkthrough（`examples/autotrain/` 实战，数字已验证 2026-07-10）
 
-> Agent 拿到 `examples/autotrain/data/train.csv`（120 行、3 特征、回归，`y≈2x₀−1.5x₁+0.8x₂+微噪`）与 `holdout.csv`（30 行），按下面的推演完成全闭环。**以下数字均为实跑结果，可复现。**
+> Agent 拿到 `examples/autotrain/data/train.csv`（120 行、3 特征、回归，`y≈2x₀−1.5x₁+0.8x₂+微噪`）与 `holdout.csv`（30 行），按下面的推演完成全闭环。**以下数字均为实跑结果（seed=42），可复现。**
+>
+> **路径纪律**：`--out-model` 与 `--metrics` **必须不同路径**（否则 metrics 覆盖模型，inspect 失败）。推荐 `mN.leaves.json` + `mN.metrics.json`。
 
 ### 第 0 轮：识别任务
 
 ```
 > go run ./cmd/leaves sniff --data examples/autotrain/data/train.csv --metrics sniff.json
 → {"format":"csv","n_rows":120,"n_features":3,"feature_names":["x0","x1","x2"],
-   "label":{"kind":"regression"},"suggested_objective":"reg:squarederror","suggested_metric":"rmse"}
+   "label":{"kind":"regression"},"suggested_objective":"reg:squarederror","suggested_metric":"rmse",
+   "data_quality":{"numeric":true,"nan_cells":0,"warnings":[]}}
 ```
 **Agent 推理**：3 特征、连续标签 → `reg:squarederror` + `rmse`。无需问用户。
 
@@ -221,13 +233,13 @@ CLI flag 全表与 metrics.json schema 见 [`cli.md`](cli.md)。零代码 demo �
 ```
 > go run ./cmd/leaves train --data .../train.csv --objective reg:squarederror
   --cv 5 --rounds 40 --depth 4 --lr 0.2
-  --out-model m1.json --metrics m1.json --runs runs.jsonl --tag baseline
+  --out-model m1.leaves.json --metrics m1.metrics.json --runs runs.jsonl --tag baseline
 ```
-`m1.json`：
+`m1.metrics.json`：
 ```json
 {"metric":"rmse","value":0.2314,"maximize":false,"cv_mean":0.2314,"cv_std":0.0089}
 ```
-**Agent 推理**：CV 基线 0.2314，cv_std=0.0089（仅 3.8% of mean — 切分稳定）。此轮用 `--cv` 获取诚实估计；CV 路径不提供逐轮诊断。下一轮：切到 `--val` + `--early-stop` + `--emit-rounds` 做详细调参。
+**Agent 推理**：CV 基线 0.2314，cv_std=0.0089（约 3.8% of mean — 切分稳定）。此轮用 `--cv` 获取诚实估计；CV 路径不提供逐轮诊断。下一轮：切到 `--val` + `--early-stop` + `--emit-rounds` 做详细调参。
 
 ### 第 2 轮：加深 + 降学习率 + 早停（关键！）
 
@@ -235,26 +247,26 @@ CLI flag 全表与 metrics.json schema 见 [`cli.md`](cli.md)。零代码 demo �
 > go run ./cmd/leaves train --data .../train.csv --objective reg:squarederror
   --rounds 200 --depth 6 --lr 0.1
   --val .../holdout.csv --early-stop 20 --emit-rounds rounds.jsonl
-  --out-model m2.json --metrics m2.json --runs runs.jsonl --tag depth6_lr01
+  --out-model m2.leaves.json --metrics m2.metrics.json --runs runs.jsonl --tag depth6_lr01
 ```
-`m2.json`：
+`m2.metrics.json`：
 ```json
-{"value":0.218,"train_metric":0.1295,"best_round":43}
+{"value":0.218,"train_metric":0.139,"best_round":43,"stopped_round":63,"model_round":43}
 ```
-**Agent 推理**：best val=0.218（早停报告 best-round，非 final-round），比基线 0.2314 降 5.8% ✓。`best_round=43` 说明 200 轮里最优在第 43 轮——后续 157 轮都是过拟合。train=0.13 vs val=0.22 有差距但早停已卡住拐点。**这是目前最优。** 下一轮：试加正则看能否超越 0.218。
+**Agent 推理**：best val=0.218（早停报告 best-round），比基线 0.2314 降 5.8% ✓。`best_round=43` / `model_round=43`（默认 save-best 已截断）。`train_metric=0.139` 是 **截断后** 模型在训练集上的指标（非 final 200 轮）。**这是目前最优。** 下一轮：试加正则看能否超越 0.218。
 
 ### 第 3 轮：强正则（未加早停——反面教材）
 
 ```
 > go run ./cmd/leaves train ... --rounds 200 --depth 6 --lr 0.1 --lambda 5 --min-child-weight 10
   --val .../holdout.csv
-  --out-model m3.json --metrics m3.json --runs runs.jsonl --tag reg_strong
+  --out-model m3.leaves.json --metrics m3.metrics.json --runs runs.jsonl --tag reg_strong
 ```
-`m3.json`：
+`m3.metrics.json`：
 ```json
-{"value":0.2229,"train_metric":0.1293}
+{"value":0.2229,"train_metric":0.1293,"model_round":200}
 ```
-**Agent 推理**：val=0.2229 > R2 的 0.218 → 退化！**但注意**：R3 未加 `--early-stop`，val 是 final-round（第 200 轮）的值——已过拟合。如果加早停，best-round 的 val 可能更优。不过即便如此，强正则（lambda=5）没带来收益。读 `runs.jsonl`：最优仍是 `depth6_lr01`(0.218)。
+**Agent 推理**：val=0.2229 > R2 的 0.218 → 退化！**但注意**：R3 未加 `--early-stop`，val 是 final-round（第 200 轮）的值——已过拟合。强正则（lambda=5）没带来收益。读 `runs.jsonl`：最优仍是 `depth6_lr01`(0.218)。
 
 ### 第 4 轮：温和正则 + 采样（小数据上的反面教材）
 
@@ -262,33 +274,32 @@ CLI flag 全表与 metrics.json schema 见 [`cli.md`](cli.md)。零代码 demo �
 > go run ./cmd/leaves train ... --rounds 200 --depth 6 --lr 0.1 --lambda 2 --min-child-weight 3
   --subsample 0.8 --colsample 0.8
   --val .../holdout.csv
-  --out-model m4.json --metrics m4.json --runs runs.jsonl --tag reg_mild
+  --out-model m4.leaves.json --metrics m4.metrics.json --runs runs.jsonl --tag reg_mild
 ```
-`m4.json`：
+`m4.metrics.json`：
 ```json
 {"value":0.2309,"train_metric":0.129}
 ```
-**Agent 推理**：val=0.2309 → 最差！`subsample=0.8` 在仅 120 行的数据上砍掉了 20% 样本，信息损失大于抗过拟合收益。**教训：小数据（<1000 行）不要用 subsample/colsample。** 读 `runs.jsonl` 全账本：baseline(0.2314)→depth6_lr01(0.218)→reg_strong(0.2229)→reg_mild(0.2309)。
+**Agent 推理**：val=0.2309 → 最差！`subsample=0.8` 在仅 120 行上砍掉 20% 样本。**教训：小数据（<1000 行）不要用 subsample/colsample。** 账本：baseline(0.2314)→depth6_lr01(0.218)→reg_strong(0.2229)→reg_mild(0.2309)。
 
 ### 收敛判定与发布
 
-- 最优 run = `depth6_lr01`(value=0.218, best_round=43)。
+- 最优 run = `depth6_lr01`(value=0.218, best_round=43, model_round=43)。
 - 后续两轮均退化 → 收敛。
-- **关键**：R2 的 saved model 是 final-round（第 63 轮）而非 best-round（第 43 轮）。leaves 早停不回滚模型。**定稿前用 `--rounds 43` 重训一次**获取最优模型：
+- **定稿**：默认 save-best 已使磁盘模型 = best_round，**无需手写重训**。也可用一键复现：
+  `train --data ... --from-run runs.jsonl --tag depth6_lr01 --out-model final.leaves.json ...`
+  （params 从账本加载，CLI flag 可覆盖）。
 
 ```
-> go run ./cmd/leaves train --data .../train.csv --objective reg:squarederror
-  --rounds 43 --depth 6 --lr 0.1
-  --out-model m_final.json --metrics m_final.json
-> go run ./cmd/leaves inspect --model m_final.json
+> go run ./cmd/leaves inspect --model m2.leaves.json
   → {"objective":"reg:squarederror","n_trees":43,"num_features":3,"kind":"gbtree"} ✓
-> go run ./cmd/leaves publish --model m_final.json --out-dir release/v1 --version 1.0.0
-  --quantize --data .../train.csv --export-xgb --metrics m_final.json
+> go run ./cmd/leaves publish --model m2.leaves.json --out-dir release/v1 --version 1.0.0
+  --quantize --data .../train.csv --export-xgb --metrics m2.metrics.json
 ```
 
-产物：`model.leaves.json` + `model.quant.json`（量化侧车，parity pass✓）+ `model.xgb.json` + `manifest.json`。
+产物：`model.leaves.json` + `model.quant.json`（量化侧车，parity pass✓）+ `model.xgb.json` + `manifest.json`（含 `reproduce`）。
 
-**总结**：这个 walkthrough 展示了 Agent 如何**不写一行 Go**、全程读 JSON/JSONL、用 `--cv` 获取诚实基线、用 `--val --early-stop --emit-rounds` 做详细调参、用 `runs.jsonl` 选全局最优、最后用 `--rounds <best_round>` 重训定稿。三个真实教训：(1) 早停是关键（R2 赢在早停）；(2) 小数据别 subsample（R4 反证）；(3) 定稿要用 best_round 重训（leaves 早停不回滚模型）。
+**总结**：全程读 JSON/JSONL、零 Go 代码；(1) 早停关键；(2) 小数据别 subsample；(3) save-best 保证发布模型是最优轮；(4) `--out-model`≠`--metrics`；(5) `--from-run` 降低复现拼 flag 错误。
 
 ---
 
@@ -300,18 +311,20 @@ CLI flag 全表与 metrics.json schema 见 [`cli.md`](cli.md)。零代码 demo �
 sniff    --data FILE                    → suggested_objective / feature_names / label stats
 train    --data FILE --objective OBJ    → metrics.json + --out-model + --emit-rounds + --runs/--tag
              --cv K  --val FILE  --early-stop N
+             --from-run runs.jsonl [--tag NAME]  # 账本复现；CLI 覆盖优先
 eval     --model FILE --data FILE       → metrics.json（对比已存模型）
 predict  --model FILE --data FILE       → JSONL 或 --format csv（部署）
 inspect  --model FILE                   → {objective, kind, n_trees, num_features, n_output_groups}
 explain  --model FILE [--type importance] [--data FILE]  → 特征重要性/SHAP
-publish  --model FILE --out-dir DIR     → 本地工件包 + manifest（--quantize --export-xgb）
+publish  --model FILE --out-dir DIR     → 本地工件包 + manifest（--quantize --export-xgb --emit-repro-script）
 
 ⸻ 最常见 flags ⸻
 
 训练：--rounds --depth --lr --lambda --min-child-weight --subsample --colsample --seed
-早停：--early-stop N（配 --val）
+早停：--early-stop N（配 --val）；默认 --save-best（model_round==best_round）
 诊断：--emit-rounds rounds.jsonl --runs runs.jsonl --tag NAME
-发布：--quantize（出 model.quant.json 侧车）--export-xgb（出 model.xgb.json）--version
+发布：--quantize --export-xgb --emit-repro-script both --version
+缺失：--na-policy error|skip-row（默认 error；不做插补）
 
 ⸻ 优化铁律 ⸻
 

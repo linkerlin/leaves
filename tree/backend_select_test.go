@@ -1,30 +1,34 @@
 package tree
 
-import "testing"
+import (
+	"encoding/json"
+	"strings"
+	"testing"
+)
 
 func TestSelectBackendLinear(t *testing.T) {
 	caps := ModelCaps{IsLinear: true}
-	got := SelectBackend(caps, DefaultWorkloadHint())
-	if got != BackendNative {
-		t.Errorf("linear: got %v want Native", got)
+	d := SelectBackendExplained(caps, DefaultWorkloadHint())
+	if d.Backend != BackendNative || d.Rule != "linear_or_empty" {
+		t.Errorf("linear: got %+v", d)
 	}
 }
 
 func TestSelectBackendDefaultNumeric(t *testing.T) {
 	forest := makeForest()
 	caps := ModelCapsFromForest(forest, false, true)
-	got := SelectBackend(caps, WorkloadHint{BatchSize: 8})
-	if got != BackendNative {
-		t.Errorf("small batch: got %v want Native", got)
+	d := SelectBackendExplained(caps, WorkloadHint{BatchSize: 8})
+	if d.Backend != BackendNative || d.Rule != "small_batch" {
+		t.Errorf("small batch: got %+v", d)
 	}
 }
 
 func TestSelectBackendWASM(t *testing.T) {
 	forest := makeForest()
 	caps := ModelCapsFromForest(forest, false, true)
-	got := SelectBackend(caps, WorkloadHint{Target: DeployWASM})
-	if got != BackendBornCPU {
-		t.Errorf("WASM numeric: got %v want BornCPU", got)
+	d := SelectBackendExplained(caps, WorkloadHint{Target: DeployWASM})
+	if d.Backend != BackendBornCPU || d.Rule != "wasm_born_cpu" {
+		t.Errorf("WASM numeric: got %+v", d)
 	}
 }
 
@@ -36,27 +40,76 @@ func TestSelectBackendWASMCatSmall(t *testing.T) {
 	tir := BuildTreeIR(nodes, leafVals, nil, nil, 1)
 	forest := &ForestIR{NumFeatures: 1, NumOutputGroups: 1, Trees: []TreeIR{*tir}}
 	caps := ModelCapsFromForest(forest, false, false)
-	got := SelectBackend(caps, WorkloadHint{Target: DeployWASM})
-	if got != BackendNative {
-		t.Errorf("WASM catSmall: got %v want Native", got)
+	d := SelectBackendExplained(caps, WorkloadHint{Target: DeployWASM})
+	if d.Backend != BackendNative {
+		t.Errorf("WASM catSmall: got %+v want Native", d)
 	}
 }
 
 func TestSelectBackendLargeBatchGPU(t *testing.T) {
 	forest := makeForest()
 	caps := ModelCapsFromForest(forest, false, true)
-	got := SelectBackend(caps, WorkloadHint{BatchSize: 512, HasGPU: true})
-	if got != BackendBornGPU {
-		t.Errorf("large batch GPU: got %v want BornGPU", got)
+	d := SelectBackendExplained(caps, WorkloadHint{BatchSize: 512, HasGPU: true})
+	if BornWebGPUAvailable() {
+		if d.Backend != BackendBornGPU || d.Rule != "born_gpu" {
+			t.Errorf("large batch GPU available: got %+v", d)
+		}
+	} else {
+		// 非 Windows / 无 WebGPU：回落 BornCPU（2.0 改进，不再静默 Native）
+		if d.Backend != BackendBornCPU || d.Rule != "born_cpu_gpu_unavailable" {
+			t.Errorf("large batch GPU unavailable: got %+v want born_cpu", d)
+		}
 	}
 }
 
 func TestSelectBackendLargeBatchNoGPU(t *testing.T) {
 	forest := makeForest()
 	caps := ModelCapsFromForest(forest, false, true)
-	got := SelectBackend(caps, WorkloadHint{BatchSize: 512, HasGPU: false})
-	if got != BackendNative {
-		t.Errorf("large batch CPU: got %v want Native", got)
+	// 2.0：大 batch 无 GPU → BornCPU（旧版误回 Native）
+	d := SelectBackendExplained(caps, WorkloadHint{BatchSize: 512, HasGPU: false})
+	if d.Backend != BackendBornCPU || d.Rule != "born_cpu" {
+		t.Errorf("large batch CPU: got %+v want BornCPU", d)
+	}
+}
+
+func TestSelectBackendMidBatchCPU(t *testing.T) {
+	forest := makeForest()
+	caps := ModelCapsFromForest(forest, false, true)
+	d := SelectBackendExplained(caps, WorkloadHint{BatchSize: AutoBatchCPUThreshold})
+	if d.Backend != BackendBornCPU || d.Rule != "born_cpu" {
+		t.Errorf("mid batch: got %+v", d)
+	}
+	// 阈值下界 -1 → Native
+	d = SelectBackendExplained(caps, WorkloadHint{BatchSize: AutoBatchCPUThreshold - 1})
+	if d.Backend != BackendNative || d.Rule != "small_batch" {
+		t.Errorf("below cpu threshold: got %+v", d)
+	}
+}
+
+func TestSelectBackendSparse(t *testing.T) {
+	forest := makeForest()
+	caps := ModelCapsFromForest(forest, false, true)
+	d := SelectBackendExplained(caps, WorkloadHint{
+		BatchSize:     512,
+		HasGPU:        true,
+		SparseDensity: 0.05, // < AutoSparseDensityMax
+	})
+	if d.Backend != BackendNative || d.Rule != "sparse" {
+		t.Errorf("sparse: got %+v want Native/sparse", d)
+	}
+	// 0 = 未知 → 不触发稀疏
+	d = SelectBackendExplained(caps, WorkloadHint{BatchSize: 128, SparseDensity: 0})
+	if d.Backend != BackendBornCPU {
+		t.Errorf("SparseDensity=0 should not force Native: %+v", d)
+	}
+}
+
+func TestSelectBackendNonNumeric(t *testing.T) {
+	forest := makeForest()
+	caps := ModelCapsFromForest(forest, false, false) // not numeric only
+	d := SelectBackendExplained(caps, WorkloadHint{BatchSize: 512, HasGPU: true})
+	if d.Backend != BackendNative || d.Rule != "non_numeric_or_unsupported" {
+		t.Errorf("non-numeric: got %+v", d)
 	}
 }
 
@@ -75,5 +128,67 @@ func TestResolveBackendAuto(t *testing.T) {
 	got := ResolveBackend(BackendAuto, caps, WorkloadHint{Target: DeployWASM})
 	if got != BackendBornCPU {
 		t.Errorf("auto WASM: got %v want BornCPU", got)
+	}
+}
+
+func TestBackendNameAndBenchRecord(t *testing.T) {
+	if BackendName(BackendNative) != "native" || BackendName(BackendBornCPU) != "born_cpu" {
+		t.Fatal(BackendName(BackendNative), BackendName(BackendBornCPU))
+	}
+	r := NewBenchRecord("predict/smoke/batch1", BackendNative, 1, 12345)
+	r.AutoRule = "small_batch"
+	r.Iters = 100
+	b, err := r.MarshalJSONL()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var m map[string]any
+	if err := json.Unmarshal(b, &m); err != nil {
+		t.Fatal(err)
+	}
+	if int(m["schema_version"].(float64)) != BenchRecordSchemaVersion {
+		t.Fatalf("schema: %v", m["schema_version"])
+	}
+	if m["backend"] != "native" || m["auto_rule"] != "small_batch" {
+		t.Fatalf("%s", b)
+	}
+	if !strings.Contains(string(b), "ns_per_op") {
+		t.Fatal(string(b))
+	}
+}
+
+// TestBackendAutoDecisionTable 锁定 2.0 决策表核心行（文档对照）。
+func TestBackendAutoDecisionTable(t *testing.T) {
+	forest := makeForest()
+	num := ModelCapsFromForest(forest, false, true)
+	table := []struct {
+		hint WorkloadHint
+		want Backend
+		rule string
+	}{
+		{DefaultWorkloadHint(), BackendNative, "small_batch"},
+		{WorkloadHint{BatchSize: 1}, BackendNative, "small_batch"},
+		{WorkloadHint{BatchSize: 63}, BackendNative, "small_batch"},
+		{WorkloadHint{BatchSize: 64}, BackendBornCPU, "born_cpu"},
+		{WorkloadHint{BatchSize: 255, HasGPU: true}, BackendBornCPU, "born_cpu"},
+		{WorkloadHint{BatchSize: 256, HasGPU: false}, BackendBornCPU, "born_cpu"},
+		{WorkloadHint{Target: DeployWASM, BatchSize: 1}, BackendBornCPU, "wasm_born_cpu"},
+		{WorkloadHint{BatchSize: 1000, SparseDensity: 0.1}, BackendNative, "sparse"},
+	}
+	for _, row := range table {
+		d := SelectBackendExplained(num, row.hint)
+		if d.Backend != row.want || d.Rule != row.rule {
+			t.Errorf("hint=%+v got backend=%v rule=%q want %v / %q (%s)",
+				row.hint, d.Backend, d.Rule, row.want, row.rule, d.Reason)
+		}
+	}
+	// GPU 大 batch 行：随平台分叉
+	d := SelectBackendExplained(num, WorkloadHint{BatchSize: 256, HasGPU: true})
+	if BornWebGPUAvailable() {
+		if d.Rule != "born_gpu" {
+			t.Errorf("want born_gpu got %+v", d)
+		}
+	} else if d.Rule != "born_cpu_gpu_unavailable" {
+		t.Errorf("want born_cpu_gpu_unavailable got %+v", d)
 	}
 }

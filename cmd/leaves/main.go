@@ -5,7 +5,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"os"
 
@@ -15,16 +14,24 @@ import (
 const usage = `leaves — Agent 友好的训练/评估/预测/发布 CLI（SKILL 驱动，无 MCP）
 
 用法:
-  leaves train    --data PATH --objective NAME [flags]   训练，输出模型 + metrics.json
-  leaves eval     --model PATH --data PATH [flags]        评估已存模型
-  leaves predict  --model PATH --data PATH --out PATH     批预测 → JSONL
-  leaves inspect  --model PATH [--metrics PATH]           模型元数据 → JSON
-  leaves sniff    --data PATH [--metrics PATH]            数据画像 → 推荐 objective
-  leaves explain  --model PATH [--type importance|shap]   特征重要性 / SHAP
-  leaves publish  --model PATH --out-dir DIR [flags]      打成本地工件包 + manifest
+  leaves [--error-format text|json] <subcommand> [flags]
 
-闭环：train(--cv) → 读 metrics.json → 按 SKILL 决策表调参 → 再训 → 收敛 → publish
-详见 skills/leaves-autotrain/cli.md（flag 全表 + metrics.json schema）
+子命令:
+  train    --data PATH --objective NAME [flags]   训练，输出模型 + metrics.json
+           --from-run / --na-policy / --save-best …
+  eval     --model PATH --data PATH [flags]        评估已存模型
+  predict  --model PATH --data PATH --out PATH     批预测 → JSONL
+  inspect  --model PATH [--metrics PATH]           模型元数据 → JSON
+  sniff    --data PATH [--metrics PATH]            数据画像 → 推荐 objective
+  explain  --model PATH [--type importance|shap]   特征重要性 / SHAP
+  publish  --model PATH --out-dir DIR [flags]      本地工件包（--emit-repro-script）
+
+全局:
+  --error-format text|json   错误输出格式（默认 text；json 供 Agent 解析）
+  环境变量 LEAVES_ERROR_FORMAT=json 等价
+
+闭环：sniff → train(--cv/--runs) → 读 metrics → 调参 → 收敛 → publish
+详见 skills/leaves-autotrain/cli.md
 `
 
 type usageError string
@@ -34,40 +41,36 @@ func (e usageError) Error() string { return string(e) }
 func errUsage(s string) error { return usageError(s) }
 
 func main() {
-	if len(os.Args) < 2 {
+	args := stripGlobalFlags(os.Args[1:])
+	if len(args) < 1 {
 		fmt.Fprint(os.Stderr, usage)
 		os.Exit(1)
 	}
 	var err error
-	switch os.Args[1] {
+	switch args[0] {
 	case "train":
-		err = cmdTrain(os.Args[2:])
+		err = cmdTrain(args[1:])
 	case "eval":
-		err = cmdEval(os.Args[2:])
+		err = cmdEval(args[1:])
 	case "predict":
-		err = cmdPredict(os.Args[2:])
+		err = cmdPredict(args[1:])
 	case "inspect":
-		err = cmdInspect(os.Args[2:])
+		err = cmdInspect(args[1:])
 	case "sniff":
-		err = cmdSniff(os.Args[2:])
+		err = cmdSniff(args[1:])
 	case "explain":
-		err = cmdExplain(os.Args[2:])
+		err = cmdExplain(args[1:])
 	case "publish":
-		err = cmdPublish(os.Args[2:])
+		err = cmdPublish(args[1:])
 	case "-h", "--help", "help":
 		fmt.Print(usage)
 		return
 	default:
-		fmt.Fprintf(os.Stderr, "未知子命令: %s\n\n%s", os.Args[1], usage)
-		os.Exit(1)
+		err = errAgent("usage", fmt.Sprintf("未知子命令: %s", args[0]),
+			"合法子命令: train|eval|predict|inspect|sniff|explain|publish", false)
+		os.Exit(writeError(err))
 	}
 	if err != nil {
-		var ue usageError
-		if errors.As(err, &ue) {
-			fmt.Fprintf(os.Stderr, "leaves: 参数错误: %v\n", err)
-			os.Exit(1)
-		}
-		fmt.Fprintf(os.Stderr, "leaves: %v\n", err)
-		os.Exit(2)
+		os.Exit(writeError(err))
 	}
 }

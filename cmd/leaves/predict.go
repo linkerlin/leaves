@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/linkerlin/leaves/data"
 	leavesio "github.com/linkerlin/leaves/io"
 )
 
@@ -20,6 +19,7 @@ func cmdPredict(args []string) error {
 	out := fs.String("out", "", "输出 JSONL 路径（必需）")
 	objective := fs.String("objective", "", "目标函数；binary:logistic 时附 probability")
 	format := fs.String("format", "jsonl", "jsonl|csv（默认 jsonl；csv 出单 prediction 列）")
+	naPolicy := fs.String("na-policy", "error", "缺失值策略：error|skip-row")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -40,9 +40,9 @@ func cmdPredict(args []string) error {
 	}
 	defer m.Close()
 
-	dm, err := data.FromFileAuto(*dataPath)
+	dm, err := loadMatrix(*dataPath, *naPolicy)
 	if err != nil {
-		return fmt.Errorf("load data: %w", err)
+		return err
 	}
 	vals, err := denseVals(dm)
 	if err != nil {

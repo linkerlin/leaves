@@ -19,7 +19,7 @@
 | `BackendNative` | 纯 Go 标量遍历（golden） |
 | `BackendBornCPU` | Born CPU 后端（SIMD） |
 | `BackendBornGPU` | Born WebGPU 后端（Windows DX12） |
-| `BackendAuto` | 按 workload 在 Native / Born 间选择 |
+| `BackendAuto` | 按 workload 选型（2.0：batch≥64 BornCPU；≥256+GPU BornGPU；稀疏/小批 Native）；见 `docs/backend-auto.md` |
 
 ## Agent 自动化（SKILL 驱动，无 MCP）
 
@@ -35,8 +35,13 @@ Agent 通过 **SKILL 指导 + shell CLI + metrics.json** 完成全自动「训�
 
 ## 文档
 
-- 战略路线图：[`演进计划.md`](演进计划.md) v5.0
-- 可执行 backlog：[`TODO.md`](TODO.md)（P0–T5 + v3.1 已完成）
+- 战略路线图：[`演进计划.md`](演进计划.md) v5.4（Phase A–E 第一轮已落地）
+- **Agentic 收口方案**：[`演进方案.md`](演进方案.md) v1.4（Phase 0–5 已达成）
+- API 分层 / 发版：[`docs/api-surface.md`](docs/api-surface.md)、[`docs/release-checklist.md`](docs/release-checklist.md)、[`docs/versioning.md`](docs/versioning.md)、[`CHANGELOG.md`](CHANGELOG.md)
+- 扩展点：[`docs/extension-points.md`](docs/extension-points.md)
+- BackendAuto：[`docs/backend-auto.md`](docs/backend-auto.md)
+- 互操作等级：[`docs/interop-matrix.md`](docs/interop-matrix.md)
+- 可执行 backlog：[`TODO.md`](TODO.md)
 - 回归矩阵：[`docs/testdata-matrix.md`](docs/testdata-matrix.md)
 
 ## 格式与 IO（当前）

@@ -1,6 +1,7 @@
 # testdata 回归矩阵
 
 > 格式 × 后端 × batch 门禁一览（2026-06-15，**v4.3** 嗅探/AutoTransform）。  
+> **支持等级**（稳定/实验/占位）见 [`interop-matrix.md`](interop-matrix.md)。  
 > 运行：`go test ./... -count=1`；Born 矩阵见 `born_parity_format_test.go`。
 
 ## 推理 parity（加载 → 预测）
@@ -22,7 +23,8 @@
 | XGB dart JSON | `xgboost_dart_smoke.json` | 内嵌 | `io/xgb_interop_test.go`（嵌套 gbtree） | 同上 | 同上 |
 | XGB multiclass JSON | `xgboost_multiclass_smoke.json` | 内嵌 | `io/xgb_interop_test.go`（softprob） | 同上 | 同上 |
 | XGB 二进制 | `xgagaricus.model` | 内嵌 | `io/xgb_bin.go` + `io/xgb_interop_test.go` | 同上 | 同上 |
-| SK pickle | `sk_gradient_boosting_classifier.model` | `sk_gradient_boosting_classifier_test.libsvm` | 同上 | 同上 | 同上 |
+| SK pickle（**实验**） | `sk_gradient_boosting_classifier.model` | `sk_gradient_boosting_classifier_test.libsvm` | 同上 | 同上 | 同上 |
+| ONNX（**占位**） | — | — | `io.LoadONNX` / `TestLoadONNX*` | — | 不进 parity |
 
 \* BornGPU 仅在 Windows WebGPU 可用时运行；不可用时跳过。
 

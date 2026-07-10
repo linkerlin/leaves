@@ -9,6 +9,14 @@ import (
 	"strings"
 )
 
+// NA 策略（WP-20）：仅处理缺失，不做插补。
+const (
+	// NAPolicyError 遇缺失单元格报错（默认）。
+	NAPolicyError = "error"
+	// NAPolicySkipRow 跳过含缺失的整行。
+	NAPolicySkipRow = "skip-row"
+)
+
 // CSVOptions CSV 加载选项。
 type CSVOptions struct {
 	HasHeader      bool
@@ -16,6 +24,36 @@ type CSVOptions struct {
 	LabelCol       int  // 标签列索引（需 HasLabelColumn）
 	Delim          rune
 	SkipCols       []int
+	// NAPolicy：error（默认）| skip-row。空串等同 error。
+	// 缺失 = 空单元格或 nan/na/null/none/n/a/?（大小写不敏感）。
+	// 非数值且非缺失 token 始终报错（不做类别编码）。
+	NAPolicy string
+}
+
+// IsMissingCell 判断单元格是否为缺失标记（空或常见 NA token）。
+func IsMissingCell(s string) bool {
+	t := strings.TrimSpace(s)
+	if t == "" {
+		return true
+	}
+	switch strings.ToLower(t) {
+	case "nan", "na", "null", "none", "n/a", "?":
+		return true
+	default:
+		return false
+	}
+}
+
+// NormalizeNAPolicy 校验并规范化策略；非法值返回 error。
+func NormalizeNAPolicy(p string) (string, error) {
+	switch strings.ToLower(strings.TrimSpace(p)) {
+	case "", NAPolicyError:
+		return NAPolicyError, nil
+	case NAPolicySkipRow, "skip", "skiprow", "skip_row":
+		return NAPolicySkipRow, nil
+	default:
+		return "", fmt.Errorf("data: invalid na-policy %q (want error|skip-row)", p)
+	}
 }
 
 // FromCSV 从 CSV 文件加载 Dense 矩阵（数值列）。
@@ -30,6 +68,10 @@ func FromCSV(path string, opts CSVOptions) (*Dense, error) {
 
 // FromCSVReader 从 Reader 解析 CSV。
 func FromCSVReader(r io.Reader, opts CSVOptions) (*Dense, error) {
+	policy, err := NormalizeNAPolicy(opts.NAPolicy)
+	if err != nil {
+		return nil, err
+	}
 	delim := ','
 	if opts.Delim != 0 {
 		delim = opts.Delim
@@ -51,6 +93,8 @@ func FromCSVReader(r io.Reader, opts CSVOptions) (*Dense, error) {
 	var labels []float64
 	var fnames []string
 	first := true
+	lineNo := 0
+	skipped := 0
 	for {
 		rec, err := reader.Read()
 		if err == io.EOF {
@@ -59,6 +103,7 @@ func FromCSVReader(r io.Reader, opts CSVOptions) (*Dense, error) {
 		if err != nil {
 			return nil, fmt.Errorf("data: csv read: %w", err)
 		}
+		lineNo++
 		if first && opts.HasHeader {
 			for i, s := range rec {
 				if !skip[i] {
@@ -69,30 +114,39 @@ func FromCSVReader(r io.Reader, opts CSVOptions) (*Dense, error) {
 			continue
 		}
 		first = false
-		var feats []float64
-		for i, s := range rec {
-			if skip[i] {
-				if opts.HasLabelColumn && i == opts.LabelCol {
-					v, err := strconv.ParseFloat(strings.TrimSpace(s), 64)
-					if err != nil {
-						return nil, fmt.Errorf("data: label col %d: %w", i, err)
-					}
-					labels = append(labels, v)
-				}
+
+		feats, label, hasLabel, miss, perr := parseCSVRecord(rec, skip, opts)
+		if perr != nil {
+			return nil, fmt.Errorf("data: line %d: %w", lineNo, perr)
+		}
+		if miss {
+			if policy == NAPolicySkipRow {
+				skipped++
 				continue
 			}
-			v, err := strconv.ParseFloat(strings.TrimSpace(s), 64)
-			if err != nil {
-				return nil, fmt.Errorf("data: col %d %q: %w", i, s, err)
-			}
-			feats = append(feats, v)
+			return nil, fmt.Errorf("data: line %d: missing value (empty cell or NA token); use na-policy=skip-row to drop row", lineNo)
 		}
 		if len(feats) == 0 {
 			continue
 		}
 		rows = append(rows, feats)
+		if opts.HasLabelColumn && opts.LabelCol >= 0 {
+			if !hasLabel {
+				// 标签列越界等：与缺失同等处理
+				if policy == NAPolicySkipRow {
+					rows = rows[:len(rows)-1]
+					skipped++
+					continue
+				}
+				return nil, fmt.Errorf("data: line %d: missing label", lineNo)
+			}
+			labels = append(labels, label)
+		}
 	}
 	if len(rows) == 0 {
+		if skipped > 0 {
+			return nil, fmt.Errorf("data: csv empty after skipping %d rows with missing values", skipped)
+		}
 		return nil, fmt.Errorf("data: csv empty")
 	}
 	cols := len(rows[0])
@@ -114,5 +168,36 @@ func FromCSVReader(r io.Reader, opts CSVOptions) (*Dense, error) {
 		return nil, err
 	}
 	d.FNames = fnames
+	d.SkippedRows = skipped
 	return d, nil
+}
+
+// parseCSVRecord 解析一行；miss=true 表示有缺失单元格。
+func parseCSVRecord(rec []string, skip map[int]bool, opts CSVOptions) (feats []float64, label float64, hasLabel, miss bool, err error) {
+	for i, s := range rec {
+		cell := strings.TrimSpace(s)
+		if skip[i] {
+			if opts.HasLabelColumn && i == opts.LabelCol {
+				if IsMissingCell(cell) {
+					return nil, 0, false, true, nil
+				}
+				v, e := strconv.ParseFloat(cell, 64)
+				if e != nil {
+					return nil, 0, false, false, fmt.Errorf("label col %d %q: %w", i, s, e)
+				}
+				label = v
+				hasLabel = true
+			}
+			continue
+		}
+		if IsMissingCell(cell) {
+			return nil, 0, false, true, nil
+		}
+		v, e := strconv.ParseFloat(cell, 64)
+		if e != nil {
+			return nil, 0, false, false, fmt.Errorf("col %d %q: non-numeric: %w", i, s, e)
+		}
+		feats = append(feats, v)
+	}
+	return feats, label, hasLabel, false, nil
 }

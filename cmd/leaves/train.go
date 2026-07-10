@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/linkerlin/leaves/data"
 	"github.com/linkerlin/leaves/train"
@@ -13,9 +14,12 @@ import (
 
 func cmdTrain(args []string) error {
 	fs := flag.NewFlagSet("train", flag.ContinueOnError)
-	fs.Usage = func() { fmt.Fprintln(fs.Output(), "用法: leaves train --data PATH --objective NAME [flags]") }
+	fs.Usage = func() {
+		fmt.Fprintln(fs.Output(), "用法: leaves train --data PATH --objective NAME [flags]")
+		fmt.Fprintln(fs.Output(), "      leaves train --data PATH --from-run runs.jsonl [--tag NAME] [覆盖 flags]")
+	}
 	dataPath := fs.String("data", "", "训练数据路径（必需，自动嗅探）")
-	objective := fs.String("objective", "", "目标函数（必需）")
+	objective := fs.String("objective", "", "目标函数（必需；可由 --from-run 账本补全）")
 	evalMetric := fs.String("eval-metric", "", "评估指标（默认按 objective）")
 	numClass := fs.Int("num-class", 0, "多分类类数（multi:* 必需）")
 	rounds := fs.Int("rounds", 50, "boosting 轮数")
@@ -37,16 +41,46 @@ func cmdTrain(args []string) error {
 	outModel := fs.String("out-model", "", "输出 leaves.json 路径")
 	metricsPath := fs.String("metrics", "", "输出 metrics.json（空=stdout）")
 	runsPath := fs.String("runs", "", "运行账本 JSONL（追加本次记录，Agent 优化记忆）")
-	tag := fs.String("tag", "", "本次运行标签（写入账本，便于回溯）")
+	tag := fs.String("tag", "", "本次运行标签（写入账本；与 --from-run 联用时兼作选行键）")
 	emitRounds := fs.String("emit-rounds", "", "逐轮指标 JSONL（Agent 学习曲线诊断用）")
+	saveBest := fs.Bool("save-best", true, "早停时截断并保存 best_round 模型（默认 true；false=保留 final-round）")
+	fromRun := fs.String("from-run", "", "从 runs.jsonl 加载 params 作默认（CLI 覆盖优先；无 --tag 则取最优行）")
+	naPolicy := fs.String("na-policy", "error", "缺失值策略：error（默认，遇空/NA 失败）| skip-row（丢弃含缺失的整行）")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
+	// WP-17：--from-run 填未显式设置的旋钮；显式 CLI flag 始终优先。
+	if *fromRun != "" {
+		rec, err := loadRunFromLedger(*fromRun, *tag)
+		if err != nil {
+			return err
+		}
+		set := map[string]bool{}
+		fs.Visit(func(f *flag.Flag) { set[f.Name] = true })
+		// 选中账本行后，本次新 run 的 --tag 若未另给，保留选中 tag 便于追溯；
+		// 但用户若未传 --tag，from-run 选最优时 tag 已是最优行的 tag——不覆盖用户新 tag。
+		// 注意：tag 在 load 时已用于选行，这里不再改 *tag。
+		applyParamsIfUnset(set, rec.Params, objective, evalMetric,
+			numClass, rounds, depth, maxLeaves,
+			lr, lambda, minChildWeight, gamma,
+			maxBin, subsample, colsample, treeMethod,
+			ndcgK, cv, earlyStop, seed, rec.Objective)
+		if *tag == "" && rec.Tag != "" {
+			// 未指定 tag：沿用源 tag 加后缀，避免账本混淆同名
+			*tag = rec.Tag + "_repro"
+		}
+		fmt.Fprintf(os.Stderr, "leaves: --from-run 已加载 tag=%q value=%g（CLI 显式 flag 优先）\n", rec.Tag, rec.Value)
+	}
 	if *dataPath == "" || *objective == "" {
-		return errUsage("--data 与 --objective 必需")
+		return errUsage("--data 与 --objective 必需（--objective 也可由 --from-run 账本提供）")
+	}
+	// 防 Agent 踩坑：同一路径会先 Save 再被 metrics 覆盖，inspect 必失败。
+	if *outModel != "" && *metricsPath != "" && filepath.Clean(*outModel) == filepath.Clean(*metricsPath) {
+		return errUsage("--out-model 与 --metrics 不能是同一路径（metrics 会覆盖模型文件）")
 	}
 	if (*objective == "multi:softmax" || *objective == "multi:softprob") && *numClass < 2 {
-		return errUsage("multi:* 目标需要 --num-class >= 2")
+		return errAgent("objective_mismatch", "multi:* 目标需要 --num-class >= 2",
+			"先 leaves sniff --data ... 取 label.n_unique 作为 --num-class", false)
 	}
 	metric := *evalMetric
 	if metric == "" {
@@ -62,9 +96,9 @@ func cmdTrain(args []string) error {
 		}
 	}
 
-	dm, err := data.FromFileAuto(*dataPath)
+	dm, err := loadMatrix(*dataPath, *naPolicy)
 	if err != nil {
-		return fmt.Errorf("load train: %w", err)
+		return err
 	}
 
 	cfg := train.Config{
@@ -92,15 +126,24 @@ func cmdTrain(args []string) error {
 	if nc < 1 {
 		nc = 1
 	}
+	ndcgKParam := 0
+	if strings.HasPrefix(*objective, "rank:") {
+		ndcgKParam = *ndcgK
+	}
 	doc := metricsDoc{
 		Objective: *objective,
 		Metric:    metric,
 		NRows:     dm.NumRow(),
+		NFeatures: dm.NumCol(),
 		Maximize:  metricMaximize(metric, nc, groupsOf(dm)),
-		Params: &paramsRecord{
-			Rounds: *rounds, Depth: *depth, MaxLeaves: *maxLeaves,
-			LR: *lr, Lambda: *lambda, TreeMethod: *treeMethod, Seed: *seed,
-		},
+		Params: newParamsRecord(
+			*rounds, *depth, *maxLeaves,
+			*lr, *lambda, *minChildWeight, *gamma,
+			*maxBin, *subsample, *colsample,
+			*treeMethod, *seed,
+			*numClass, ndcgKParam, *earlyStop, *cv,
+			metric,
+		),
 	}
 
 	// 交叉验证路径：CV 出诚实估计；若要存模型再在全量上单跑一次。
@@ -135,9 +178,9 @@ func cmdTrain(args []string) error {
 	// 单次训练路径。
 	var valDM data.Matrix
 	if *valPath != "" {
-		valDM, err = data.FromFileAuto(*valPath)
+		valDM, err = loadMatrix(*valPath, *naPolicy)
 		if err != nil {
-			return fmt.Errorf("load val: %w", err)
+			return err
 		}
 		cfg.EvalSet = valDM
 		if *earlyStop > 0 {
@@ -173,25 +216,35 @@ func cmdTrain(args []string) error {
 		return err
 	}
 
+	// 早停后：记录实际训练轮数，可选截断到 best_round 再 Save（WP-03）。
+	doc.StoppedRound = learner.BoostRounds()
+	if cfg.EarlyStop != nil {
+		doc.BestRound = cfg.EarlyStop.BestRound()
+		if doc.BestRound > 0 {
+			doc.Value = cfg.EarlyStop.BestScore // 报告 best-round val，而非 final-round
+		}
+		if *saveBest && doc.BestRound > 0 {
+			learner.ApplyBestRound()
+		}
+	}
+	doc.ModelRound = learner.BoostRounds()
+
 	trainScore, err := learner.Eval(dm)
 	if err != nil {
 		return fmt.Errorf("eval train: %w", err)
 	}
 	doc.TrainMetric = trainScore
-	doc.Value = trainScore
-	if valDM != nil {
+	if valDM == nil && (cfg.EarlyStop == nil || doc.BestRound <= 0) {
+		doc.Value = trainScore
+	}
+	if valDM != nil && (cfg.EarlyStop == nil || doc.BestRound <= 0) {
 		vScore, err := learner.Eval(valDM)
 		if err != nil {
 			return fmt.Errorf("eval val: %w", err)
 		}
 		doc.Value = vScore
 	}
-	if cfg.EarlyStop != nil {
-		doc.BestRound = cfg.EarlyStop.BestRound()
-		if doc.BestRound > 0 {
-			doc.Value = cfg.EarlyStop.BestScore // 报告 best-round val，而非 final-round（过拟合）val
-		}
-	}
+	// 有 early-stop 时 value 已是 BestScore；截断后 val 应与之对齐（可选复核，不覆盖 BestScore）。
 
 	if *outModel != "" {
 		if err := learner.Save(*outModel); err != nil {

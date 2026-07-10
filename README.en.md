@@ -1,6 +1,6 @@
 # leaves
 
-**English** | [中文](README.zh.md)
+**English** | [中文](README.md)
 
 [![Version](https://img.shields.io/badge/version-v2.x--dev-blue.svg)](https://semver.org)
 [![CI](https://github.com/linkerlin/leaves/actions/workflows/ci.yml/badge.svg)](https://github.com/linkerlin/leaves/actions/workflows/ci.yml)
@@ -26,9 +26,10 @@ scikit-learn models out of the box, and ships a complete in-Go training loop
   reference model.
 
 See [docs/testdata-matrix.md](docs/testdata-matrix.md) for the regression
-matrix, [演进计划.md](演进计划.md) for the current-state audit and next
-12-month roadmap (v5.0), and [TODO.md](TODO.md) for the historical
-executable backlog.
+matrix, [docs/api-surface.md](docs/api-surface.md) for recommended vs compat
+APIs, [演进计划.md](演进计划.md) (v5.4) for the library roadmap,
+[演进方案.md](演进方案.md) for the Agentic contract, and
+[docs/release-checklist.md](docs/release-checklist.md) before tagging a release.
 
 ## Features
 
@@ -125,21 +126,23 @@ func main() {
 Legacy aliases still work: `leaves.LGEnsembleFromFile(path, loadTransformation)`
 and `leaves.XGEnsembleFromFile(...)`. Their behaviour is unchanged.
 
-### Format auto-detection (v4.3)
+### Format auto-detection and support tiers
 
-`io.LoadFromFile` (and `io.DetectFormat`) picks the right backend from the
-extension *and* a header probe. Classic XGBoost binaries have no magic
-number, so they are recognised by content sniff; `.pkl` / `.joblib` resolve
-to scikit-learn; numeric tables misnamed as `.txt` model files raise a
-clear error.
+`io.LoadFromFile` / `DetectFormat` use extension + header probe. Full support
+tiers (stable / experimental / placeholder): [docs/interop-matrix.md](docs/interop-matrix.md).
 
-| Format          | Extension                | Notes                                                                 |
-| --------------- | ------------------------ | --------------------------------------------------------------------- |
-| XGBoost JSON    | `.json`                  | 3.x `save_model` default; `base_score` auto-shifted for logistic.     |
-| XGBoost UBJSON  | `.ubj`                   | Binary equivalent of JSON; predictions bit-match the JSON path.       |
-| XGBoost binary  | (none) / `.bin` / `.model` | Classic `xgb.Booster.save_model`; header probe when no magic number. |
-| LightGBM        | `.txt` / `.model` / `.json` | Text and JSON both supported.                                       |
-| scikit-learn    | `.pkl` / `.joblib`       | Pickle magic number recognised.                                       |
+| Format | Tier | Extension / probe | Notes |
+| ------ | ---- | ----------------- | ----- |
+| leaves.json | **stable** | `leaves_version` | Primary train artifact; preferred deploy format |
+| XGBoost JSON | **stable** | `.json` + `learner` | 3.x default; logistic `base_score` → margin |
+| XGBoost UBJSON | **stable** | `.ubj` | Predictions match JSON path |
+| XGBoost binary | **stable** | `binf` / header | Prefer JSON/UBJ for new work |
+| LightGBM text/JSON | **stable** | `tree=` / `tree_info` | Both text and JSON |
+| scikit-learn | **experimental** | `.pkl` / `.joblib` | Narrow protocol; export to XGB/leaves JSON for production |
+| ONNX | **placeholder** | `.onnx` | Not implemented; convert first |
+
+Load failures return `*io.LoadError` with an actionable `hint:`. Numeric tables
+misnamed as `.txt` models point you to `data.FromFile`.
 
 ```go
 import "github.com/linkerlin/leaves/io"
@@ -274,27 +277,30 @@ Environment override: `LEAVES_TRAIN_ACCEL=auto|webgpu|born_cpu|cpu`.
 
 Inference and training acceleration sit on
 [Born](https://github.com/born-ml/born) (CPU SIMD + WebGPU). `NativeEngine`
-is the golden reference; `BackendAuto` may dispatch to `BackendBornCPU` /
-`BackendBornGPU` (Windows DX12) when it pays off.
+is the golden reference; **BackendAuto 2.0** dispatches BornCPU / BornGPU by
+workload. Full decision table: [docs/backend-auto.md](docs/backend-auto.md).
 
 ```go
 m, _ := leaves.LoadFromFile("model.json", &io.LoadOptions{
-	Backend: io.BackendBornCPU,
+	Backend:  io.BackendAuto,
+	Workload: tree.WorkloadHint{BatchSize: 256, HasGPU: true},
 })
+// Explained: tree.SelectBackendExplained(caps, hint) → Rule / Reason
 ```
 
 The parity gate `TestBornParityFormatMatrix` covers LGB text/JSON, XGB
 bin/json/ubj, scikit-learn pickle × batch `{1, 16, 256}` × `BornCPU` /
 `BornGPU` at tolerance `1e-5` relative to Native.
 
-### Backend selection cheat sheet
+### Backend selection cheat sheet (BackendAuto 2.0)
 
-| Scenario                                       | Recommended `Backend`             | Why                              |
-| ---------------------------------------------- | --------------------------------- | -------------------------------- |
-| Online single / batch ≤ 8                      | `BackendAuto` or `BackendNative`  | Latency-first                    |
-| Batch inference ≥ 256 rows, pure numeric trees | `BackendAuto` + `Workload` hint   | Windows: try `BackendBornGPU`    |
-| WASM / js                                      | `BackendNative`                   | Born falls back to Native in js  |
-| LightGBM `cat`-small features                  | `BackendNative`                   | Born does not support these yet  |
+| Scenario | Auto result | Notes |
+| -------- | ----------- | ----- |
+| Online / batch &lt; 64 | **Native** | Latency-first; Born is slow at batch=1 |
+| Batch ≥ 64, pure numeric | **BornCPU** | SIMD batch path |
+| Batch ≥ 256 + HasGPU (Windows WebGPU) | **BornGPU** | Falls back to BornCPU if unavailable |
+| WASM + numeric | **BornCPU** when supported | No GPU; cat-small → Native |
+| Sparse (`SparseDensity∈(0,0.15)`) / cat-small | **Native** | Not Born-optimized / unsupported |
 
 ## Tree SHAP and explainability
 
@@ -473,28 +479,29 @@ model.NewEnsemble(eng) // swap the live engine
 
 ## Documentation
 
-| Document                                      | Description                                                  |
-| --------------------------------------------- | ------------------------------------------------------------ |
-| [godoc](https://pkg.go.dev/github.com/linkerlin/leaves) | API reference                                         |
-| [演进计划.md](演进计划.md)                       | Current-state audit + next 12-month roadmap (**v5.0**)       |
-| [TODO.md](TODO.md)                            | Historical executable backlog (P0–T5 + v3.1 cleared)         |
-| [NOTES.md](NOTES.md)                          | Version and compatibility notes (`AutoTransform`, Born, compat) |
-| [compatibility.md](compatibility.md)          | External GBRT library correctness sweep                      |
-| [AGENTS.md](AGENTS.md)                        | Project conventions & compute substrate decisions            |
-| [docs/testdata-matrix.md](docs/testdata-matrix.md) | Regression test matrix                                    |
-| [docs/benchmark-baseline.md](docs/benchmark-baseline.md) | Benchmarks and CI gates                                |
-| [examples/wasm/README.md](examples/wasm/README.md)   | WASM deployment guide                                   |
-| [examples/http/README.md](examples/http/README.md)   | HTTP embed batch-prediction demo                       |
-| [examples/train_from_model/README.md](examples/train_from_model/README.md) | Sniff + objective-inferred training demo |
-| [demos/movielens/README.md](demos/movielens/README.md) | MovieLens 100K ranking walkthrough                  |
-| [leaves_test.go](leaves_test.go)              | More usage examples                                          |
+| Document | Description |
+| -------- | ----------- |
+| [godoc](https://pkg.go.dev/github.com/linkerlin/leaves) | API reference |
+| [docs/api-surface.md](docs/api-surface.md) | Recommended / compat / experimental APIs |
+| [docs/versioning.md](docs/versioning.md) | What can change in v2.x |
+| [docs/release-checklist.md](docs/release-checklist.md) | Pre-tag release checklist |
+| [docs/interop-matrix.md](docs/interop-matrix.md) | Format support tiers |
+| [docs/backend-auto.md](docs/backend-auto.md) | BackendAuto 2.0 decision table |
+| [docs/extension-points.md](docs/extension-points.md) | Custom objective/metric |
+| [CHANGELOG.md](CHANGELOG.md) | Release history |
+| [演进计划.md](演进计划.md) | Library 12-month roadmap (v5.4) |
+| [演进方案.md](演进方案.md) | Agentic contract (done) |
+| [NOTES.md](NOTES.md) | Live compat notes (AutoTransform, etc.) |
+| [compatibility.md](compatibility.md) | External GBRT correctness matrix |
+| [AGENTS.md](AGENTS.md) | Project conventions |
+| [examples/](examples/) | autotrain / wasm / http / train_from_model |
 
 ## Compatibility
 
-Most features are regression-tested against multiple GBRT library
-versions. The full correctness matrix (XGBoost 0.72–0.90, LightGBM
-2.0.10–2.3.0) lives in [compatibility.md](compatibility.md). New behaviour
-and back-compat notes are kept in [NOTES.md](NOTES.md).
+- API layers & migration: [docs/api-surface.md](docs/api-surface.md)
+- Version policy: [docs/versioning.md](docs/versioning.md)
+- Behaviour notes: [NOTES.md](NOTES.md)
+- External library versions: [compatibility.md](compatibility.md)
 
 ## Performance
 

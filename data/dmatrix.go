@@ -14,13 +14,15 @@ type Matrix interface {
 
 // Dense 行优先 Dense 矩阵。
 type Dense struct {
-	Data         []float64
-	Rows         int
-	Cols         int
-	Y            []float64
-	W            []float64
+	Data   []float64
+	Rows   int
+	Cols   int
+	Y      []float64
+	W      []float64
 	FT     []FeatureType
 	FNames []string
+	// SkippedRows：CSV 在 NAPolicySkipRow 下因缺失跳过的行数（仅信息字段）。
+	SkippedRows int
 }
 
 // NewDense 创建 Dense 矩阵；vals 行优先 [rows*cols]。

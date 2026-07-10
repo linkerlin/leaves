@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/linkerlin/leaves/data"
 	leavesio "github.com/linkerlin/leaves/io"
 	"github.com/linkerlin/leaves/metrics"
 )
@@ -17,6 +16,7 @@ func cmdEval(args []string) error {
 	evalMetric := fs.String("eval-metric", "", "评估指标（默认 rmse）")
 	objective := fs.String("objective", "", "目标函数（margin→pred 变换；可从 metric 推断）")
 	metricsPath := fs.String("metrics", "", "输出 metrics.json（空=stdout）")
+	naPolicy := fs.String("na-policy", "error", "缺失值策略：error|skip-row")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -41,9 +41,9 @@ func cmdEval(args []string) error {
 	}
 	defer m.Close()
 
-	dm, err := data.FromFileAuto(*dataPath)
+	dm, err := loadMatrix(*dataPath, *naPolicy)
 	if err != nil {
-		return fmt.Errorf("load data: %w", err)
+		return err
 	}
 	vals, err := denseVals(dm)
 	if err != nil {
