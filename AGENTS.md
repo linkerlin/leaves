@@ -21,6 +21,18 @@
 | `BackendBornGPU` | Born WebGPU 后端（Windows DX12） |
 | `BackendAuto` | 按 workload 在 Native / Born 间选择 |
 
+## Agent 自动化（SKILL 驱动，无 MCP）
+
+Agent 通过 **SKILL 指导 + shell CLI + metrics.json** 完成全自动「训练→指标优化→发布」。
+**Agent 即优化器**：搜索逻辑在 SKILL 文本里，不在 leaves 代码里（与「不内置搜索」哲学一致）。
+
+- **通用 SKILL**：[`skills/leaves-autotrain/`](skills/leaves-autotrain/SKILL.md)（任意监督学习任务）
+  - 闭环：嗅探数据 → `leaves train`（`--cv`）→ 读 metrics.json → 按 SKILL 决策表调参 → 再训 → 收敛 → `leaves publish`
+  - CLI 参考 / metrics.json schema：[`skills/leaves-autotrain/cli.md`](skills/leaves-autotrain/cli.md)
+- **推荐系统 SKILL**：[`skills/recsys-orchestrator/`](skills/recsys-orchestrator/SKILL.md)（召回→排序→发牌四段流水线）
+- **通用 CLI**：`go run ./cmd/leaves <sniff|train|eval|predict|inspect|explain|publish>` —— sniff 自动推荐 objective；train 支持 `--cv`/`--runs`/`--tag`/`--emit-rounds`；explain 输出特征重要性/SHAP；子命令均写 metrics.json
+- **闭环原语**：`train.NewLearner`/`Fit`/`Eval`/`CrossValidate`、`data.FromFileAuto`、`learner.Model()`→`io.SaveLeavesJSONFile`/`ExportXGBoostJSONFile`、`quantize.QuantizeForest`
+
 ## 文档
 
 - 战略路线图：[`演进计划.md`](演进计划.md) v5.0

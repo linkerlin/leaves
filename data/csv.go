@@ -49,6 +49,7 @@ func FromCSVReader(r io.Reader, opts CSVOptions) (*Dense, error) {
 
 	var rows [][]float64
 	var labels []float64
+	var fnames []string
 	first := true
 	for {
 		rec, err := reader.Read()
@@ -59,6 +60,11 @@ func FromCSVReader(r io.Reader, opts CSVOptions) (*Dense, error) {
 			return nil, fmt.Errorf("data: csv read: %w", err)
 		}
 		if first && opts.HasHeader {
+			for i, s := range rec {
+				if !skip[i] {
+					fnames = append(fnames, strings.TrimSpace(s))
+				}
+			}
 			first = false
 			continue
 		}
@@ -103,5 +109,10 @@ func FromCSVReader(r io.Reader, opts CSVOptions) (*Dense, error) {
 	if !opts.HasLabelColumn {
 		labels = make([]float64, len(rows))
 	}
-	return NewDense(vals, len(rows), cols, labels, nil)
+	d, err := NewDense(vals, len(rows), cols, labels, nil)
+	if err != nil {
+		return nil, err
+	}
+	d.FNames = fnames
+	return d, nil
 }

@@ -420,6 +420,34 @@ eng, _ := quantize.NewEngine(qf, nil, tree.TransformRaw, m.NOutputGroups())
 model.NewEnsemble(eng) // 替换线上 Ensemble 引擎
 ```
 
+## Agent 自动化（SKILL 驱动，无 MCP）
+
+Agent 通过 **SKILL 指导 + `leaves` CLI + metrics.json** 即可完成全自动「训练→指标优化→发布」。**Agent 即优化器**：搜索逻辑在 SKILL 文本里，不在 leaves 代码里（与「不内置搜索」哲学一致）。
+
+- **SKILL**：[`skills/leaves-autotrain/SKILL.md`](skills/leaves-autotrain/SKILL.md)（任意监督学习任务，含决策表与搜索策略）
+- **CLI 参考**：[`skills/leaves-autotrain/cli.md`](skills/leaves-autotrain/cli.md)（flag 全表 + metrics.json schema）
+- **零准备 demo**：[`examples/autotrain/`](examples/autotrain/README.md)（抄走即跑）
+
+闭环：
+
+```
+sniff（自动识别任务→objective）→ train(--cv --runs --tag) → 读 metrics.json/runs.jsonl
+  → 按 SKILL 决策表调参 → 再训 → 收敛 → inspect 复核 → publish
+```
+
+6 个子命令对应工作流六步（识别 / 训练 / 评估 / 预测 / 复核 / 发布），每步输出结构化 JSON：
+
+```powershell
+go run ./cmd/leaves sniff   --data train.csv                       # 数据画像 → 推荐 objective
+go run ./cmd/leaves train   --data train.csv --objective ... --cv 5 --runs runs.jsonl --tag ...
+go run ./cmd/leaves eval    --model m.leaves.json --data holdout.csv
+go run ./cmd/leaves predict --model m.leaves.json --data holdout.csv --out pred.jsonl
+go run ./cmd/leaves inspect --model m.leaves.json
+go run ./cmd/leaves publish --model m.leaves.json --out-dir release/ --quantize --export-xgb
+```
+
+`publish --quantize` 会持久化 int8 量化侧车（`model.quant.json`，可被 `predict` 重建并在 parity 门禁内对齐原模型）。
+
 ## 文档
 
 | 文档                                            | 说明                                                  |
