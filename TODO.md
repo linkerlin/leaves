@@ -236,5 +236,5 @@ go test -run TestBenchGateBornCPUSlowerBatch1 -count=1
 - [x] `docs.TestReleaseDocsPresent` 锁定关键文档存在
 - [x] [`CHANGELOG.md`](CHANGELOG.md) Unreleased 汇总；README 中英互链修复
 - [x] CHANGELOG 落成 `[2.1.0]` + [`docs/release-notes-v2.1.0.md`](docs/release-notes-v2.1.0.md)
-- [ ] **打 tag `v2.1.0` + push + GitHub Release**（人工确认后执行；正文用 release-notes）
+- [x] **打 tag `v2.1.0` + push + GitHub Release**（2026-07-10；https://github.com/linkerlin/leaves/releases/tag/v2.1.0）
 
