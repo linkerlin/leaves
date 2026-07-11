@@ -30,6 +30,7 @@ func TestReleaseDocsPresent(t *testing.T) {
 		filepath.Join(docsDir, "release-notes-v2.1.3.md"),
 		filepath.Join(docsDir, "release-notes-v2.1.4.md"),
 		filepath.Join(docsDir, "release-notes-v2.1.5.md"),
+		filepath.Join(docsDir, "release-notes-v2.1.6.md"),
 		filepath.Join(docsDir, "versioning.md"),
 		filepath.Join(docsDir, "api-surface.md"),
 		filepath.Join(docsDir, "interop-matrix.md"),

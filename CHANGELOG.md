@@ -7,6 +7,35 @@
 
 ---
 
+## [2.1.6] - 2026-07-11
+
+> **主题**：并发 DATA RACE 与 transformation panic 修复；golangci-lint v2 门禁全量落地  
+> **Release 正文**：[`docs/release-notes-v2.1.6.md`](docs/release-notes-v2.1.6.md)
+
+### Fixed
+
+- **并发 DATA RACE**（`treebuilder.parallelEvalHistFeats`）：多 goroutine 共享同一 `row` buffer 写入 `Dense.Row()`；改为每 goroutine 独立 buffer。影响多线程 `hist` 训练的正确性
+- **transformation panic**（`TransformType(Exponential).Name()` 数组越界）：`transformNames` 缺 `exponential` 项；`TransformExponential.Name()` 因此错报为 "logistic"。加载 LightGBM exponential objective 模型时触发
+
+### Changed
+
+- 新增 **golangci-lint v2** CI 门禁：`govet`（关 composites）/ `ineffassign` / `unused` / `staticcheck`（关 QF1003/ST1000/ST1003）/ `errcheck`（`std-error-handling` 预设 + 测试豁免）/ **gofmt** formatter，全部 blocking，0 issues 基线
+- 新增 **race detector** CI job（`go test -race -short ./...`）
+- 清除 **~360 行死代码**（unused linter 全清零）：explain interventional SHAP 簇、treebuilder 被 `batchAccumulateHistWebGPU` 取代的 GPU hist 旧路径（`accumulateHistWebGPU`×3 / `prebuildGPUHists` / `gpuHistBuildEnabled` / `gpuHistMinSamples`）、各处孤立 helper；永跳测试（`lgmsltr`/`lghiggs`/`xghiggs` fixture 未入库）、失效 GoMLX 脚本、误入库产物
+- 修存量 **ineffassign / staticcheck / errcheck**：真实 error 忽略（transform / Predict / predictLeafIndicesInner / Seek / Iterate）改 `_ =` 显式丢弃；dead 赋值 / 空分支 / bool 比较 / nil-len 等逐项修正
+
+### Added
+
+- **测试覆盖**：`transformation`（0→6，含 `Name()` 越界回归）、`predict`（0→5，含 Engine 接口契约锁定）、`booster`（0→6，含 GBLinear zero-grad 端到端）；`internal/xgbin` 补 golden 节点断言（关闭遗留 TODO）
+- **包文档** `doc.go`：`train` / `explain` / `objective` / `metrics` / `mat` / `util`（pkg.go.dev 不再裸符号）
+- **文档门禁测试**：`TestNoDeadReadmeZhLinks`（扫所有根 .md 防死链复发）、`TestDocVersionRefsConsistent`（从文档头部提取版本号，校验所有引用一致）
+
+### Documentation
+
+- 项目状态 **维护期 → 开发期**；版本漂移修复（演进计划 v5.4 / 演进方案 v1.5 全局一致）；`doc.go` 拼写修复（implemetation / exibit / beacase）
+
+---
+
 ## [2.1.5] - 2026-07-11
 
 > **主题**：MovieLens 四段流水线（prep→召回→LTR→发牌）  
