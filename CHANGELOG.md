@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+---
+
+## [2.1.5] - 2026-07-11
+
+> **主题**：MovieLens 四段流水线（prep→召回→LTR→发牌）  
+> **Release 正文**：[`docs/release-notes-v2.1.5.md`](docs/release-notes-v2.1.5.md)
+
 ### Added
 
 - **MovieLens 四段流水线（DEMO-ML-4stage）**
@@ -12,6 +19,10 @@
   - `pipeline.RunFromDataset`：prep→召回→LTR→发牌（合成/真实数据共用）
   - `go run ./recsys/cmd/movielens` · `agent four-stage` · MCP `movielens_four_stage`
   - 召回策略：部分正样本 + 未交互补齐；发牌 `fillOverflow` 可凑满 DeckSize
+
+### Documentation
+
+- TUTORIAL §11.1、recsys-orchestrator / MovieLens SKILL、TODO 快照对齐
 
 ---
 

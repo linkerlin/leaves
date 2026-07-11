@@ -1,7 +1,7 @@
 # leaves 演进 TODO
 
 > **对齐文档**：[`演进计划.md`](演进计划.md) v5.4（库线）· [`演进方案.md`](演进方案.md) v1.5+（Agentic）  
-> **更新**：2026-07-11（**维护期** + **v2.1.4** MovieLens 片名旁车）  
+> **更新**：2026-07-11（**维护期** + **v2.1.5** MovieLens 四段流水线）  
 > **原则**：Native golden 不变；Born 直读 `ForestIR`；不做分布式/serving 框架 / 内置 HPO / 官方 registry。
 
 **图例**：`[ ]` 待办 · `[~]` 进行中 · `[x]` 完成 · `[-]` 明确不做
@@ -12,13 +12,14 @@
 
 | 线 | 方案状态 | 代码/发布 | 结论 |
 |----|----------|-----------|------|
-| **Agentic** | Phase 0–5 + POST 加固 | tag **v2.1.0** … **v2.1.2** | **完成** |
+| **Agentic** | Phase 0–5 + POST 加固 | tag **v2.1.0** … **v2.1.5** | **完成** |
 | **库线 Phase A–E** | 第一轮 + 按需深化 | 扩展点 / BackendAuto 2.0 / interop / ONNX 子集 / multi-target / explain 缓存 / serving 模板 | **完成** |
+| **Demo** | MovieLens ranker + 四段 | meta 旁车 / Agent·MCP / `agent four-stage` | **完成** |
 | **历史** P0–T5 / v3.1 | 存档 | 均已交付 | 维护期 |
 
-**对照结论**：可执行 backlog **已清空**。默认 **维护 + 按需开新项**；新需求先写进本文件再实现。发版走 [`docs/release-checklist.md`](docs/release-checklist.md)。
+**对照结论**：可执行 backlog **已清空**；Unreleased 已落盘。默认 **维护 + 按需开新项**；新需求先写进本文件再实现。发版走 [`docs/release-checklist.md`](docs/release-checklist.md)。
 
-**最新 tag**：https://github.com/linkerlin/leaves/releases/tag/v2.1.4
+**最新 tag**：https://github.com/linkerlin/leaves/releases/tag/v2.1.5
 
 ---
 
@@ -30,7 +31,7 @@
 
 - [x] **DEMO-ML** MovieLens 推荐 ranker 全流程 + Agent/MCP：[`demos/movielens/TUTORIAL.md`](demos/movielens/TUTORIAL.md)、`cmd/agent`、`cmd/mcp`、`agentops`
 - [x] **DEMO-ML-meta** 推荐片名旁车 + walkthrough（v2.1.4）
-- [x] **DEMO-ML-4stage** MovieLens → recsys 四段（prep/召回/LTR/发牌）：`recsys/movielens` + `agent four-stage`
+- [x] **DEMO-ML-4stage** MovieLens → recsys 四段（prep/召回/LTR/发牌）：`recsys/movielens` + `agent four-stage`（**v2.1.5**）
 
 ### P0 — 契约与门禁残留（演进方案建议未落地）
 
@@ -111,7 +112,8 @@ go test ./cmd/leaves -run 'Agentic|SaveBest|FromRun|NAPolicy|Publish' -count=1
 - [x] **MNT-02** 模块路径无 `/v2` 时代理可能拒 `v2.1.x` tag → 已记 [NOTES.md](NOTES.md) §4
 - [x] **MNT-03** 发版前关键包测试已跑；全量 `go test ./...` 仍建议 CI  
 - [x] **MNT-04** skills 镜像 CI 门禁（`TestSkillsMirrorSync`）；改 SKILL 须同步 `.cursor/skills`  
-- [x] **MNT-05** README badge / CHANGELOG 已对齐 **v2.1.3** / **v2.1.4**
+- [x] **MNT-05** README badge / CHANGELOG 已对齐 **v2.1.3** … **v2.1.5**
+- [x] **MNT-06** v2.1.5 发版：四段 MovieLens + TODO 快照 / Unreleased 收口
 
 **快速回归**：
 
