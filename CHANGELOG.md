@@ -5,7 +5,11 @@
 
 ## [Unreleased]
 
-（下一 patch 在此累积。）
+### Added
+
+- **MovieLens Ranker Agent/MCP demo**：`demos/movielens/cmd/agent`（JSON CLI）、`cmd/mcp`（stdio MCP）、`agentops` 共用实现；详尽教程 [`demos/movielens/TUTORIAL.md`](demos/movielens/TUTORIAL.md)
+
+---
 
 ## [2.1.2] - 2026-07-11
 

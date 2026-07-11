@@ -80,18 +80,32 @@ recsys/
   cmd/smoke/  CLI 入口
 ```
 
-### 4.2 MovieLens 对标（leaves 排序能力验真）
-cd testdata && python gen_rank_movielens.py && cd ..
+### 4.2 MovieLens Ranker + Agent/MCP（推荐精排案例）
+
+```powershell
+# 一键 Agent 闭环（stdout JSON）
+go run ./demos/movielens/cmd/agent full-pipeline
+
+# 人类 CLI
 go run ./demos/movielens/cmd/train
 go run ./demos/movielens/cmd/recommend -group 0 -topk 10
-go test ./train/... -run TestRankMovieLens -count=1
 
-# ② Smoke 最小集
+# MCP server（配置到客户端 cwd=仓库根）
+go run ./demos/movielens/cmd/mcp
+```
+
+- **详尽教程**：[`demos/movielens/TUTORIAL.md`](../../demos/movielens/TUTORIAL.md)  
+- **Agent SKILL**：[`demos/movielens/agent-skill/SKILL.md`](../../demos/movielens/agent-skill/SKILL.md)  
+- 回归：`go test ./train/... -run TestRankMovieLens` · `go test ./demos/movielens/agentops`
+
+### 4.3 Smoke 最小排序对标
+
+```powershell
 cd testdata && python gen_rank_smoke.py && cd ..
 go test ./train/... -run 'TestRank.*TrendVsXGBoost' -count=1
 ```
 
-完整四段流水线：`go run ./recsys/cmd/smoke`（见上文 §4.1）。
+完整四段流水线（合成数据）：`go run ./recsys/cmd/smoke`（见 §4.1）。
 
 ## 五、子 SKILL 激活顺序
 

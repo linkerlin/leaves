@@ -24,8 +24,11 @@
 
 ## 后续工作（现行 backlog）
 
-> **无打开的待办。** 以下均为已完成归档（便于检索）。  
-> 新工作请在本节追加 `[ ]` 项。
+> 新工作请在本节追加 `[ ]` 项。维护期默认无打开主线；案例 demo 可并列追加。
+
+### Demo / 教程
+
+- [x] **DEMO-ML** MovieLens 推荐 ranker 全流程 + Agent/MCP：[`demos/movielens/TUTORIAL.md`](demos/movielens/TUTORIAL.md)、`cmd/agent`、`cmd/mcp`、`agentops`
 
 ### P0 — 契约与门禁残留（演进方案建议未落地）
 

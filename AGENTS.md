@@ -30,6 +30,7 @@ Agent 通过 **SKILL 指导 + shell CLI + metrics.json** 完成全自动「训�
   - 闭环：嗅探数据 → `leaves train`（`--cv`）→ 读 metrics.json → 按 SKILL 决策表调参 → 再训 → 收敛 → `leaves publish`
   - CLI 参考 / metrics.json schema：[`skills/leaves-autotrain/cli.md`](skills/leaves-autotrain/cli.md)
 - **推荐系统 SKILL**：[`skills/recsys-orchestrator/`](skills/recsys-orchestrator/SKILL.md)（召回→排序→发牌四段流水线）
+- **MovieLens Ranker Agent/MCP**：[`demos/movielens/TUTORIAL.md`](demos/movielens/TUTORIAL.md) · [`skills/recsys-movielens-ranker/`](skills/recsys-movielens-ranker/SKILL.md)
 - **通用 CLI**：`go run ./cmd/leaves <sniff|train|eval|predict|inspect|explain|publish>` —— sniff 自动推荐 objective；train 支持 `--cv`/`--runs`/`--tag`/`--emit-rounds`；explain 输出特征重要性/SHAP；子命令均写 metrics.json
 - **闭环原语**：`train.NewLearner`/`Fit`/`Eval`/`CrossValidate`、`data.FromFileAuto`、`learner.Model()`→`io.SaveLeavesJSONFile`/`ExportXGBoostJSONFile`、`quantize.QuantizeForest`
 

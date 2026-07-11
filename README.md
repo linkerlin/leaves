@@ -61,7 +61,8 @@
 
 - int8 阈值量化（带 parity 门禁）
 - `Ensemble.Reload` 线上热更新；按 batch 维度的推理 profiling
-- [WASM demo](examples/wasm/README.md)（js / wasm，Native CPU）、[HTTP embed demo](examples/http/README.md)、[serving 模板](examples/serving-template/README.md)（可拆独立仓）、[train-from-model](examples/train_from_model/README.md)、[扩展 objective/metric](examples/extension/README.md)、[多目标回归](examples/multitarget/README.md)
+- [WASM demo](examples/wasm/README.md)、[HTTP embed](examples/http/README.md)、[serving 模板](examples/serving-template/README.md)、[train-from-model](examples/train_from_model/README.md)、[扩展 objective/metric](examples/extension/README.md)、[多目标回归](examples/multitarget/README.md)
+- [MovieLens Ranker + Agent/MCP 教程](demos/movielens/TUTORIAL.md)（精排全流程案例）
 
 ## 安装
 
