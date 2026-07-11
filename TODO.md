@@ -89,7 +89,7 @@ go test ./cmd/leaves -run 'Agentic|SaveBest|FromRun|NAPolicy|Publish' -count=1
 
 - [x] **LIB-20** [`examples/extension/`](examples/extension/)：`custom:l1` + `max_abs_error`（Register 可跑 + 测试）  
 - [x] **LIB-21** Multi-target 训练 **one_output_per_tree**（API + CLI `--num-target`；向量叶 multi_output_tree 仍不做）
-- [ ] **LIB-22** explain 大模型 **性能**优化（能力已完整，按需）
+- [x] **LIB-22** explain 性能：节点权重切片缓存 + 背景 margin 缓存 + path/phi 缓冲复用；`BenchmarkTreeSHAP*`
 
 #### 部署 / 生态（库外）
 
@@ -379,6 +379,6 @@ go test -run TestBenchGateBornCPUSlowerBatch1 -count=1
 1. ✅ POST-01…15 全套加固
 2. ✅ LIB-01(文档边界) / 02 / 03 / 20 / 31
 3. ✅ LIB-10/11/12/20/21 + v2.1.1 发版
-4. LIB-22 explain 性能                     ← 按需
-5. LIB-30 独立 serving 仓                  ← 库外
+4. ✅ LIB-22 explain 性能缓存
+5. LIB-30 独立 serving 仓                  ← 库外/按需
 ```

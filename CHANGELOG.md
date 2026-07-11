@@ -5,7 +5,13 @@
 
 ## [Unreleased]
 
-（下一 patch 在此累积。）
+### Changed
+
+- **Explain 性能（LIB-22）**：`TreeExplainer` 缓存树节点权重与背景 margin，多样本 SHAP 复用 path 缓冲（语义不变；`go test ./explain`）
+
+### Documentation
+
+- [benchmark-baseline.md](docs/benchmark-baseline.md) 增加 Tree SHAP bench 指引
 
 ## [2.1.1] - 2026-07-11
 

@@ -19,7 +19,7 @@ func treeInteractionFast(t *tree.TreeIR, x []float64, phi [][]float64) {
 		maxd = 4
 	}
 	pathBuf := make([]pathElement, (maxd*(maxd+1))/2)
-	nodeW := computeNodeWeights(t)
+	nodeW := computeNodeWeightsArr(t)
 	xMissing := xMissingMask(x)
 
 	phiOn := make([]float64, n)
@@ -47,7 +47,7 @@ func treeInteractionFast(t *tree.TreeIR, x []float64, phi [][]float64) {
 	}
 }
 
-func treeShapConditioned(t *tree.TreeIR, x []float64, xMissing []bool, nodeW map[int32]float64, pathBuf []pathElement, phi []float64, condition, conditionFeature int) {
+func treeShapConditioned(t *tree.TreeIR, x []float64, xMissing []bool, nodeW []float64, pathBuf []pathElement, phi []float64, condition, conditionFeature int) {
 	treeShapRecursive(t, x, xMissing, nodeW, phi, 0, 0, pathBuf, 1, 1, -1, condition, conditionFeature, 1)
 }
 

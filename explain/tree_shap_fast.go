@@ -24,7 +24,7 @@ func treeShapFast(t *tree.TreeIR, x []float64, phi []float64) {
 		maxd = 4
 	}
 	pathBuf := make([]pathElement, (maxd*(maxd+1))/2)
-	nodeW := computeNodeWeights(t)
+	nodeW := computeNodeWeightsArr(t)
 	xMissing := make([]bool, len(x))
 	for i, v := range x {
 		xMissing[i] = math.IsNaN(v)
@@ -32,31 +32,46 @@ func treeShapFast(t *tree.TreeIR, x []float64, phi []float64) {
 	treeShapRecursive(t, x, xMissing, nodeW, phi, 0, 0, pathBuf, 1, 1, -1, 0, 0, 1)
 }
 
-func computeNodeWeights(t *tree.TreeIR) map[int32]float64 {
-	w := make(map[int32]float64)
-	var weight func(node int32) float64
-	weight = func(node int32) float64 {
-		if v, ok := w[node]; ok {
-			return v
-		}
-		if node < 0 {
-			w[node] = 1.0
-			return 1.0
-		}
-		ni := int(node)
-		if ni < len(t.SumHess) && t.SumHess[ni] > 0 {
-			w[node] = t.SumHess[ni]
-			return w[node]
-		}
-		lw := weight(t.LeftChild[ni])
-		rw := weight(t.RightChild[ni])
-		w[node] = lw + rw
-		if w[node] <= 0 {
-			w[node] = 1.0
-		}
-		return w[node]
+// treeShapFastReuse LIB-22：复用 missing 掩码、节点权重与 path 缓冲（batch/多样本）。
+func treeShapFastReuse(t *tree.TreeIR, x []float64, xMissing []bool, nodeW []float64, pathBuf []pathElement, phi []float64) {
+	if t == nil || t.NumNodes == 0 {
+		return
 	}
-	weight(0)
+	if nodeW == nil {
+		nodeW = computeNodeWeightsArr(t)
+	}
+	need := pathBufLen(t)
+	if cap(pathBuf) < need {
+		pathBuf = make([]pathElement, need)
+	} else {
+		pathBuf = pathBuf[:need]
+	}
+	if xMissing == nil || len(xMissing) < len(x) {
+		xMissing = make([]bool, len(x))
+		for i, v := range x {
+			xMissing[i] = math.IsNaN(v)
+		}
+	}
+	treeShapRecursive(t, x, xMissing, nodeW, phi, 0, 0, pathBuf, 1, 1, -1, 0, 0, 1)
+}
+
+func pathBufLen(t *tree.TreeIR) int {
+	maxd := t.MaxDepth + 2
+	if maxd < 4 {
+		maxd = 4
+	}
+	return (maxd * (maxd + 1)) / 2
+}
+
+// computeNodeWeights 保留 map 版兼容内部旧调用；新路径用 computeNodeWeightsArr。
+func computeNodeWeights(t *tree.TreeIR) map[int32]float64 {
+	arr := computeNodeWeightsArr(t)
+	w := make(map[int32]float64, len(arr)+8)
+	for i, v := range arr {
+		if v > 0 {
+			w[int32(i)] = v
+		}
+	}
 	return w
 }
 
@@ -114,7 +129,7 @@ func unwoundPathSum(path []pathElement, uniqueDepth, pathIndex int) float64 {
 }
 
 func treeShapRecursive(
-	t *tree.TreeIR, x []float64, xMissing []bool, nodeW map[int32]float64,
+	t *tree.TreeIR, x []float64, xMissing []bool, nodeW []float64,
 	phi []float64,
 	nodeIndex int32, uniqueDepth int,
 	parentPath []pathElement,
@@ -154,18 +169,9 @@ func treeShapRecursive(
 	splitFeat := int(t.SplitFeature[ni])
 	hot, cold := hotColdChildren(t, ni, x, xMissing)
 
-	w := nodeW[nodeIndex]
-	if w <= 0 {
-		w = 1
-	}
-	hotW := nodeW[hot]
-	coldW := nodeW[cold]
-	if hotW <= 0 {
-		hotW = 1
-	}
-	if coldW <= 0 {
-		coldW = 1
-	}
+	w := nodeWeightAt(nodeW, nodeIndex)
+	hotW := nodeWeightAt(nodeW, hot)
+	coldW := nodeWeightAt(nodeW, cold)
 	hotZeroFraction := hotW / w
 	coldZeroFraction := coldW / w
 	incomingZeroFraction := 1.0

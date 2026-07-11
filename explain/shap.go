@@ -13,6 +13,11 @@ type TreeExplainer struct {
 	forest      *tree.ForestIR
 	nFeatures   int
 	nEstimators int
+	// LIB-22 缓存：按树预计算节点覆盖权重与背景（全零）margin。
+	nodeWCache  [][]float64
+	treeBase    []float64
+	pathBufMax  int
+	cacheReady  bool
 }
 
 // NewTreeExplainer 创建 Tree SHAP 解释器。
@@ -24,11 +29,38 @@ func NewTreeExplainer(f *tree.ForestIR) *TreeExplainer {
 	if n <= 0 {
 		n = maxFeatureIndex(f) + 1
 	}
-	return &TreeExplainer{
+	e := &TreeExplainer{
 		forest:      f,
 		nFeatures:   n,
 		nEstimators: f.NEstimators(),
 	}
+	e.ensureCache()
+	return e
+}
+
+// ensureCache 预计算每棵树的节点权重与背景 margin（一次；多样本 SHAP 复用）。
+func (e *TreeExplainer) ensureCache() {
+	if e == nil || e.forest == nil || e.cacheReady {
+		return
+	}
+	nt := len(e.forest.Trees)
+	e.nodeWCache = make([][]float64, nt)
+	e.treeBase = make([]float64, nt)
+	bg := make([]float64, e.nFeatures)
+	maxPath := 0
+	for ti := range e.forest.Trees {
+		t := &e.forest.Trees[ti]
+		e.nodeWCache[ti] = computeNodeWeightsArr(t)
+		e.treeBase[ti] = predictTreeMargin(t, bg)
+		if n := pathBufLen(t); n > maxPath {
+			maxPath = n
+		}
+	}
+	e.pathBufMax = maxPath
+	if e.pathBufMax < 16 {
+		e.pathBufMax = 16
+	}
+	e.cacheReady = true
 }
 
 // ExpectedValue 返回背景（全零特征）上的 margin 预测（含 BaseScore）。
@@ -49,20 +81,27 @@ func (e *TreeExplainer) ExpectedValues() []float64 {
 	return predictForestMargins(e.forest, bg, 0)
 }
 
-// ShapleyValuesMulticlass 计算多类 Tree SHAP，返回 [sample][feature][class]（margin 空间）。
+// ShapleyValuesMulticlass 计算多类 Tree SHAP，返回 [sample][class][feature]（margin 空间）。
+// 注：返回形状为 [sample][class][feature]（与注释历史一致以测试为准见 shap_multiclass）。
 func (e *TreeExplainer) ShapleyValuesMulticlass(features [][]float64) ([][][]float64, error) {
 	if e == nil || e.forest == nil {
 		return nil, fmt.Errorf("nil explainer")
 	}
+	e.ensureCache()
 	g := e.forest.NumOutputGroups
 	if g <= 0 {
 		g = 1
 	}
-	bg := make([]float64, e.nFeatures)
 	out := make([][][]float64, len(features))
+	treePhi := make([]float64, e.nFeatures)
+	pathBuf := make([]pathElement, e.pathBufMax)
+	xMissing := make([]bool, e.nFeatures)
 	for i, x := range features {
 		if len(x) < e.nFeatures {
 			return nil, fmt.Errorf("sample %d: need %d features, got %d", i, e.nFeatures, len(x))
+		}
+		for j := 0; j < e.nFeatures; j++ {
+			xMissing[j] = x[j] != x[j] // NaN
 		}
 		phi := make([][]float64, g)
 		for k := 0; k < g; k++ {
@@ -70,17 +109,19 @@ func (e *TreeExplainer) ShapleyValuesMulticlass(features [][]float64) ([][][]flo
 		}
 		for ti := range e.forest.Trees {
 			classIdx := treeClassIndex(e.forest, ti)
-			treePhi := make([]float64, e.nFeatures)
-			treeShapFast(&e.forest.Trees[ti], x, treePhi)
-			treeMargin := predictTreeMargin(&e.forest.Trees[ti], x)
-			treeBase := predictTreeMargin(&e.forest.Trees[ti], bg)
+			clearFloats(treePhi)
+			t := &e.forest.Trees[ti]
+			treeShapFastReuse(t, x, xMissing, e.nodeWCache[ti], pathBuf, treePhi)
+			treeMargin := predictTreeMargin(t, x)
+			treeBase := e.treeBase[ti]
 			treeSum := 0.0
 			for _, v := range treePhi {
 				treeSum += v
 			}
+			// residual 归到根分裂特征（path 上首特征恒为根）
 			residual := (treeMargin - treeBase) - treeSum
-			if path := treePathFeatures(&e.forest.Trees[ti], x); len(path) > 0 {
-				f := path[0]
+			if t.NumNodes > 0 {
+				f := int(t.SplitFeature[0])
 				if f >= 0 && f < len(treePhi) {
 					treePhi[f] += residual
 				}
@@ -94,7 +135,7 @@ func (e *TreeExplainer) ShapleyValuesMulticlass(features [][]float64) ([][][]flo
 	return out, nil
 }
 
-// ShapleyValues 计算精确 Tree SHAP（单输出，margin 空间，interventional，背景=全零）。
+// ShapleyValues 计算精确 Tree SHAP（单输出，margin 空间，tree_path_dependent + 背景残差校正）。
 func (e *TreeExplainer) ShapleyValues(features [][]float64) ([][]float64, error) {
 	if e == nil || e.forest == nil {
 		return nil, fmt.Errorf("nil explainer")
@@ -102,26 +143,32 @@ func (e *TreeExplainer) ShapleyValues(features [][]float64) ([][]float64, error)
 	if e.forest.NumOutputGroups > 1 {
 		return nil, fmt.Errorf("multiclass: use ShapleyValuesMulticlass")
 	}
-	bg := make([]float64, e.nFeatures)
-	_ = bg
+	e.ensureCache()
 	out := make([][]float64, len(features))
+	treePhi := make([]float64, e.nFeatures)
+	pathBuf := make([]pathElement, e.pathBufMax)
+	xMissing := make([]bool, e.nFeatures)
 	for i, x := range features {
 		if len(x) < e.nFeatures {
 			return nil, fmt.Errorf("sample %d: need %d features, got %d", i, e.nFeatures, len(x))
 		}
+		for j := 0; j < e.nFeatures; j++ {
+			xMissing[j] = x[j] != x[j]
+		}
 		phi := make([]float64, e.nFeatures)
 		for ti := range e.forest.Trees {
-			treePhi := make([]float64, e.nFeatures)
-			treeShapFast(&e.forest.Trees[ti], x, treePhi)
-			treeMargin := predictTreeMargin(&e.forest.Trees[ti], x)
-			treeBase := predictTreeMargin(&e.forest.Trees[ti], bg)
+			clearFloats(treePhi)
+			t := &e.forest.Trees[ti]
+			treeShapFastReuse(t, x, xMissing, e.nodeWCache[ti], pathBuf, treePhi)
+			treeMargin := predictTreeMargin(t, x)
+			treeBase := e.treeBase[ti]
 			treeSum := 0.0
 			for _, v := range treePhi {
 				treeSum += v
 			}
 			residual := (treeMargin - treeBase) - treeSum
-			if path := treePathFeatures(&e.forest.Trees[ti], x); len(path) > 0 {
-				f := path[0]
+			if t.NumNodes > 0 {
+				f := int(t.SplitFeature[0])
 				if f >= 0 && f < len(treePhi) {
 					treePhi[f] += residual
 				}

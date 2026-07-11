@@ -60,6 +60,17 @@ go test ./train/... -run TestAccelBench -count=1 -timeout 30m
 
 可选过滤：`LEAVES_BENCH_ONLY=hist_webgpu`。
 
+### Explain / Tree SHAP（LIB-22）
+
+`TreeExplainer` 在构造时缓存每棵树的节点覆盖权重与背景 margin，多样本 `ShapleyValues` 复用 path 缓冲。
+
+```powershell
+go test ./explain -bench=TreeSHAP -benchmem -count=1
+# BenchmarkTreeSHAPSingle / BenchmarkTreeSHAPBatch32
+```
+
+正确性仍由 `go test ./explain -count=1`（可加性 / golden）锁定。
+
 ## 参考吞吐（lg_breast_cancer，仅供参考）
 
 | 后端 | batch=1 | batch=64+ | batch=256 |
