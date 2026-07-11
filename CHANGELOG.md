@@ -5,9 +5,17 @@
 
 ## [Unreleased]
 
+（下一 patch 在此累积。）
+
+## [2.1.2] - 2026-07-11
+
+> **主题**：Explain 性能缓存、可拆 serving 模板、SK/testdata 门禁  
+> **Release 正文**：[`docs/release-notes-v2.1.2.md`](docs/release-notes-v2.1.2.md)
+
 ### Added
 
 - **Serving 模板（LIB-30）**：[`examples/serving-template/`](examples/serving-template/) — 可整目录拆为独立仓（优雅退出、max batch、/ready、热加载演示、Dockerfile）；`examples/http` 仍为最小 embed
+- **SK / testdata 门禁（LIB-11/12）**：sklearn 协议矩阵文档 + 失败用例；`TestTestdataMatrixArtifactsExist`
 
 ### Changed
 
@@ -16,6 +24,7 @@
 ### Documentation
 
 - [benchmark-baseline.md](docs/benchmark-baseline.md) 增加 Tree SHAP bench 指引
+- NOTES：模块路径与 `v2.x` tag 的代理提示
 
 ## [2.1.1] - 2026-07-11
 

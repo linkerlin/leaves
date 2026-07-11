@@ -2,7 +2,7 @@
 
 **English** | [中文](README.md)
 
-[![Version](https://img.shields.io/badge/version-v2.1.1-blue.svg)](https://github.com/linkerlin/leaves/releases/tag/v2.1.1)
+[![Version](https://img.shields.io/badge/version-v2.1.2-blue.svg)](https://github.com/linkerlin/leaves/releases/tag/v2.1.2)
 [![CI](https://github.com/linkerlin/leaves/actions/workflows/ci.yml/badge.svg)](https://github.com/linkerlin/leaves/actions/workflows/ci.yml)
 [![Go Reference](https://pkg.go.dev/badge/github.com/linkerlin/leaves.svg)](https://pkg.go.dev/github.com/linkerlin/leaves)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE.md)
