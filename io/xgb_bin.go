@@ -109,14 +109,14 @@ func parseXGBBinaryGBTree(reader *bufio.Reader, header *xgbin.ModelHeader) (*XGB
 	}
 
 	forest := &tree.ForestIR{
-		NumFeatures:       numFeatures,
-		NumOutputGroups:   numOutputGroups,
-		BaseScore:         float64(header.Param.BaseScore),
-		TreeInfo:          treeInfo,
-		IterationIndptr:   iterationIndptr,
-		Trees:             trees,
-		WeightDrop:        weightDrop,
-		Name:              name,
+		NumFeatures:     numFeatures,
+		NumOutputGroups: numOutputGroups,
+		BaseScore:       float64(header.Param.BaseScore),
+		TreeInfo:        treeInfo,
+		IterationIndptr: iterationIndptr,
+		Trees:           trees,
+		WeightDrop:      weightDrop,
+		Name:            name,
 	}
 
 	return &XGBoostLoadResult{

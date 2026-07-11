@@ -14,12 +14,12 @@ import (
 )
 
 const (
-	defaultRounds   = 40
-	defaultDepth    = 4
-	defaultLR       = 0.1
-	defaultLambda   = 1.0
-	defaultNDCGK    = 10
-	defaultSeed     = 42
+	defaultRounds = 40
+	defaultDepth  = 4
+	defaultLR     = 0.1
+	defaultLambda = 1.0
+	defaultNDCGK  = 10
+	defaultSeed   = 42
 )
 
 func main() {

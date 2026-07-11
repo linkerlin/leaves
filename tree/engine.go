@@ -62,10 +62,10 @@ type TransformFn func(rawPredictions []float64, outputPredictions []float64, sta
 type TransformType int
 
 const (
-	TransformRaw TransformType = 0
-	TransformLogistic TransformType = 1
-	TransformSoftmax TransformType = 2
-	TransformLeafIndex TransformType = 3
+	TransformRaw         TransformType = 0
+	TransformLogistic    TransformType = 1
+	TransformSoftmax     TransformType = 2
+	TransformLeafIndex   TransformType = 3
 	TransformExponential TransformType = 4
 	// TransformArgmax multi:softmax 类标签输出（argmax margin）。
 	TransformArgmax TransformType = 5

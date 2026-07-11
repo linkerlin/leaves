@@ -15,8 +15,8 @@ type ndcgMarginGolden struct {
 	Labels []float64 `json:"labels"`
 	Groups []int     `json:"groups"`
 	TopK   struct {
-		NumPairPerSample  int       `json:"num_pair_per_sample"`
-		XGBMarginRound1   []float64 `json:"xgb_margin_round1"`
+		NumPairPerSample int       `json:"num_pair_per_sample"`
+		XGBMarginRound1  []float64 `json:"xgb_margin_round1"`
 	} `json:"topk"`
 	Mean struct {
 		XGBMarginRound1 []float64 `json:"xgb_margin_round1"`

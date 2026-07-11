@@ -21,8 +21,8 @@ func TestMultiTargetOneOutputPerTree(t *testing.T) {
 		x1 := float64(i%7) * 0.15
 		vals[i*p+0] = x0
 		vals[i*p+1] = x1
-		targets[i*k+0] = x0 + 0.1*x1          // y0
-		targets[i*k+1] = 2*x1 - 0.05*x0       // y1
+		targets[i*k+0] = x0 + 0.1*x1    // y0
+		targets[i*k+1] = 2*x1 - 0.05*x0 // y1
 	}
 	dm, err := data.NewMultiTargetDense(vals, n, p, targets, k, nil)
 	if err != nil {

@@ -3,13 +3,13 @@ package treebuilder
 import "sync"
 
 type gpuHistJob struct {
-	feats          []int
-	idx            []int
-	grad, hess     []float64
-	sumG, sumH     float64
-	lambda         float64
-	cfg            Config
-	done           chan map[int]gpuHistResult
+	feats      []int
+	idx        []int
+	grad, hess []float64
+	sumG, sumH float64
+	lambda     float64
+	cfg        Config
+	done       chan map[int]gpuHistResult
 }
 
 var (

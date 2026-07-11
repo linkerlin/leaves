@@ -12,10 +12,10 @@ const BenchRecordSchemaVersion = 1
 // 写入 JSONL 或单文件，便于跨 release 对比 ns_per_op。
 type BenchRecord struct {
 	SchemaVersion int    `json:"schema_version"`
-	Name          string `json:"name"`           // 用例名，如 predict/lg_breast/batch1
-	Backend       string `json:"backend"`        // native|born_cpu|born_gpu
+	Name          string `json:"name"`    // 用例名，如 predict/lg_breast/batch1
+	Backend       string `json:"backend"` // native|born_cpu|born_gpu
 	BatchSize     int    `json:"batch_size"`
-	NsPerOp       int64  `json:"ns_per_op"`      // 平均纳秒/次
+	NsPerOp       int64  `json:"ns_per_op"` // 平均纳秒/次
 	Iters         int    `json:"iters,omitempty"`
 	Model         string `json:"model,omitempty"`
 	// AutoRule：若该记录对应 BackendAuto 选型，填 SelectBackendExplained.Rule。

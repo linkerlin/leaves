@@ -44,10 +44,10 @@ func TestForestVectorLeaf(t *testing.T) {
 	tir := BuildTreeIR(nil, []float64{0.1, 0.2}, nil, nil, 0)
 	tir.OutputDim = 2
 	forest := &ForestIR{
-		NumFeatures:       1,
-		NumOutputGroups:   2,
-		IterationIndptr:   []int{0, 1},
-		Trees:             []TreeIR{*tir},
+		NumFeatures:     1,
+		NumOutputGroups: 2,
+		IterationIndptr: []int{0, 1},
+		Trees:           []TreeIR{*tir},
 	}
 	m := ForestMargins(forest, []float64{0.0}, 1)
 	if len(m) != 2 {

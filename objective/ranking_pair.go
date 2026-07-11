@@ -18,10 +18,10 @@ const (
 )
 
 const (
-	defaultTopKPairs  = 32
-	defaultMeanPairs  = 1
-	lambdaNormEps     = 1e-16
-	scoreNormEps      = 0.01
+	defaultTopKPairs = 32
+	defaultMeanPairs = 1
+	lambdaNormEps    = 1e-16
+	scoreNormEps     = 0.01
 )
 
 type rankPairFn func(rankHi, rankLo int)

@@ -15,7 +15,7 @@ func TestLinearEnginePredict(t *testing.T) {
 		BaseScore:       0.5,
 		Weights: []float64{
 			1.0, 2.0, // feature weights
-			0.0,       // bias
+			0.0, // bias
 		},
 		Name: "test.gblinear",
 	}

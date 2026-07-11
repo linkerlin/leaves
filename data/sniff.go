@@ -57,11 +57,11 @@ func SniffFileFormat(path string) (SniffResult, error) {
 }
 
 type csvSniff struct {
-	delim      rune
-	hasHeader  bool
-	labelLast  bool
-	labelCol   int
-	hasLabel   bool
+	delim     rune
+	hasHeader bool
+	labelLast bool
+	labelCol  int
+	hasLabel  bool
 }
 
 func (c csvSniff) toCSVOptions() CSVOptions {

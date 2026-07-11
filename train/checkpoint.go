@@ -10,8 +10,8 @@ import (
 
 // Checkpoint 训练检查点。
 type Checkpoint struct {
-	Round     int     `json:"round"`
-	Objective string  `json:"objective"`
+	Round     int             `json:"round"`
+	Objective string          `json:"objective"`
 	Model     json.RawMessage `json:"model"`
 }
 

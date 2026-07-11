@@ -39,14 +39,14 @@ func NewGBTree(numFeatures int, baseScore float64, numOutputs int, cfg treebuild
 	}
 	rng := rand.New(rand.NewSource(train.Seed))
 	f := &tree.ForestIR{
-		NumFeatures:       numFeatures,
-		NumOutputGroups:   numOutputs,
-		BaseScore:         baseScore,
-		Name:              "leaves.gbtree",
-		IterationIndptr:   []int{0},
-		TreeInfo:          nil,
-		Trees:             nil,
-		WeightDrop:        nil,
+		NumFeatures:     numFeatures,
+		NumOutputGroups: numOutputs,
+		BaseScore:       baseScore,
+		Name:            "leaves.gbtree",
+		IterationIndptr: []int{0},
+		TreeInfo:        nil,
+		Trees:           nil,
+		WeightDrop:      nil,
 	}
 	if train.NumParallelTree > 1 {
 		f.NumParallelTree = train.NumParallelTree

@@ -15,19 +15,19 @@ const leavesFormatVersion = 1
 
 // LeavesJSON 训练产出格式（与 LoadFromFile 对称）。
 type LeavesJSON struct {
-	LeavesVersion int    `json:"leaves_version"`
-	Objective     string `json:"objective"`
+	LeavesVersion int             `json:"leaves_version"`
+	Objective     string          `json:"objective"`
 	Model         leavesModelJSON `json:"model"`
 }
 
 type leavesModelJSON struct {
-	Kind             int          `json:"kind"`
-	NumFeatures      int          `json:"num_features"`
-	NRawOutputGroups int          `json:"n_raw_output_groups"`
-	NOutputGroups    int          `json:"n_output_groups"`
-	Name             string       `json:"name"`
-	Forest           *forestJSON  `json:"forest,omitempty"`
-	Linear           *linearJSON  `json:"linear,omitempty"`
+	Kind             int         `json:"kind"`
+	NumFeatures      int         `json:"num_features"`
+	NRawOutputGroups int         `json:"n_raw_output_groups"`
+	NOutputGroups    int         `json:"n_output_groups"`
+	Name             string      `json:"name"`
+	Forest           *forestJSON `json:"forest,omitempty"`
+	Linear           *linearJSON `json:"linear,omitempty"`
 }
 
 type linearJSON struct {
@@ -39,17 +39,17 @@ type linearJSON struct {
 }
 
 type forestJSON struct {
-	NumFeatures       int         `json:"num_features"`
-	NumOutputGroups   int         `json:"num_output_groups"`
-	BaseScore         float64     `json:"base_score"`
-	BaseScores        []float64   `json:"base_scores,omitempty"`
-	AverageOutput     bool        `json:"average_output"`
-	Name              string      `json:"name"`
-	NumParallelTree   int         `json:"num_parallel_tree,omitempty"`
-	IterationIndptr   []int       `json:"iteration_indptr,omitempty"`
-	TreeInfo          []int       `json:"tree_info,omitempty"`
-	WeightDrop        []float64   `json:"weight_drop,omitempty"`
-	Trees             []treeJSON  `json:"trees"`
+	NumFeatures     int        `json:"num_features"`
+	NumOutputGroups int        `json:"num_output_groups"`
+	BaseScore       float64    `json:"base_score"`
+	BaseScores      []float64  `json:"base_scores,omitempty"`
+	AverageOutput   bool       `json:"average_output"`
+	Name            string     `json:"name"`
+	NumParallelTree int        `json:"num_parallel_tree,omitempty"`
+	IterationIndptr []int      `json:"iteration_indptr,omitempty"`
+	TreeInfo        []int      `json:"tree_info,omitempty"`
+	WeightDrop      []float64  `json:"weight_drop,omitempty"`
+	Trees           []treeJSON `json:"trees"`
 }
 
 type treeJSON struct {

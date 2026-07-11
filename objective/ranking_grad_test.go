@@ -12,7 +12,7 @@ type rankDM struct {
 	labels []float64
 }
 
-func (d rankDM) NumRow() int       { return d.rows }
+func (d rankDM) NumRow() int        { return d.rows }
 func (d rankDM) Labels() []float64  { return d.labels }
 func (d rankDM) Weights() []float64 { return nil }
 

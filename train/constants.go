@@ -10,10 +10,10 @@ const (
 
 // 树构建算法。
 const (
-	TreeMethodHist     = treebuilder.MethodHist
-	TreeMethodExact    = treebuilder.MethodExact
-	TreeMethodAuto     = treebuilder.MethodAuto
-	TreeMethodGPUHist  = treebuilder.MethodGPUHist
+	TreeMethodHist    = treebuilder.MethodHist
+	TreeMethodExact   = treebuilder.MethodExact
+	TreeMethodAuto    = treebuilder.MethodAuto
+	TreeMethodGPUHist = treebuilder.MethodGPUHist
 )
 
 // 训练加速模式（LEAVES_TRAIN_ACCEL / Config.AccelMode）。
@@ -26,18 +26,18 @@ const (
 
 // 目标函数名。
 const (
-	ObjectiveSquaredError    = "reg:squarederror"
-	ObjectiveBinaryLogistic  = "binary:logistic"
-	ObjectiveMultiSoftmax    = "multi:softmax"
-	ObjectiveMultiSoftprob   = "multi:softprob"
-	ObjectiveGamma           = "reg:gamma"
-	ObjectivePoisson         = "count:poisson"
-	ObjectiveTweedie         = "reg:tweedie"
-	ObjectiveSurvivalCox     = "survival:cox"
-	ObjectiveSurvivalAFT     = "survival:aft"
-	ObjectiveRankPairwise    = "rank:pairwise"
-	ObjectiveRankNDCG        = "rank:ndcg"
-	ObjectiveRankListwise     = "rank:listwise"
+	ObjectiveSquaredError   = "reg:squarederror"
+	ObjectiveBinaryLogistic = "binary:logistic"
+	ObjectiveMultiSoftmax   = "multi:softmax"
+	ObjectiveMultiSoftprob  = "multi:softprob"
+	ObjectiveGamma          = "reg:gamma"
+	ObjectivePoisson        = "count:poisson"
+	ObjectiveTweedie        = "reg:tweedie"
+	ObjectiveSurvivalCox    = "survival:cox"
+	ObjectiveSurvivalAFT    = "survival:aft"
+	ObjectiveRankPairwise   = "rank:pairwise"
+	ObjectiveRankNDCG       = "rank:ndcg"
+	ObjectiveRankListwise   = "rank:listwise"
 )
 
 // LambdaRank 配对策略（对标 XGBoost lambdarank_pair_method）。

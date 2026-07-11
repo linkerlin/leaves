@@ -72,7 +72,7 @@ func (d *Dense) Labels() []float64  { return d.Y }
 func (d *Dense) Weights() []float64 { return d.W }
 
 func (d *Dense) FeatureTypes() []FeatureType { return d.FT }
-func (d *Dense) FeatureNames() []string { return d.FNames }
+func (d *Dense) FeatureNames() []string      { return d.FNames }
 
 // WeightAt 返回样本权重，缺省 1。
 func WeightAt(dm Matrix, i int) float64 {

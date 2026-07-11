@@ -38,10 +38,10 @@ const (
 type Backend = tree.Backend
 
 const (
-	BackendNative   = tree.BackendNative
-	BackendBornCPU  = tree.BackendBornCPU
-	BackendBornGPU  = tree.BackendBornGPU
-	BackendAuto     = tree.BackendAuto
+	BackendNative  = tree.BackendNative
+	BackendBornCPU = tree.BackendBornCPU
+	BackendBornGPU = tree.BackendBornGPU
+	BackendAuto    = tree.BackendAuto
 )
 
 // WorkloadHint 推理 workload 提示（BackendAuto 时使用）。

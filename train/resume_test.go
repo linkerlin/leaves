@@ -18,11 +18,11 @@ func TestResumeFit(t *testing.T) {
 	dir := t.TempDir()
 	ckpt := filepath.Join(dir, "ckpt.json")
 	cfg := train.Config{
-		Objective:      train.ObjectiveSquaredError,
-		NumRound:       2,
-		MaxDepth:       2,
-		TreeMethod:     train.TreeMethodExact,
-		CheckpointPath: ckpt,
+		Objective:       train.ObjectiveSquaredError,
+		NumRound:        2,
+		MaxDepth:        2,
+		TreeMethod:      train.TreeMethodExact,
+		CheckpointPath:  ckpt,
 		CheckpointEvery: 1,
 	}
 	learner, err := train.NewLearner(cfg)

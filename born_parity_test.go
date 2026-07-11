@@ -40,7 +40,7 @@ func TestBornParityNEstimators(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-	bornEng, err := NewEngineFromEnsembleWithOptions(model, &EngineOptions{Backend: tree.BackendBornCPU})
+		bornEng, err := NewEngineFromEnsembleWithOptions(model, &EngineOptions{Backend: tree.BackendBornCPU})
 		if err != nil {
 			t.Fatal(err)
 		}

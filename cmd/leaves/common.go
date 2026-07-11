@@ -41,21 +41,21 @@ const metricsSchemaVersion = 1
 
 // metricsDoc 是 Agent 闭环的唯一信号契约（见 skills/leaves-autotrain/cli.md）。
 type metricsDoc struct {
-	SchemaVersion int           `json:"schema_version"`
-	Objective     string        `json:"objective"`
-	Metric        string        `json:"metric"`
-	Value         float64       `json:"value"`
-	Maximize      bool          `json:"maximize"`
-	NRows         int           `json:"n_rows"`
-	NFeatures     int           `json:"n_features,omitempty"`
-	CVFolds       int           `json:"cv_folds,omitempty"`
-	CVMean        float64       `json:"cv_mean,omitempty"`
-	CVStd         float64       `json:"cv_std,omitempty"`
-	FoldMetrics   []float64     `json:"fold_metrics,omitempty"`
-	TrainMetric   float64       `json:"train_metric,omitempty"`
-	BestRound     int           `json:"best_round,omitempty"`
-	StoppedRound  int           `json:"stopped_round,omitempty"`
-	ModelRound    int           `json:"model_round,omitempty"`
+	SchemaVersion int       `json:"schema_version"`
+	Objective     string    `json:"objective"`
+	Metric        string    `json:"metric"`
+	Value         float64   `json:"value"`
+	Maximize      bool      `json:"maximize"`
+	NRows         int       `json:"n_rows"`
+	NFeatures     int       `json:"n_features,omitempty"`
+	CVFolds       int       `json:"cv_folds,omitempty"`
+	CVMean        float64   `json:"cv_mean,omitempty"`
+	CVStd         float64   `json:"cv_std,omitempty"`
+	FoldMetrics   []float64 `json:"fold_metrics,omitempty"`
+	TrainMetric   float64   `json:"train_metric,omitempty"`
+	BestRound     int       `json:"best_round,omitempty"`
+	StoppedRound  int       `json:"stopped_round,omitempty"`
+	ModelRound    int       `json:"model_round,omitempty"`
 	// TrainAccel：Fit 后实际生效的训练加速模式（POST-13）；与推理 BackendAuto 无关。
 	TrainAccel string `json:"train_accel,omitempty"`
 	// FinalModel / FinalRound：--out-final 侧车（POST-12）；早停时为截断前 final-round。

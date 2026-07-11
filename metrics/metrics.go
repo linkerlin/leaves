@@ -42,8 +42,8 @@ func EvaluatePerGroupSplit(m Metric, yTrue, yPred []float64, groups []int) (floa
 // RMSE 均方根误差。
 type RMSE struct{}
 
-func (RMSE) Name() string           { return "rmse" }
-func (RMSE) HigherIsBetter() bool   { return false }
+func (RMSE) Name() string         { return "rmse" }
+func (RMSE) HigherIsBetter() bool { return false }
 func (RMSE) EvaluatePerGroup(yTrue, yPred []float64, groups []int) (float64, error) {
 	return EvaluatePerGroupSplit(RMSE{}, yTrue, yPred, groups)
 }
@@ -62,8 +62,8 @@ func (RMSE) Evaluate(yTrue, yPred []float64) (float64, error) {
 // MAE 平均绝对误差。
 type MAE struct{}
 
-func (MAE) Name() string           { return "mae" }
-func (MAE) HigherIsBetter() bool   { return false }
+func (MAE) Name() string         { return "mae" }
+func (MAE) HigherIsBetter() bool { return false }
 func (MAE) EvaluatePerGroup(yTrue, yPred []float64, groups []int) (float64, error) {
 	return EvaluatePerGroupSplit(MAE{}, yTrue, yPred, groups)
 }

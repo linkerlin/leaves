@@ -75,15 +75,15 @@ func xgEnsembleToForestIR(e *xgEnsemble) *tree.ForestIR {
 	treeInfo, iterationIndptr := xgbIterationMeta(len(e.Trees), e.nRawOutputGroups)
 
 	return &tree.ForestIR{
-		NumFeatures:       e.NFeatures(),
-		NumOutputGroups:   e.nRawOutputGroups,
-		Trees:             trees,
-		BaseScore:         e.BaseScore,
-		WeightDrop:        e.WeightDrop,
-		AverageOutput:     false,
-		Name:              e.Name(),
-		TreeInfo:          treeInfo,
-		IterationIndptr:   iterationIndptr,
+		NumFeatures:     e.NFeatures(),
+		NumOutputGroups: e.nRawOutputGroups,
+		Trees:           trees,
+		BaseScore:       e.BaseScore,
+		WeightDrop:      e.WeightDrop,
+		AverageOutput:   false,
+		Name:            e.Name(),
+		TreeInfo:        treeInfo,
+		IterationIndptr: iterationIndptr,
 	}
 }
 

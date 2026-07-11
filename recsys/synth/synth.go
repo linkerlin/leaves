@@ -16,11 +16,11 @@ var FeatNames = []string{"feat_pop", "feat_quality", "feat_age", "feat_bias"}
 
 // Dataset 合成数据集：原始交互 + 物品目录。
 type Dataset struct {
-	Raw         []recsys.Interaction
-	Catalog     []recsys.CatalogItem
-	FeatNames   []string
-	TrainUsers  []string
-	TestUsers   []string
+	Raw        []recsys.Interaction
+	Catalog    []recsys.CatalogItem
+	FeatNames  []string
+	TrainUsers []string
+	TestUsers  []string
 }
 
 // Generate 合成推荐 smoke 原始数据。

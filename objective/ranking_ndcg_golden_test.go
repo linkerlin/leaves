@@ -76,11 +76,11 @@ func testNDCGGradGolden(t *testing.T, g ndcgGradGolden, want []float64, method o
 	grad := make([]float64, n)
 	hess := make([]float64, n)
 	obj := objective.NewRankNDCG(objective.RankTrainConfig{
-		LambdaNorm:           true,
-		PairMethod:           method,
-		NumPairPerSample:     npp,
-		PairSeed:             42,
-		LambdaNormalization:  true,
+		LambdaNorm:          true,
+		PairMethod:          method,
+		NumPairPerSample:    npp,
+		PairSeed:            42,
+		LambdaNormalization: true,
 	})
 	dm := rankDM{rows: n, labels: g.Labels}
 	if err := objective.GradHessRanking(obj, dm, g.Groups, g.Preds, grad, hess); err != nil {

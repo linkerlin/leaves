@@ -19,14 +19,14 @@ func TestLeavesJSONRoundTrip(t *testing.T) {
 		NOutputGroups:    1,
 		Name:             "leaves.gbtree",
 		Forest: &tree.ForestIR{
-			NumFeatures:       1,
-			NumOutputGroups:   1,
-			BaseScore:         0.1,
-			Trees:             []tree.TreeIR{*tir},
-			IterationIndptr:   []int{0, 1},
-			TreeInfo:          []int{0},
-			WeightDrop:        []float64{1},
-			Name:              "leaves.gbtree",
+			NumFeatures:     1,
+			NumOutputGroups: 1,
+			BaseScore:       0.1,
+			Trees:           []tree.TreeIR{*tir},
+			IterationIndptr: []int{0, 1},
+			TreeInfo:        []int{0},
+			WeightDrop:      []float64{1},
+			Name:            "leaves.gbtree",
 		},
 	}
 	var buf bytes.Buffer

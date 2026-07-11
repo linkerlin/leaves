@@ -51,7 +51,7 @@ type dumpModelJSON struct {
 }
 
 type dumpTreeJSON struct {
-	ID    int           `json:"id"`
+	ID    int            `json:"id"`
 	Nodes []dumpNodeJSON `json:"nodes"`
 }
 

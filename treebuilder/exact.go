@@ -9,20 +9,20 @@ import (
 
 // Config 树构建超参。
 type Config struct {
-	MaxDepth       int
-	MaxLeaves      int // lossguide：单棵树最大叶子数；0=不限
-	MinHessian     float64
-	Lambda         float64
-	Gamma          float64
-	LearningRate   float64
-	MaxBin         int
-	FeatureIndices []int
-	NumThreads     int  // 0 = runtime.NumCPU()；T4 多线程 hist
-	UseGPUHist     bool // hist/gpu_hist：尝试 WebGPU 增益扫描，失败回退 Born CPU / 纯 CPU
-	AccelMode      string // auto|webgpu|born_cpu|cpu；空则读 LEAVES_TRAIN_ACCEL
-	HistBinPolicy  string // global（默认）| per_node
-	GlobalBins           *GlobalHistBins
-	MonotoneConstraints  []int // 每特征 -1/0/1；长度可小于列数，不足视为 0
+	MaxDepth            int
+	MaxLeaves           int // lossguide：单棵树最大叶子数；0=不限
+	MinHessian          float64
+	Lambda              float64
+	Gamma               float64
+	LearningRate        float64
+	MaxBin              int
+	FeatureIndices      []int
+	NumThreads          int    // 0 = runtime.NumCPU()；T4 多线程 hist
+	UseGPUHist          bool   // hist/gpu_hist：尝试 WebGPU 增益扫描，失败回退 Born CPU / 纯 CPU
+	AccelMode           string // auto|webgpu|born_cpu|cpu；空则读 LEAVES_TRAIN_ACCEL
+	HistBinPolicy       string // global（默认）| per_node
+	GlobalBins          *GlobalHistBins
+	MonotoneConstraints []int // 每特征 -1/0/1；长度可小于列数，不足视为 0
 }
 
 func featureList(cfg Config, ncols int) []int {
@@ -246,9 +246,9 @@ func flatten(n *node) ([]tree.LgNodeData, []float64) {
 }
 
 const (
-	flagMissingNan    = 1 << 5
-	flagLeftLeaf      = 1 << 2
-	flagRightLeaf     = 1 << 3
-	flagCategorical   = 1 << 0
-	flagCatSmall      = 1 << 7
+	flagMissingNan  = 1 << 5
+	flagLeftLeaf    = 1 << 2
+	flagRightLeaf   = 1 << 3
+	flagCategorical = 1 << 0
+	flagCatSmall    = 1 << 7
 )

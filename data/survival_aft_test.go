@@ -7,8 +7,8 @@ import (
 
 func TestAFTIntervalValidate(t *testing.T) {
 	cases := []struct {
-		iv  AFTInterval
-		ok  bool
+		iv AFTInterval
+		ok bool
 	}{
 		{AFTInterval{2, 2}, true},
 		{AFTInterval{3, math.Inf(1)}, true},

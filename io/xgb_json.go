@@ -117,15 +117,15 @@ func parseXGBoostJSONBytes(data []byte) (*XGBoostLoadResult, error) {
 
 	return &XGBoostLoadResult{
 		IR: &model.ModelIR{
-			Kind:             kind,
-			NumFeatures:      lmp.numFeatures,
-			NRawOutputGroups: numClass,
-			NOutputGroups:    numClass,
-			Name:             name,
-			Forest:           forest,
-			FeatureNames:     featureNames,
-			FeatureTypes:     featureTypes,
-			XGBVersion:       xgbVersion,
+			Kind:                kind,
+			NumFeatures:         lmp.numFeatures,
+			NRawOutputGroups:    numClass,
+			NOutputGroups:       numClass,
+			Name:                name,
+			Forest:              forest,
+			FeatureNames:        featureNames,
+			FeatureTypes:        featureTypes,
+			XGBVersion:          xgbVersion,
 			XGBBoostFromAverage: boostFromAverage,
 		},
 		Objective: objName,
@@ -251,12 +251,12 @@ func adjustLinearBaseScoreForObjective(objective string, lin *linear.LinearIR) {
 }
 
 type learnerModelParam struct {
-	baseScore         float64
-	baseScores        []float64
-	numFeatures       int
-	numClass          int
-	numTarget         int
-	boostFromAverage  bool
+	baseScore        float64
+	baseScores       []float64
+	numFeatures      int
+	numClass         int
+	numTarget        int
+	boostFromAverage bool
 }
 
 func parseLearnerModelParam(raw json.RawMessage) (learnerModelParam, error) {
@@ -349,15 +349,15 @@ func parseGBTreeModel(raw json.RawMessage, lmp learnerModelParam, boosterName st
 	}
 
 	forest := &tree.ForestIR{
-		NumFeatures:       lmp.numFeatures,
-		NumOutputGroups:   numOutputGroups,
-		BaseScore:         lmp.baseScore,
-		BaseScores:        lmp.baseScores,
-		TreeInfo:          treeInfo,
-		IterationIndptr:   iterationIndptr,
-		NumParallelTree:   numParallelTree,
-		Trees:             make([]tree.TreeIR, 0, len(trees)),
-		AverageOutput:     false,
+		NumFeatures:     lmp.numFeatures,
+		NumOutputGroups: numOutputGroups,
+		BaseScore:       lmp.baseScore,
+		BaseScores:      lmp.baseScores,
+		TreeInfo:        treeInfo,
+		IterationIndptr: iterationIndptr,
+		NumParallelTree: numParallelTree,
+		Trees:           make([]tree.TreeIR, 0, len(trees)),
+		AverageOutput:   false,
 	}
 
 	if boosterName == "dart" {
@@ -504,9 +504,9 @@ func parseXGBTreeJSON(raw json.RawMessage) (*xgbin.TreeModel, *xgbTreeCatMeta, e
 			NumFeature:     int32(numFeature),
 			SizeLeafVector: int32(sizeLeafVector),
 		},
-		Nodes:      nodes,
-		Stats:      stats,
-		OutputDim:  sizeLeafVector,
+		Nodes:       nodes,
+		Stats:       stats,
+		OutputDim:   sizeLeafVector,
 		LeafWeights: parseBaseWeights(obj),
 	}, parseXGBTreeCatMeta(obj), nil
 }

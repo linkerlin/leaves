@@ -27,11 +27,11 @@ func TestFitExternalBatchedHist(t *testing.T) {
 	}
 
 	cfg := Config{
-		Objective:    ObjectiveBinaryLogistic,
-		NumRound:     3,
-		MaxDepth:     3,
-		LearningRate: 0.3,
-		TreeMethod:   TreeMethodHist,
+		Objective:     ObjectiveBinaryLogistic,
+		NumRound:      3,
+		MaxDepth:      3,
+		LearningRate:  0.3,
+		TreeMethod:    TreeMethodHist,
 		HistBinPolicy: "global",
 	}
 	learner, err := FitExternal(cfg, bm)
@@ -52,10 +52,10 @@ func TestFitExternalExactMaterializes(t *testing.T) {
 		t.Fatal(err)
 	}
 	cfg := Config{
-		Objective:    ObjectiveBinaryLogistic,
-		NumRound:     2,
-		MaxDepth:     2,
-		TreeMethod:   TreeMethodExact,
+		Objective:  ObjectiveBinaryLogistic,
+		NumRound:   2,
+		MaxDepth:   2,
+		TreeMethod: TreeMethodExact,
 	}
 	learner, err := FitExternal(cfg, bm)
 	if err != nil {

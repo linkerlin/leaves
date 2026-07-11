@@ -97,7 +97,7 @@ func groupScored(rows []recsys.ManifestRow) map[string][]recsys.ManifestRow {
 func sortedUsers(m map[string][]recsys.ManifestRow) []string {
 	out := make([]string, 0, len(m))
 	for u := range m {
-	 out = append(out, u)
+		out = append(out, u)
 	}
 	sort.Strings(out)
 	return out

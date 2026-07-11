@@ -15,7 +15,7 @@ import (
 
 // Result 流水线各阶段摘要。
 type Result struct {
-	Prep      recsys.PrepReport
+	Prep        recsys.PrepReport
 	RecallTrain int
 	RecallTest  int
 	RankTrain   int

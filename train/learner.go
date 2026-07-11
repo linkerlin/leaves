@@ -15,24 +15,24 @@ import (
 
 // Config 训练配置（T1/T2/T3）。
 type Config struct {
-	Booster         string
-	Objective       string
-	NumClass        int
-	NumRound        int
-	MaxDepth        int
-	MaxLeaves       int // lossguide：0=仅 MaxDepth 限制
-	LearningRate    float64
-	Lambda          float64
-	MinHessian      float64
-	Gamma           float64
-	MaxBin          int
-	TreeMethod      string
-	EvalMetric      string
-	Subsample       float64
-	ColsampleByTree float64
-	Seed            int64
-	NumThreads      int // 0 = 全部 CPU；T4 多线程 hist
-	NumParallelTree int
+	Booster             string
+	Objective           string
+	NumClass            int
+	NumRound            int
+	MaxDepth            int
+	MaxLeaves           int // lossguide：0=仅 MaxDepth 限制
+	LearningRate        float64
+	Lambda              float64
+	MinHessian          float64
+	Gamma               float64
+	MaxBin              int
+	TreeMethod          string
+	EvalMetric          string
+	Subsample           float64
+	ColsampleByTree     float64
+	Seed                int64
+	NumThreads          int // 0 = 全部 CPU；T4 多线程 hist
+	NumParallelTree     int
 	AccelMode           string // auto|webgpu|born_cpu|cpu；空则 LEAVES_TRAIN_ACCEL
 	HistBinPolicy       string // global|per_node；hist 路径默认 global
 	MonotoneConstraints []int  // 每特征 -1/0/1，对标 XGBoost monotone_constraints
@@ -48,13 +48,13 @@ type Config struct {
 	// 与 multi:softmax 互斥。向量叶 multi_output_tree 训练未实现。
 	NumTarget int
 	// 排序学习（T5，对标 XGBoost LambdaMART）
-	NDCGK                      int    // eval / lambda ndcg@k；0=全量
-	LambdaRankNorm             bool   // lambdarank_norm，rank:ndcg 默认 true
-	MaxPosition                int    // max_position；0=不截断
-	LambdaRankPairMethod       string // full|topk|mean；默认 topk（对标 XGBoost）
-	LambdaRankNumPairPerSample int    // lambdarank_num_pair_per_sample；0=默认 32（topk）
-	LambdaRankNormalization    bool   // lambdarank_normalization；topk/mean 默认 true（对标 XGBoost）
-	LambdaRankScoreNorm        bool   // lambdarank_score_normalization
+	NDCGK                      int     // eval / lambda ndcg@k；0=全量
+	LambdaRankNorm             bool    // lambdarank_norm，rank:ndcg 默认 true
+	MaxPosition                int     // max_position；0=不截断
+	LambdaRankPairMethod       string  // full|topk|mean；默认 topk（对标 XGBoost）
+	LambdaRankNumPairPerSample int     // lambdarank_num_pair_per_sample；0=默认 32（topk）
+	LambdaRankNormalization    bool    // lambdarank_normalization；topk/mean 默认 true（对标 XGBoost）
+	LambdaRankScoreNorm        bool    // lambdarank_score_normalization
 	TweedieVariancePower       float64 // reg:tweedie，默认 1.5，范围 (1,2)
 }
 
@@ -67,10 +67,10 @@ type Learner struct {
 	metric             metrics.Metric
 	metricHistory      []float64
 	baseLearningRate   float64
-	resolvedTreeMethod  string
-	useGPUHist          bool
-	effectiveAccelMode  string
-	accelLogged         bool
+	resolvedTreeMethod string
+	useGPUHist         bool
+	effectiveAccelMode string
+	accelLogged        bool
 	marginEngine       *tree.BornEngine
 	marginGPULogged    bool
 	marginPredictGPU   int
@@ -89,14 +89,14 @@ func NewLearner(cfg Config) (*Learner, error) {
 		cfg.Subsample = 1.0 // 排序训练需 query 完整（对标 XGBoost group）
 	}
 	rankCfg := objective.RankTrainConfig{
-		NDCGK:                cfg.NDCGK,
-		LambdaNorm:           lambdaRankNormDefault(cfg),
-		MaxPosition:          cfg.MaxPosition,
-		PairMethod:           objective.ParseRankPairMethod(cfg.LambdaRankPairMethod),
-		NumPairPerSample:     cfg.LambdaRankNumPairPerSample,
-		PairSeed:             cfg.Seed,
-		LambdaNormalization:  cfg.LambdaRankNormalization,
-		ScoreNormalization:   cfg.LambdaRankScoreNorm,
+		NDCGK:               cfg.NDCGK,
+		LambdaNorm:          lambdaRankNormDefault(cfg),
+		MaxPosition:         cfg.MaxPosition,
+		PairMethod:          objective.ParseRankPairMethod(cfg.LambdaRankPairMethod),
+		NumPairPerSample:    cfg.LambdaRankNumPairPerSample,
+		PairSeed:            cfg.Seed,
+		LambdaNormalization: cfg.LambdaRankNormalization,
+		ScoreNormalization:  cfg.LambdaRankScoreNorm,
 	}
 	if _, ok := objective.IsRanking(obj); ok {
 		obj = objective.ConfigureRanking(obj, rankCfg)

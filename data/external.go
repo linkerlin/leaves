@@ -8,9 +8,9 @@ type GroupedMatrix interface {
 
 // ExternalBatch 外存矩阵单批视图（T5 external memory 草案）。
 type ExternalBatch struct {
-	Rows   int
-	Cols   int
-	Labels []float64
+	Rows    int
+	Cols    int
+	Labels  []float64
 	Weights []float64
 	// RowAt 将第 i 行写入 buf（长度 ≥ Cols）。
 	RowAt func(row int, buf []float64) error

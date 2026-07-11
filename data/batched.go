@@ -78,8 +78,8 @@ func SplitDense(d *Dense, batchRows int) (*BatchedMatrix, error) {
 		n := end - start
 		base := start
 		batches = append(batches, &ExternalBatch{
-			Rows:  n,
-			Cols:  d.Cols,
+			Rows: n,
+			Cols: d.Cols,
 			RowAt: func(row int, buf []float64) error {
 				return d.Row(base+row, buf)
 			},

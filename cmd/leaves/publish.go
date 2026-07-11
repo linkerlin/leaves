@@ -112,15 +112,15 @@ func cmdPublish(args []string) error {
 	}
 
 	manifest := map[string]any{
-		"version":       *version,
-		"objective":     objective,
-		"num_features":  ir.NumFeatures,
-		"n_trees":       nTrees,
+		"version":        *version,
+		"objective":      objective,
+		"num_features":   ir.NumFeatures,
+		"n_trees":        nTrees,
 		"n_boost_rounds": nBoost,
-		"base_learners": nTrees,
-		"files":         files,
-		"metrics":       metricsSnap,
-		"created_at":    time.Now().UTC().Format(time.RFC3339),
+		"base_learners":  nTrees,
+		"files":          files,
+		"metrics":        metricsSnap,
+		"created_at":     time.Now().UTC().Format(time.RFC3339),
 		"schema_version": 1,
 		// leaves_cli 为 CLI 契约版本锚点（非 go.mod 模块版本）。
 		"leaves_cli": "agentic-1",

@@ -36,9 +36,9 @@ type rpcReq struct {
 }
 
 type rpcResp struct {
-	JSONRPC string `json:"jsonrpc"`
-	ID      any    `json:"id,omitempty"`
-	Result  any    `json:"result,omitempty"`
+	JSONRPC string  `json:"jsonrpc"`
+	ID      any     `json:"id,omitempty"`
+	Result  any     `json:"result,omitempty"`
 	Error   *rpcErr `json:"error,omitempty"`
 }
 
@@ -151,12 +151,12 @@ func toolDefs() []map[string]any {
 		tool("movielens_train", "训练 leaves ranker（rank:ndcg/pairwise/listwise）", map[string]any{
 			"type": "object",
 			"properties": map[string]any{
-				"objective":  map[string]any{"type": "string", "description": "rank:ndcg|rank:pairwise|rank:listwise"},
-				"rounds":     map[string]any{"type": "integer"},
-				"depth":      map[string]any{"type": "integer"},
-				"lr":         map[string]any{"type": "number"},
-				"out_model":  map[string]any{"type": "string"},
-				"metrics":    map[string]any{"type": "string"},
+				"objective": map[string]any{"type": "string", "description": "rank:ndcg|rank:pairwise|rank:listwise"},
+				"rounds":    map[string]any{"type": "integer"},
+				"depth":     map[string]any{"type": "integer"},
+				"lr":        map[string]any{"type": "number"},
+				"out_model": map[string]any{"type": "string"},
+				"metrics":   map[string]any{"type": "string"},
 			},
 		}),
 		tool("movielens_eval", "在测试集上评估 NDCG@k", map[string]any{

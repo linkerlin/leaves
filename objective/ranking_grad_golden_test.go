@@ -11,13 +11,13 @@ import (
 )
 
 type pairwiseGradGolden struct {
-	Seed                     int     `json:"seed"`
-	Groups                   []int   `json:"groups"`
-	Labels                   []float64 `json:"labels"`
-	Preds                    []float64 `json:"preds"`
-	Grad                     []float64 `json:"grad"`
-	Hess                     []float64 `json:"hess"`
-	GroupPairs               []struct {
+	Seed       int       `json:"seed"`
+	Groups     []int     `json:"groups"`
+	Labels     []float64 `json:"labels"`
+	Preds      []float64 `json:"preds"`
+	Grad       []float64 `json:"grad"`
+	Hess       []float64 `json:"hess"`
+	GroupPairs []struct {
 		Group int `json:"group"`
 		Size  int `json:"size"`
 		Pairs []struct {

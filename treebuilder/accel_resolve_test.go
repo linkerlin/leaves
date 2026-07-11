@@ -4,10 +4,10 @@ import "testing"
 
 func TestResolveEffectiveAccelMode(t *testing.T) {
 	cases := []struct {
-		req      string
-		nRow     int
-		webgpu   bool
-		want     string
+		req    string
+		nRow   int
+		webgpu bool
+		want   string
 	}{
 		{AccelModeAuto, 1000, true, AccelModeCPU},
 		{AccelModeAuto, 30000, true, AccelModeWebGPU},

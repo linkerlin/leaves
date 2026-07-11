@@ -30,13 +30,13 @@ type RankOptions struct {
 	Norm        bool // lambdarank_norm（ndcg）：按 ideal_dcg 归一化
 	MaxPosition int  // 0 = 不截断
 	// 配对策略（对标 XGBoost 2.0+）
-	PairMethod            RankPairMethod
-	NumPairPerSample      int
-	PairSeed              int64
-	BoostRound            int
-	GroupIdx              int
-	LambdaNormalization   bool
-	ScoreNormalization    bool
+	PairMethod          RankPairMethod
+	NumPairPerSample    int
+	PairSeed            int64
+	BoostRound          int
+	GroupIdx            int
+	LambdaNormalization bool
+	ScoreNormalization  bool
 }
 
 // RankPairwise rank:pairwise（RankNet / LambdaMART，无 metric 缩放）。
@@ -279,7 +279,7 @@ func deltaNDCG(labels []float64, ranks []int, i, j int, ideal float64, k, maxPos
 	}
 	gi, gj := gain(labels[i]), gain(labels[j])
 	di, dj := discountAt(posI), discountAt(posJ)
-	delta := math.Abs(gi*(dj-di) + gj*(di-dj)) / ideal
+	delta := math.Abs(gi*(dj-di)+gj*(di-dj)) / ideal
 	return delta
 }
 
