@@ -5,10 +5,22 @@
 
 ## [Unreleased]
 
+---
+
+## [2.1.4] - 2026-07-11
+
+> **主题**：MovieLens 推荐片名旁车 + walkthrough  
+> **Release 正文**：[`docs/release-notes-v2.1.4.md`](docs/release-notes-v2.1.4.md)
+
 ### Added
 
 - MovieLens 推荐旁车 `rank_movielens_*_meta.jsonl`（movie_id/title）；`agent recommend` / `cmd/recommend` 展示片名
 - `demos/movielens/scripts/walkthrough.ps1` / `.sh` 端到端脚本
+- `demos/movielens/rankutil/meta.go` 加载旁车
+
+### Documentation
+
+- TUTORIAL / README 同步 meta 与 walkthrough
 
 ---
 
