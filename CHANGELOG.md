@@ -5,7 +5,12 @@
 
 ## [Unreleased]
 
-> v2.1.0 之后的加固（尚未打 patch tag；可并入 v2.1.1）。
+（下一 patch 在此累积。）
+
+## [2.1.1] - 2026-07-11
+
+> **主题**：v2.1 后加固 — Agent 契约门禁、ONNX TreeEnsemble 子集、多目标回归  
+> **Release 正文**：[`docs/release-notes-v2.1.1.md`](docs/release-notes-v2.1.1.md)
 
 ### Added
 

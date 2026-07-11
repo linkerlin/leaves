@@ -24,6 +24,7 @@ func TestReleaseDocsPresent(t *testing.T) {
 	required := []string{
 		filepath.Join(docsDir, "release-checklist.md"),
 		filepath.Join(docsDir, "release-notes-v2.1.0.md"),
+		filepath.Join(docsDir, "release-notes-v2.1.1.md"),
 		filepath.Join(docsDir, "versioning.md"),
 		filepath.Join(docsDir, "api-surface.md"),
 		filepath.Join(docsDir, "interop-matrix.md"),

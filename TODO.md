@@ -1,7 +1,7 @@
 # leaves 演进 TODO
 
 > **对齐文档**：[`演进计划.md`](演进计划.md) v5.4（库线）· [`演进方案.md`](演进方案.md) v1.4（Agentic）  
-> **更新**：2026-07-11（含 LIB-10 ONNX 子集 + LIB-21 multi-target 训练）  
+> **更新**：2026-07-11（v2.1.1：POST 加固 + ONNX 子集 + multi-target 闭环）  
 > **原则**：Native golden 不变；Born 直读 `ForestIR`；不做分布式/serving 框架 / 内置 HPO / 官方 registry。
 
 **图例**：`[ ]` 待办 · `[~]` 进行中 · `[x]` 完成 · `[-]` 明确不做
