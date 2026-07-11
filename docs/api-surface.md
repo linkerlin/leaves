@@ -94,6 +94,7 @@ m, err = leaves.LoadFromFile("lg.model", &leaves.LoadOptions{AutoTransform: fals
 |------|------|------|
 | scikit-learn `.pkl`/`.joblib` | 实验 | 窄协议；失败见 `LoadError.Hint` |
 | `io.LoadONNX` / `.onnx` | 实验 | TreeEnsembleRegressor 子集；复杂图请转 XGB/leaves JSON |
+| 官方 HTTP/gRPC serving | **不做** | 用 [`examples/http`](../examples/http) 或 [`examples/serving-template`](../examples/serving-template) |
 | 自定义 objective/metric | 稳定机制 | 须自行 `Register`；不进默认 CLI 名表除非文档 |
 
 ---

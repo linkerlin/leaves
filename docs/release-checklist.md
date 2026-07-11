@@ -58,6 +58,7 @@ go test ./cmd/leaves ./tree ./io ./objective ./metrics -count=1
 | ONNX 子集 | `go test ./io -run ONNX -count=1` |
 | [examples/wasm](../examples/wasm/) | 构建 + README 部署建议 |
 | [examples/http](../examples/http/) | embed 批预测 demo（非官方 serving） |
+| [examples/serving-template](../examples/serving-template/) | 可拆独立仓 serving 脚手架 |
 | quantize | `publish --quantize` 或 `quantize` 包测试绿 |
 | explain | `leaves explain` / `model.Explain` 冒烟 |
 

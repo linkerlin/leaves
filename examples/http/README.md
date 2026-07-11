@@ -2,6 +2,9 @@
 
 非官方 serving；演示如何在自有服务中 embed `leaves` 批预测。
 
+> 需要**可拆独立仓**的脚手架（优雅退出、max batch、/ready、热加载演示、Dockerfile）见  
+> [`../serving-template`](../serving-template)（LIB-30）。本目录保持最小单文件 demo。
+
 ## 启动
 
 ```bash

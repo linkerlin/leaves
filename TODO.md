@@ -93,7 +93,7 @@ go test ./cmd/leaves -run 'Agentic|SaveBest|FromRun|NAPolicy|Publish' -count=1
 
 #### 部署 / 生态（库外）
 
-- [ ] **LIB-30** 独立 serving **示例仓库**或模板（本仓继续只保留 `examples/http` embed）  
+- [x] **LIB-30** [`examples/serving-template/`](examples/serving-template/)：可拆独立仓脚手架（http 仍为最小 embed）
 - [x] **LIB-31** registry 对接模板（S3 / gh release / curl / OCI）→ `skills/leaves-autotrain/cli.md`（**仅文档**）
 
 ---
@@ -380,5 +380,5 @@ go test -run TestBenchGateBornCPUSlowerBatch1 -count=1
 2. ✅ LIB-01(文档边界) / 02 / 03 / 20 / 31
 3. ✅ LIB-10/11/12/20/21 + v2.1.1 发版
 4. ✅ LIB-22 explain 性能缓存
-5. LIB-30 独立 serving 仓                  ← 库外/按需
+5. ✅ LIB-30 serving-template（可拆仓）
 ```

@@ -61,7 +61,7 @@
 
 - int8 阈值量化（带 parity 门禁）
 - `Ensemble.Reload` 线上热更新；按 batch 维度的推理 profiling
-- [WASM demo](examples/wasm/README.md)（js / wasm，Native CPU）、[HTTP embed demo](examples/http/README.md)（批量服务）、[train-from-model demo](examples/train_from_model/README.md)、[扩展 objective/metric](examples/extension/README.md)、[多目标回归](examples/multitarget/README.md)
+- [WASM demo](examples/wasm/README.md)（js / wasm，Native CPU）、[HTTP embed demo](examples/http/README.md)、[serving 模板](examples/serving-template/README.md)（可拆独立仓）、[train-from-model](examples/train_from_model/README.md)、[扩展 objective/metric](examples/extension/README.md)、[多目标回归](examples/multitarget/README.md)
 
 ## 安装
 
@@ -476,7 +476,7 @@ go run ./cmd/leaves publish --model m.leaves.json --out-dir release/ --quantize 
 | [AGENTS.md](AGENTS.md) | 项目规约 |
 | [docs/testdata-matrix.md](docs/testdata-matrix.md) | 回归矩阵 |
 | [docs/benchmark-baseline.md](docs/benchmark-baseline.md) | Bench 门禁 |
-| [examples/](examples/) | autotrain / wasm / http / train_from_model / extension / multitarget |
+| [examples/](examples/) | autotrain / wasm / http / serving-template / train_from_model / extension / multitarget |
 
 ## 兼容性
 

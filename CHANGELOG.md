@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- **Serving 模板（LIB-30）**：[`examples/serving-template/`](examples/serving-template/) — 可整目录拆为独立仓（优雅退出、max batch、/ready、热加载演示、Dockerfile）；`examples/http` 仍为最小 embed
+
 ### Changed
 
 - **Explain 性能（LIB-22）**：`TreeExplainer` 缓存树节点权重与背景 margin，多样本 SHAP 复用 path 缓冲（语义不变；`go test ./explain`）
