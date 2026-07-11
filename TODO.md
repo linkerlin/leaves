@@ -1,7 +1,7 @@
 # leaves 演进 TODO
 
 > **对齐文档**：[`演进计划.md`](演进计划.md) v5.4（库线）· [`演进方案.md`](演进方案.md) v1.5+（Agentic）  
-> **更新**：2026-07-11（**进入维护期**：v2.1.0–v2.1.2 已发布；现行 backlog 清空）  
+> **更新**：2026-07-11（**维护期** + **v2.1.3** MovieLens Agent/MCP demo）  
 > **原则**：Native golden 不变；Born 直读 `ForestIR`；不做分布式/serving 框架 / 内置 HPO / 官方 registry。
 
 **图例**：`[ ]` 待办 · `[~]` 进行中 · `[x]` 完成 · `[-]` 明确不做
@@ -18,7 +18,7 @@
 
 **对照结论**：可执行 backlog **已清空**。默认 **维护 + 按需开新项**；新需求先写进本文件再实现。发版走 [`docs/release-checklist.md`](docs/release-checklist.md)。
 
-**最新 tag**：https://github.com/linkerlin/leaves/releases/tag/v2.1.2
+**最新 tag**：https://github.com/linkerlin/leaves/releases/tag/v2.1.3
 
 ---
 
@@ -109,7 +109,7 @@ go test ./cmd/leaves -run 'Agentic|SaveBest|FromRun|NAPolicy|Publish' -count=1
 - [x] **MNT-02** 模块路径无 `/v2` 时代理可能拒 `v2.1.x` tag → 已记 [NOTES.md](NOTES.md) §4
 - [x] **MNT-03** 发版前关键包测试已跑；全量 `go test ./...` 仍建议 CI  
 - [x] **MNT-04** skills 镜像 CI 门禁（`TestSkillsMirrorSync`）；改 SKILL 须同步 `.cursor/skills`  
-- [x] **MNT-05** README badge / CHANGELOG 已对齐 **v2.1.2**
+- [x] **MNT-05** README badge / CHANGELOG 已对齐 **v2.1.3**
 
 **快速回归**：
 

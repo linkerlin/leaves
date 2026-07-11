@@ -5,11 +5,25 @@
 
 ## [Unreleased]
 
+（下一 patch 在此累积。）
+
+## [2.1.3] - 2026-07-11
+
+> **主题**：MovieLens Ranker Agent/MCP 全流程 demo 与教程  
+> **Release 正文**：[`docs/release-notes-v2.1.3.md`](docs/release-notes-v2.1.3.md)
+
 ### Added
 
-- **MovieLens Ranker Agent/MCP demo**：`demos/movielens/cmd/agent`（JSON CLI）、`cmd/mcp`（stdio MCP）、`agentops` 共用实现；详尽教程 [`demos/movielens/TUTORIAL.md`](demos/movielens/TUTORIAL.md)
+- **MovieLens Ranker Agent/MCP demo**
+  - `demos/movielens/cmd/agent`：stdout JSON CLI（status/prepare/train/eval/recommend/full-pipeline）
+  - `demos/movielens/cmd/mcp`：stdio MCP server（`movielens_*` tools）
+  - `demos/movielens/agentops`：CLI/MCP 共用实现
+  - 详尽教程 [`demos/movielens/TUTORIAL.md`](demos/movielens/TUTORIAL.md)
+  - Agent SKILL [`skills/recsys-movielens-ranker/`](skills/recsys-movielens-ranker/SKILL.md)
 
----
+### Documentation
+
+- `recsys-orchestrator` / README / AGENTS 交叉链接 MovieLens Agent 路径
 
 ## [2.1.2] - 2026-07-11
 
