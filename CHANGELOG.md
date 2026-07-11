@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+---
+
+## [2.2.0] - 2026-07-11
+
+> **主题**：向量叶 `multi_output_tree` 训练（multi-target 一棵树、叶子为向量）  
+> **Release 正文**：[`docs/release-notes-v2.2.0.md`](docs/release-notes-v2.2.0.md)
+
 ### Added
 
 - **向量叶 `multi_output_tree` 训练**（XGBoost `multi_output_tree`，原列「明确不做」，现落地）：
