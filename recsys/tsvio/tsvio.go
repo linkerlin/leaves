@@ -275,6 +275,36 @@ func WriteDeal(path string, rows []recsys.DealRow) error {
 	return writeLines(path, lines)
 }
 
+// ReadDeal 读发牌终稿 TSV。
+func ReadDeal(path string) ([]recsys.DealRow, error) {
+	raw, err := readDataLines(path)
+	if err != nil {
+		return nil, err
+	}
+	var out []recsys.DealRow
+	for i, line := range raw {
+		if i == 0 && strings.HasPrefix(line, "User\t") {
+			continue
+		}
+		parts := strings.Split(line, "\t")
+		if len(parts) < 5 {
+			return nil, fmt.Errorf("tsvio: bad deal row %d", i+1)
+		}
+		score, err := strconv.ParseFloat(strings.TrimSpace(parts[3]), 64)
+		if err != nil {
+			return nil, fmt.Errorf("tsvio: deal score row %d: %w", i+1, err)
+		}
+		rank, err := strconv.Atoi(strings.TrimSpace(parts[4]))
+		if err != nil {
+			return nil, fmt.Errorf("tsvio: deal rank row %d: %w", i+1, err)
+		}
+		out = append(out, recsys.DealRow{
+			User: parts[0], Item: parts[1], Tag: parts[2], Score: score, Rank: rank,
+		})
+	}
+	return out, nil
+}
+
 // WriteJSON 写 JSON 文件。
 func WriteJSON(path string, v any) error {
 	b, err := json.MarshalIndent(v, "", "  ")

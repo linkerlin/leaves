@@ -24,11 +24,35 @@ type Result struct {
 	DealRows    int
 }
 
-// Run 执行端到端推荐 smoke 流水线。
+// Run 合成数据端到端推荐 smoke 流水线。
 func Run(w recsys.Workspace, cfg recsys.SmokeConfig) (Result, error) {
 	ds, err := synth.Generate(cfg)
 	if err != nil {
 		return Result{}, fmt.Errorf("pipeline: synth: %w", err)
+	}
+	return RunFromDataset(w, ds, cfg)
+}
+
+// RunFromDataset 对已有 Dataset（合成或 MovieLens 等）执行：
+// prep → recall → rankconv → trainrank → deal。
+func RunFromDataset(w recsys.Workspace, ds synth.Dataset, cfg recsys.SmokeConfig) (Result, error) {
+	if cfg.RecallSize <= 0 {
+		cfg.RecallSize = 100
+	}
+	if cfg.DeckSize <= 0 {
+		cfg.DeckSize = 10
+	}
+	if cfg.MaxSameTag <= 0 {
+		cfg.MaxSameTag = 3
+	}
+	if cfg.TrainRounds <= 0 {
+		cfg.TrainRounds = 25
+	}
+	if cfg.NDCGK <= 0 {
+		cfg.NDCGK = 10
+	}
+	if len(ds.Catalog) < cfg.RecallSize {
+		return Result{}, fmt.Errorf("pipeline: catalog size %d < recall size %d", len(ds.Catalog), cfg.RecallSize)
 	}
 
 	prepRes, err := prep.Run(w, ds)
@@ -52,6 +76,7 @@ func Run(w recsys.Workspace, cfg recsys.SmokeConfig) (Result, error) {
 		return Result{}, err
 	}
 
+	// 召回：部分已交互（LTR 标签）+ 未交互补齐（发牌 recent 过滤后仍有候选）
 	recallCfg := recall.Config{PerUser: cfg.RecallSize}
 	recallTrain, err := recall.Run("train", trainSamples, catalog, ds.FeatNames, prepRes.UserQIDs, recallCfg)
 	if err != nil {

@@ -429,13 +429,15 @@ cd testdata; python gen_rank_movielens.py; cd ..
 ┌──────────────────────────────────────────┐
 │  recsys-orchestrator（四段）               │
 │  prep → recall(100) → LTR → deal         │
-│  合成数据：go run ./recsys/cmd/smoke       │
+│  合成：recsys/cmd/smoke                    │
+│  真实：agent four-stage / recsys/cmd/movielens │
 └──────────────────────────────────────────┘
                     ▲
-                    │ 精排阶段可换成 MovieLens ranker 思路
+                    │ 同源 pipeline.RunFromDataset
 ┌──────────────────────────────────────────┐
-│  本教程 MovieLens ranker                   │
-│  历史评分作候选 + rank:ndcg 精排 + Top-K   │
+│  本教程 MovieLens                          │
+│  A) full-pipeline：历史评分组精排-only     │
+│  B) four-stage：四元 + 召回 + 发牌         │
 └──────────────────────────────────────────┘
                     ▲
                     │ 通用调参 SKILL
@@ -447,8 +449,9 @@ cd testdata; python gen_rank_movielens.py; cd ..
 
 | 场景 | 用什么 |
 |------|--------|
-| 学精排 / 对标 XGB / Agent MCP | **本教程** |
-| 学召回+发牌全链路（合成） | `recsys/cmd/smoke` + `recsys-orchestrator` |
+| 学精排 / 对标 XGB / Agent MCP | **本教程** `full-pipeline` |
+| 学召回+发牌（MovieLens 真实） | **`agent four-stage`** / `recsys/cmd/movielens` |
+| 学召回+发牌（合成） | `recsys/cmd/smoke` + `recsys-orchestrator` |
 | 任意表数据 AutoML 调参 | `leaves-autotrain` |
 
 ---
@@ -482,7 +485,51 @@ cd testdata; python gen_rank_movielens.py; cd ..
 1. **调参挑战**：在不改代码的前提下，用 Agent 循环把 test NDCG 抬升，并保留 `runs.jsonl` 轨迹。  
 2. **目标对比**：`rank:pairwise` / `rank:listwise` 与 `rank:ndcg` 的 test NDCG 对比表。  
 3. **接入 serving-template**：把 `out/model_rank_ndcg.leaves.json` 挂到 `examples/serving-template`，用 HTTP 暴露批预测（注意 ranking 推理仍按组特征矩阵输入）。  
-4. **四段融合（进阶）**：用 MovieLens 交互生成 `User/Item/Score/Tag`，跑 `recsys` 召回+发牌，精排换成 leaves ranker。  
+4. **四段融合**：见下一节 §11.1。
+
+---
+
+## 11.1 MovieLens 四段流水线（prep → 召回 → 排序 → 发牌）
+
+与 **精排-only**（`full-pipeline`）不同：本路径把 MovieLens 100K 转成四元契约，走完整 `recsys` 模块。
+
+```text
+ml-100k.zip
+  └─movielens.Load─→ User/Item/Score/Tag + catalog(feat_*)
+  └─prep─→ clean/ + catalog/ + meta/user_qid.tsv
+  └─recall─→ 每 User 100 Item（部分正样本 + 未交互补齐）
+  └─rankconv─→ rank_*.tsv + manifest
+  └─trainrank─→ model_rank_ndcg.leaves.json + scored.jsonl
+  └─deal─→ deal_test.tsv（去重 recent + Tag 控重 + Top-K）
+```
+
+### 一键命令
+
+```powershell
+# Agent JSON（推荐）
+go run ./demos/movielens/cmd/agent four-stage
+# 缩小规模 smoke
+go run ./demos/movielens/cmd/agent four-stage -train-users 20 -test-users 5 -rounds 12
+
+# 人类 CLI
+go run ./recsys/cmd/movielens -workspace demos/movielens/out/fourstage
+
+# 测试
+go test ./recsys/pipeline/ -run TestMovieLensFourStage -count=1
+```
+
+MCP：`movielens_four_stage`（参数 `train_users` / `recall_size` / `deck_size` / …）。
+
+### 与 ranker-only 对照
+
+| | 精排-only | 四段 |
+|--|-----------|------|
+| 数据 | `testdata/rank_movielens_*.tsv` | 现场从 ml-100k 构建 workspace |
+| 候选 | 用户历史评分组 | 召回 100（含未评分） |
+| 发牌 | 组内按 margin 截断 | recent 去重 + Tag 控重 |
+| 片名 | `*_meta.jsonl` | `meta/item_titles.tsv` |
+
+工作区默认：`demos/movielens/out/fourstage/`。首次需下载 [ml-100k](https://grouplens.org/datasets/movielens/100k/) → `.cache/ml-100k.zip`。
 
 ---
 
@@ -519,15 +566,19 @@ testdata/
 ## 快速命令卡片
 
 ```powershell
-# Shell Agent
+# Shell Agent — 精排-only
 go run ./demos/movielens/cmd/agent full-pipeline
+# Shell Agent — 四段
+go run ./demos/movielens/cmd/agent four-stage
 
 # 测试
 go test ./demos/movielens/agentops -count=1
 go test ./train/... -run TestRankMovieLens -count=1
+go test ./recsys/pipeline/ -run TestMovieLensFourStage -count=1
 
 # MCP（配置到客户端后）
 # tools/call movielens_full_pipeline {"objective":"rank:ndcg","group":0,"topk":10}
+# tools/call movielens_four_stage {"train_users":40,"test_users":10,"rounds":20}
 ```
 
 **祝调试顺利。** 指标说话，JSON 说话，Agent 只做决策。

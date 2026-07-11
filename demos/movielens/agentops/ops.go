@@ -15,6 +15,10 @@ import (
 	"github.com/linkerlin/leaves/data"
 	"github.com/linkerlin/leaves/demos/movielens/rankutil"
 	"github.com/linkerlin/leaves/io"
+	"github.com/linkerlin/leaves/recsys"
+	"github.com/linkerlin/leaves/recsys/movielens"
+	"github.com/linkerlin/leaves/recsys/pipeline"
+	"github.com/linkerlin/leaves/recsys/tsvio"
 	"github.com/linkerlin/leaves/train"
 )
 
@@ -483,6 +487,146 @@ func Recommend(p RecommendParams) Result {
 	return okResult("recommend", fmt.Sprintf("Top-%d for qid=%d", len(list), userQID), map[string]any{
 		"out_json": outJSON, "qid": userQID, "items": list,
 	})
+}
+
+// FourStageParams MovieLens 四段流水线（prep→recall→rank→deal）参数。
+type FourStageParams struct {
+	Workspace  string
+	TrainUsers int
+	TestUsers  int
+	RecallSize int
+	Rounds     int
+	DeckSize   int
+	MaxSameTag int
+	Seed       int64
+	// SampleUser 若非空，在 data 中附带该用户发牌样本（含 title）
+	SampleUser string
+}
+
+// FourStage 跑 recsys 四段：MovieLens → 准备 → 召回(100) → LTR → 发牌。
+// 与 ranker-only full-pipeline 不同：走真实召回候选 + Tag 控重发牌。
+func FourStage(p FourStageParams) Result {
+	outDir, err := rankutil.OutDir()
+	if err != nil {
+		return errResult("four_stage", err.Error(), "从仓库根运行")
+	}
+	ws := p.Workspace
+	if ws == "" {
+		ws = filepath.Join(outDir, "fourstage")
+	}
+	if p.TrainUsers <= 0 {
+		p.TrainUsers = 40
+	}
+	if p.TestUsers <= 0 {
+		p.TestUsers = 10
+	}
+	if p.RecallSize <= 0 {
+		p.RecallSize = 100
+	}
+	if p.Rounds <= 0 {
+		p.Rounds = 20
+	}
+	if p.DeckSize <= 0 {
+		p.DeckSize = 10
+	}
+	if p.MaxSameTag <= 0 {
+		p.MaxSameTag = 3
+	}
+	if p.Seed == 0 {
+		p.Seed = DefaultSeed
+	}
+
+	// outDir = <repo>/demos/movielens/out
+	repoRoot := filepath.Dir(filepath.Dir(filepath.Dir(outDir)))
+
+	mlCfg := movielens.DefaultConfig()
+	mlCfg.RepoRoot = repoRoot
+	mlCfg.Seed = p.Seed
+	mlCfg.TrainUsers = p.TrainUsers
+	mlCfg.TestUsers = p.TestUsers
+
+	ds, titles, err := movielens.Load(mlCfg)
+	if err != nil {
+		return errResult("four_stage", err.Error(),
+			"首次需下载 ml-100k：网络可达或预置 .cache/ml-100k.zip；也可 go run ./recsys/cmd/movielens")
+	}
+
+	w, err := recsys.NewWorkspace(ws)
+	if err != nil {
+		return errResult("four_stage", err.Error(), "")
+	}
+	if err := movielens.WriteTitles(filepath.Join(w.MetaDir(), "item_titles.tsv"), titles); err != nil {
+		return errResult("four_stage", err.Error(), "")
+	}
+
+	cfg := recsys.DefaultSmokeConfig()
+	cfg.Seed = p.Seed
+	cfg.TrainUsers = p.TrainUsers
+	cfg.TestUsers = p.TestUsers
+	cfg.RecallSize = p.RecallSize
+	cfg.TrainRounds = p.Rounds
+	cfg.DeckSize = p.DeckSize
+	cfg.MaxSameTag = p.MaxSameTag
+	cfg.NumItems = len(ds.Catalog)
+
+	res, err := pipeline.RunFromDataset(w, ds, cfg)
+	if err != nil {
+		return errResult("four_stage", err.Error(), "检查 recsys 四段日志；catalog 是否覆盖 samples")
+	}
+
+	// 解析发牌样本（第一用户或指定用户）+ 片名
+	sample, sampleUser := sampleDeal(w.DealTest(), titles, p.SampleUser)
+	reportPath := filepath.Join(w.MetaDir(), "four_stage_report.json")
+	dataOut := map[string]any{
+		"workspace":     w.Root,
+		"train_users":   res.Prep.TrainUsers,
+		"test_users":    res.Prep.TestUsers,
+		"catalog_size":  res.Prep.CatalogSize,
+		"recall_train":  res.RecallTrain,
+		"recall_test":   res.RecallTest,
+		"rank_train":    res.RankTrain,
+		"rank_test":     res.RankTest,
+		"ndcg_k":        res.Eval.NDCGK,
+		"train_ndcg":    res.Eval.TrainNDCG,
+		"test_ndcg":     res.Eval.TestNDCG,
+		"deal_rows":     res.DealRows,
+		"deal_tsv":      w.DealTest(),
+		"model":         w.ModelPath(),
+		"item_titles":   filepath.Join(w.MetaDir(), "item_titles.tsv"),
+		"sample_user":   sampleUser,
+		"sample_deal":   sample,
+		"report":        reportPath,
+	}
+	_ = writeJSON(reportPath, dataOut)
+	return okResult("four_stage",
+		fmt.Sprintf("MovieLens four-stage done: test NDCG@%d=%.4f, deal=%d rows",
+			res.Eval.NDCGK, res.Eval.TestNDCG, res.DealRows),
+		dataOut)
+}
+
+func sampleDeal(dealPath string, titles map[string]string, wantUser string) ([]map[string]any, string) {
+	rows, err := tsvio.ReadDeal(dealPath)
+	if err != nil || len(rows) == 0 {
+		return nil, ""
+	}
+	user := wantUser
+	if user == "" {
+		user = rows[0].User
+	}
+	var out []map[string]any
+	for _, r := range rows {
+		if r.User != user {
+			continue
+		}
+		rec := map[string]any{
+			"rank": r.Rank, "item": r.Item, "tag": r.Tag, "score": r.Score,
+		}
+		if t, ok := titles[r.Item]; ok {
+			rec["title"] = t
+		}
+		out = append(out, rec)
+	}
+	return out, user
 }
 
 // FullPipeline prepare → train → eval → recommend。

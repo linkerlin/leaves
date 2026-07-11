@@ -30,6 +30,7 @@
 
 - [x] **DEMO-ML** MovieLens 推荐 ranker 全流程 + Agent/MCP：[`demos/movielens/TUTORIAL.md`](demos/movielens/TUTORIAL.md)、`cmd/agent`、`cmd/mcp`、`agentops`
 - [x] **DEMO-ML-meta** 推荐片名旁车 + walkthrough（v2.1.4）
+- [x] **DEMO-ML-4stage** MovieLens → recsys 四段（prep/召回/LTR/发牌）：`recsys/movielens` + `agent four-stage`
 
 ### P0 — 契约与门禁残留（演进方案建议未落地）
 

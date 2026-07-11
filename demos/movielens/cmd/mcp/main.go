@@ -175,12 +175,24 @@ func toolDefs() []map[string]any {
 				"topk":  map[string]any{"type": "integer"},
 			},
 		}),
-		tool("movielens_full_pipeline", "一键：prepare→train→eval→recommend", map[string]any{
+		tool("movielens_full_pipeline", "一键：prepare→train→eval→recommend（精排-only）", map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"objective": map[string]any{"type": "string"},
 				"group":     map[string]any{"type": "integer"},
 				"topk":      map[string]any{"type": "integer"},
+			},
+		}),
+		tool("movielens_four_stage", "MovieLens 四段：prep→召回100→LTR→发牌（Tag 控重）", map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"workspace":    map[string]any{"type": "string"},
+				"train_users":  map[string]any{"type": "integer"},
+				"test_users":   map[string]any{"type": "integer"},
+				"recall_size":  map[string]any{"type": "integer"},
+				"rounds":       map[string]any{"type": "integer"},
+				"deck_size":    map[string]any{"type": "integer"},
+				"max_same_tag": map[string]any{"type": "integer"},
 			},
 		}),
 	}
@@ -243,6 +255,18 @@ func callTool(name string, args map[string]any) agentops.Result {
 		}
 		rp := agentops.RecommendParams{Group: asInt(args["group"]), TopK: asInt(args["topk"]), QID: -1}
 		return agentops.FullPipeline(tp, rp)
+	case "movielens_four_stage":
+		p := agentops.FourStageParams{}
+		if s, ok := args["workspace"].(string); ok {
+			p.Workspace = s
+		}
+		p.TrainUsers = asInt(args["train_users"])
+		p.TestUsers = asInt(args["test_users"])
+		p.RecallSize = asInt(args["recall_size"])
+		p.Rounds = asInt(args["rounds"])
+		p.DeckSize = asInt(args["deck_size"])
+		p.MaxSameTag = asInt(args["max_same_tag"])
+		return agentops.FourStage(p)
 	default:
 		return agentops.Result{OK: false, Op: name, Error: "unknown tool: " + name,
 			Hint: "use tools/list", TS: ""}

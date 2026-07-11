@@ -28,8 +28,10 @@ go run ./demos/movielens/cmd/agent prepare
 go run ./demos/movielens/cmd/agent train -objective rank:ndcg
 go run ./demos/movielens/cmd/agent eval
 go run ./demos/movielens/cmd/agent recommend -group 0 -topk 10
-# 或一键
+# 或一键（精排-only）
 go run ./demos/movielens/cmd/agent full-pipeline
+# 四段（召回 100 + 发牌）
+go run ./demos/movielens/cmd/agent four-stage
 ```
 
 **契约**：stdout **仅一条 JSON**（`ok` / `error` / `data`）。Agent 只解析 JSON，勿依赖 stderr 散文。
@@ -55,7 +57,8 @@ go run ./demos/movielens/cmd/agent full-pipeline
 | `movielens_train` | 训练 ranker |
 | `movielens_eval` | 测试 NDCG |
 | `movielens_recommend` | Top-K |
-| `movielens_full_pipeline` | 一键闭环 |
+| `movielens_full_pipeline` | 一键闭环（精排-only） |
+| `movielens_four_stage` | 四段：prep→召回→LTR→发牌 |
 
 ## 三、推荐 Agent 剧本
 
@@ -86,10 +89,14 @@ go run ./demos/movielens/cmd/agent full-pipeline
 
 ## 五、与四段 recsys 的关系
 
-本 demo 聚焦 **精排 ranker**（LTR）。  
-端到端「准备→召回→排序→发牌」合成数据见 `go run ./recsys/cmd/smoke`。  
-MovieLens 在本仓库的定位：真实数据上验证 **rank:ndcg** 与 XGB baseline。
+| 路径 | 命令 | 数据 |
+|------|------|------|
+| 精排-only | `agent full-pipeline` | `testdata/rank_movielens_*.tsv` |
+| **四段** | `agent four-stage` | ml-100k → 四元 workspace |
+| 合成 smoke | `go run ./recsys/cmd/smoke` | 人造数据 |
+
+实现：`recsys/movielens` + `pipeline.RunFromDataset`。教程 §11.1。
 
 ## 六、详文
 
-见 [`../../demos/movielens/TUTORIAL.md`](../../demos/movielens/TUTORIAL.md)。
+见 [`../TUTORIAL.md`](../TUTORIAL.md)。

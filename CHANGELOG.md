@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+### Added
+
+- **MovieLens 四段流水线（DEMO-ML-4stage）**
+  - `recsys/movielens`：纯 Go 加载 ml-100k → 四元 Dataset + 片名
+  - `pipeline.RunFromDataset`：prep→召回→LTR→发牌（合成/真实数据共用）
+  - `go run ./recsys/cmd/movielens` · `agent four-stage` · MCP `movielens_four_stage`
+  - 召回策略：部分正样本 + 未交互补齐；发牌 `fillOverflow` 可凑满 DeckSize
+
 ---
 
 ## [2.1.4] - 2026-07-11

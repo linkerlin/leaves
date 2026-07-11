@@ -11,9 +11,14 @@ import (
 // Config 召回参数。
 type Config struct {
 	PerUser int // 默认 100
+	// MaxKnown 召回中最多保留的「已交互」Item 数（供 LTR 正样本标签）。
+	// 剩余槽位只填未交互 Item，便于发牌 recent 过滤后仍有候选。
+	// 0 表示默认 min(40, PerUser/2)。
+	MaxKnown int
 }
 
 // Run 为 split 内各 User 生成 PerUser 条召回。
+// 策略：先放部分已交互正样本（标签），再按 Tag/热度补未交互候选。
 func Run(
 	split string,
 	samples []recsys.Interaction,
@@ -25,18 +30,32 @@ func Run(
 	if cfg.PerUser <= 0 {
 		cfg.PerUser = 100
 	}
+	if cfg.MaxKnown <= 0 {
+		cfg.MaxKnown = cfg.PerUser / 2
+		if cfg.MaxKnown > 40 {
+			cfg.MaxKnown = 40
+		}
+		if cfg.MaxKnown < 1 {
+			cfg.MaxKnown = 1
+		}
+	}
 	userSet := usersForSplit(userQIDs, split)
 	if len(userSet) == 0 {
 		return nil, fmt.Errorf("recall: no users for split %q", split)
 	}
 
+	catByID := map[string]recsys.CatalogItem{}
+	for _, it := range catalog {
+		catByID[it.Item] = it
+	}
 	tagIndex := buildTagIndex(catalog)
 	globalByPop := sortedByPop(catalog)
 	userPrefTags := preferredTags(samples)
+	knownByUser := knownItems(samples)
 
 	var out []recsys.RecallRow
 	for u := range userSet {
-		rows, err := recallOneUser(u, userPrefTags[u], tagIndex, globalByPop, cfg.PerUser)
+		rows, err := recallOneUser(u, userPrefTags[u], knownByUser[u], catByID, tagIndex, globalByPop, cfg.PerUser, cfg.MaxKnown)
 		if err != nil {
 			return nil, err
 		}
@@ -66,11 +85,41 @@ func preferredTags(samples []recsys.Interaction) map[string]map[string]float64 {
 	scores := map[string]map[string]float64{}
 	for _, r := range samples {
 		if scores[r.User] == nil {
-		 scores[r.User] = map[string]float64{}
+			scores[r.User] = map[string]float64{}
 		}
 		scores[r.User][r.Tag] += r.Score
 	}
 	return scores
+}
+
+type knownItem struct {
+	item  string
+	score float64
+	tag   string
+}
+
+func knownItems(samples []recsys.Interaction) map[string][]knownItem {
+	// 同 (user,item) 取最高分
+	best := map[string]map[string]knownItem{}
+	for _, r := range samples {
+		if best[r.User] == nil {
+			best[r.User] = map[string]knownItem{}
+		}
+		prev, ok := best[r.User][r.Item]
+		if !ok || r.Score > prev.score {
+			best[r.User][r.Item] = knownItem{item: r.Item, score: r.Score, tag: r.Tag}
+		}
+	}
+	out := map[string][]knownItem{}
+	for u, m := range best {
+		list := make([]knownItem, 0, len(m))
+		for _, v := range m {
+			list = append(list, v)
+		}
+		sort.Slice(list, func(i, j int) bool { return list[i].score > list[j].score })
+		out[u] = list
+	}
+	return out
 }
 
 func buildTagIndex(catalog []recsys.CatalogItem) map[string][]recsys.CatalogItem {
@@ -95,9 +144,11 @@ func sortedByPop(catalog []recsys.CatalogItem) []recsys.CatalogItem {
 func recallOneUser(
 	user string,
 	tagScores map[string]float64,
+	known []knownItem,
+	catByID map[string]recsys.CatalogItem,
 	tagIndex map[string][]recsys.CatalogItem,
 	global []recsys.CatalogItem,
-	need int,
+	need, maxKnown int,
 ) ([]recsys.RecallRow, error) {
 	type tagRank struct {
 		tag   string
@@ -129,7 +180,27 @@ func recallOneUser(
 		})
 	}
 
-	// 轮询偏好 Tag，按 feat_pop 取 Item
+	// 1) 已交互正样本（LTR 标签），限量
+	nKnown := 0
+	for _, k := range known {
+		if nKnown >= maxKnown || len(out) >= need {
+			break
+		}
+		it, ok := catByID[k.item]
+		if !ok {
+			// catalog 缺项时用交互 Tag + 零特征兜底
+			it = recsys.CatalogItem{Item: k.item, Tag: k.tag, Feats: []float64{0, 0, 0, 0}}
+		}
+		// 召回分：偏好标签 + 星级
+		rs := 1.0 + 0.2*k.score
+		if len(it.Feats) > 0 {
+			rs += 0.1 * it.Feats[0]
+		}
+		pick(it, rs)
+		nKnown++
+	}
+
+	// 2) 未交互：按偏好 Tag 热度
 	for len(out) < need {
 		progress := false
 		for _, tr := range tags {
@@ -153,7 +224,7 @@ func recallOneUser(
 			break
 		}
 	}
-	// 全局热门补齐
+	// 3) 全局热门未交互补齐
 	for _, it := range global {
 		if len(out) >= need {
 			break

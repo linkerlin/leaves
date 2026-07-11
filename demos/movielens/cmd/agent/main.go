@@ -6,6 +6,7 @@
 //	go run ./demos/movielens/cmd/agent eval
 //	go run ./demos/movielens/cmd/agent recommend -group 0 -topk 10
 //	go run ./demos/movielens/cmd/agent full-pipeline
+//	go run ./demos/movielens/cmd/agent four-stage
 package main
 
 import (
@@ -76,6 +77,20 @@ func main() {
 			agentops.TrainParams{Objective: *obj},
 			agentops.RecommendParams{Group: *group, TopK: *topk},
 		)
+	case "four-stage", "4stage", "recsys":
+		fs := flag.NewFlagSet("four-stage", flag.ExitOnError)
+		ws := fs.String("workspace", "", "recsys 工作区（默认 demos/movielens/out/fourstage）")
+		trainU := fs.Int("train-users", 40, "训练用户数")
+		testU := fs.Int("test-users", 10, "测试用户数")
+		recall := fs.Int("recall-size", 100, "每用户召回数")
+		rounds := fs.Int("rounds", 20, "LTR 轮数")
+		deck := fs.Int("deck-size", 10, "发牌 Top-K")
+		maxTag := fs.Int("max-same-tag", 3, "同 Tag 上限")
+		_ = fs.Parse(args)
+		res = agentops.FourStage(agentops.FourStageParams{
+			Workspace: *ws, TrainUsers: *trainU, TestUsers: *testU,
+			RecallSize: *recall, Rounds: *rounds, DeckSize: *deck, MaxSameTag: *maxTag,
+		})
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command: %s\n", cmd)
 		usage()
@@ -96,7 +111,8 @@ func usage() {
   train   [flags]  训练 ranker → leaves.json + metrics.json
   eval    [flags]  测试集 NDCG
   recommend [flags] Top-K 推荐 JSON
-  full-pipeline    prepare→train→eval→recommend
+  full-pipeline    prepare→train→eval→recommend（精排-only）
+  four-stage       MovieLens 四段：prep→recall→rank→deal
 
 所有成功/失败均向 stdout 打印一条 JSON（Agent 契约）。
 MCP 入口: go run ./demos/movielens/cmd/mcp

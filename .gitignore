@@ -32,6 +32,9 @@ vendor/
 /dist/
 /build/
 
+# Dataset caches (MovieLens zip, etc.)
+.cache/
+
 # Env
 .env
 .env.local

@@ -83,7 +83,7 @@ recsys/
 ### 4.2 MovieLens Ranker + Agent/MCP（推荐精排案例）
 
 ```powershell
-# 一键 Agent 闭环（stdout JSON）
+# 一键 Agent 闭环（stdout JSON）— 精排-only
 go run ./demos/movielens/cmd/agent full-pipeline
 
 # 人类 CLI
@@ -97,6 +97,22 @@ go run ./demos/movielens/cmd/mcp
 - **详尽教程**：[`demos/movielens/TUTORIAL.md`](../../demos/movielens/TUTORIAL.md)  
 - **Agent SKILL**：[`demos/movielens/agent-skill/SKILL.md`](../../demos/movielens/agent-skill/SKILL.md)  
 - 回归：`go test ./train/... -run TestRankMovieLens` · `go test ./demos/movielens/agentops`
+
+### 4.2b MovieLens 四段流水线（真实数据 prep→召回→LTR→发牌）
+
+```powershell
+# Agent JSON
+go run ./demos/movielens/cmd/agent four-stage
+# 人类 CLI
+go run ./recsys/cmd/movielens -workspace demos/movielens/out/fourstage
+# 回归
+go test ./recsys/pipeline/... -run TestMovieLensFourStage -count=1
+```
+
+- 加载：`recsys/movielens`（ml-100k → 四元 Dataset）  
+- 串联：`pipeline.RunFromDataset`  
+- MCP：`movielens_four_stage`  
+- 教程：[`TUTORIAL.md` §11.1](../../demos/movielens/TUTORIAL.md)
 
 ### 4.3 Smoke 最小排序对标
 

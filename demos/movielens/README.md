@@ -72,15 +72,25 @@ go test ./demos/movielens/agentops -count=1
 TSV：`qid \t label \t feat1..feat22`（流行度、均分、年份、19 类 one-hot）。  
 `label` = 星级 1–5；推荐输出含 `movie_id`/`title`（需 meta 旁车）。详见教程 §4 / §8.3。
 
-## 6. 与 recsys 四段流水线
+## 6. 与 recsys 四段流水线（MovieLens 真实数据）
 
-本 demo = **精排 ranker**。合成数据「召回 100 + 发牌」：
+| 路径 | 入口 | 说明 |
+|------|------|------|
+| **精排-only** | `agent full-pipeline` | 固定 ranking TSV → train → Top-K |
+| **四段** | `agent four-stage` | prep→召回100→LTR→发牌（Tag 控重） |
+| 合成 smoke | `go run ./recsys/cmd/smoke` | 人造数据验契约 |
 
 ```powershell
-go run ./recsys/cmd/smoke
+# MovieLens 四段（需网络下载或 .cache/ml-100k.zip）
+go run ./demos/movielens/cmd/agent four-stage
+go run ./recsys/cmd/movielens -workspace demos/movielens/out/fourstage
+
+# 回归
+go test ./recsys/pipeline/ -run TestMovieLensFourStage -count=1
 ```
 
-见 `skills/recsys-orchestrator`。
+产物：`demos/movielens/out/fourstage/{clean,catalog,recall,rank,models,deal,meta}`。  
+MCP 工具：`movielens_four_stage`。见 `skills/recsys-orchestrator`。
 
 ## 目录
 
