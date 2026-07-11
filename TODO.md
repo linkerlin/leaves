@@ -1,29 +1,31 @@
 # leaves 演进 TODO
 
-> **对齐文档**：[`演进计划.md`](演进计划.md) v5.4（库线）· [`演进方案.md`](演进方案.md) v1.4（Agentic）  
-> **更新**：2026-07-11（v2.1.2：LIB-22 explain 性能 + LIB-30 serving 模板）  
+> **对齐文档**：[`演进计划.md`](演进计划.md) v5.4（库线）· [`演进方案.md`](演进方案.md) v1.5+（Agentic）  
+> **更新**：2026-07-11（**进入维护期**：v2.1.0–v2.1.2 已发布；现行 backlog 清空）  
 > **原则**：Native golden 不变；Born 直读 `ForestIR`；不做分布式/serving 框架 / 内置 HPO / 官方 registry。
 
 **图例**：`[ ]` 待办 · `[~]` 进行中 · `[x]` 完成 · `[-]` 明确不做
 
 ---
 
-## 现状快照（2026-07-11）
+## 现状快照（2026-07-11 · 维护期）
 
 | 线 | 方案状态 | 代码/发布 | 结论 |
 |----|----------|-----------|------|
-| **Agentic**（演进方案 Phase 0–5） | DoD D1–D10 + R1–R5 全绿 | `cmd/leaves` 契约；tag **v2.1.0** / **v2.1.1** | **收口完成** |
-| **库线**（演进计划 Phase A–E 第一轮） | 文档/扩展点/BackendAuto 2.0/互操作/发版治理 | `docs/*` + Register + `SelectBackendExplained` + Release | **第一轮完成** |
-| **历史** P0–T5 / v3.1 | 见下方存档 | 均已交付 | 维护期 |
+| **Agentic** | Phase 0–5 + POST 加固 | tag **v2.1.0** … **v2.1.2** | **完成** |
+| **库线 Phase A–E** | 第一轮 + 按需深化 | 扩展点 / BackendAuto 2.0 / interop / ONNX 子集 / multi-target / explain 缓存 / serving 模板 | **完成** |
+| **历史** P0–T5 / v3.1 | 存档 | 均已交付 | 维护期 |
 
-**对照结论**：演进方案「明确达成」集合已实现；方案正文 §八 部分 WP 细项 checkbox 仍为历史 `[ ]`（与 §十四 DoD `[x]` 不一致，属文档债）。后续工作 = **方案残留加固 + 库线按需深化 + 维护**，不再扩 AutoML/registry。
+**对照结论**：可执行 backlog **已清空**。默认 **维护 + 按需开新项**；新需求先写进本文件再实现。发版走 [`docs/release-checklist.md`](docs/release-checklist.md)。
+
+**最新 tag**：https://github.com/linkerlin/leaves/releases/tag/v2.1.2
 
 ---
 
 ## 后续工作（现行 backlog）
 
-> 优先级：P0 契约/门禁债 · P1 Agent 体验 · P2 库/性能按需 · 维护。  
-> 非目标见文末「明确不做」。
+> **无打开的待办。** 以下均为已完成归档（便于检索）。  
+> 新工作请在本节追加 `[ ]` 项。
 
 ### P0 — 契约与门禁残留（演进方案建议未落地）
 
@@ -100,11 +102,11 @@ go test ./cmd/leaves -run 'Agentic|SaveBest|FromRun|NAPolicy|Publish' -count=1
 
 ### 维护 — v2.1.x / 下一版本
 
-- [x] **MNT-01** v2.1.1 已按 checklist 发版（tag + GitHub Release + CHANGELOG）  
+- [x] **MNT-01** v2.1.1 / **v2.1.2** 已按 checklist 发版（tag + GitHub Release + CHANGELOG）  
 - [x] **MNT-02** 模块路径无 `/v2` 时代理可能拒 `v2.1.x` tag → 已记 [NOTES.md](NOTES.md) §4
-- [x] **MNT-03** 发版前关键包测试已跑（CLI/io/train/docs 门禁）；全量 `go test ./...` 仍建议 CI  
+- [x] **MNT-03** 发版前关键包测试已跑；全量 `go test ./...` 仍建议 CI  
 - [x] **MNT-04** skills 镜像 CI 门禁（`TestSkillsMirrorSync`）；改 SKILL 须同步 `.cursor/skills`  
-- [x] **MNT-05** README badge / CHANGELOG 已对齐 **v2.1.1**
+- [x] **MNT-05** README badge / CHANGELOG 已对齐 **v2.1.2**
 
 **快速回归**：
 
@@ -373,12 +375,20 @@ go test -run TestBenchGateBornCPUSlowerBatch1 -count=1
 
 ---
 
-## 建议执行顺序（v2.1 后）
+## 建议执行顺序（v2.1 后 · 已全部完成）
 
 ```text
 1. ✅ POST-01…15 全套加固
-2. ✅ LIB-01(文档边界) / 02 / 03 / 20 / 31
-3. ✅ LIB-10/11/12/20/21 + v2.1.1 发版
-4. ✅ LIB-22 explain 性能缓存
-5. ✅ LIB-30 serving-template（可拆仓）
+2. ✅ LIB-01…03 / 20 / 31
+3. ✅ LIB-10/11/12/21 + v2.1.1
+4. ✅ LIB-22 explain 性能 + LIB-30 serving-template + v2.1.2
+5. ✅ 进入维护期（本文件无打开 backlog）
 ```
+
+### 按需可开（默认不做，需产品信号）
+
+- 向量叶 `multi_output_tree` **训练**（推理/加载已有）
+- 完整 ONNX Graph
+- BackendAuto 第二轮 profiling
+- 模块路径迁 `.../leaves/v2`（MAJOR）
+- 独立 serving 产品仓（模板已在 `examples/serving-template`）

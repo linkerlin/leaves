@@ -36,13 +36,14 @@ Agent 通过 **SKILL 指导 + shell CLI + metrics.json** 完成全自动「训�
 ## 文档
 
 - 战略路线图：[`演进计划.md`](演进计划.md) v5.4（Phase A–E 第一轮已落地）
-- **Agentic 收口方案**：[`演进方案.md`](演进方案.md) v1.4（Phase 0–5 已达成）
+- **Agentic 收口方案**：[`演进方案.md`](演进方案.md) v1.5+（Phase 0–5 已达成 + POST 加固）
 - API 分层 / 发版：[`docs/api-surface.md`](docs/api-surface.md)、[`docs/release-checklist.md`](docs/release-checklist.md)、[`docs/versioning.md`](docs/versioning.md)、[`CHANGELOG.md`](CHANGELOG.md)
 - 扩展点：[`docs/extension-points.md`](docs/extension-points.md)
 - BackendAuto：[`docs/backend-auto.md`](docs/backend-auto.md)
 - 互操作等级：[`docs/interop-matrix.md`](docs/interop-matrix.md)
-- 可执行 backlog：[`TODO.md`](TODO.md)
+- backlog / 维护状态：[`TODO.md`](TODO.md)（**v2.1.2 后进入维护期**；无打开待办时按需追加）
 - 回归矩阵：[`docs/testdata-matrix.md`](docs/testdata-matrix.md)
+- Serving 模板（非官方框架）：[`examples/serving-template/`](examples/serving-template/)
 
 ## 格式与 IO（当前）
 
