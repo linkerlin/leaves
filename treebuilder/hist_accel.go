@@ -33,17 +33,19 @@ func WebGPUHistAvailable() bool {
 	return tree.BornWebGPUAvailable()
 }
 
-func scanHistGains(histG, histH []float64, sumG, sumH, lambda float64, cfg Config) (int, float64) {
+func scanHistGains(histG, histH []float64, sumG, sumH []float64, lambda float64, cfg Config) (int, float64) {
 	n := len(histG)
+	k := len(sumG)
 	mode := effectiveAccelMode(cfg)
-	tryWebGPU := cfg.UseGPUHist && mode == AccelModeWebGPU && cfg.NumThreads == 1
-	tryBorn := tryBornGainScan(cfg)
+	// Born/WebGPU 增益扫描当前为标量；向量叶（k>1）回退纯 CPU。
+	tryWebGPU := k == 1 && cfg.UseGPUHist && mode == AccelModeWebGPU && cfg.NumThreads == 1
+	tryBorn := k == 1 && tryBornGainScan(cfg)
 	if mode == AccelModeCPU {
 		tryWebGPU, tryBorn = false, false
 	}
 
 	if tryWebGPU && n >= bornHistMinBins {
-		if split, gain, ok := scanHistGainsWebGPU(histG, histH, sumG, sumH, lambda); ok {
+		if split, gain, ok := scanHistGainsWebGPU(histG, histH, sumG[0], sumH[0], lambda); ok {
 			setAccelWebGPUOK(true)
 			recordGainScanWebGPU()
 			return split, gain
@@ -51,7 +53,7 @@ func scanHistGains(histG, histH []float64, sumG, sumH, lambda float64, cfg Confi
 	}
 	if tryBorn && n >= bornHistMinBins && BornHistAvailable() {
 		initBornCPU()
-		if split, gain, err := scanHistGainsBorn(bornCPU, histG, histH, sumG, sumH, lambda); err == nil {
+		if split, gain, err := scanHistGainsBorn(bornCPU, histG, histH, sumG[0], sumH[0], lambda); err == nil {
 			recordGainScanBornCPU()
 			return split, gain
 		}

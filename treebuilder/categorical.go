@@ -9,7 +9,8 @@ func bestCategoricalSplit(
 	idx []int,
 	feat int,
 	grad, hess []float64,
-	sumG, sumH float64,
+	sumG, sumH []float64,
+	k int,
 	row []float64,
 	cfg Config,
 ) (gain float64, thr float64, left, right []int, ok bool) {
@@ -27,8 +28,8 @@ func bestCategoricalSplit(
 		if len(l) == 0 || len(r) == 0 {
 			continue
 		}
-		gl, hl := sumGradHess(l, grad, hess)
-		gr, hr := sumGradHess(r, grad, hess)
+		gl, hl := sumGradHess(l, grad, hess, k)
+		gr, hr := sumGradHess(r, grad, hess, k)
 		g := splitGain(gl, hl, gr, hr, sumG, sumH, cfg.Lambda)
 		if g > bestGain {
 			bestGain = g

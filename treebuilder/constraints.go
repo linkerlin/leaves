@@ -22,16 +22,18 @@ func splitRespectsMonotone(constraint int, leftVal, rightVal float64) bool {
 func childLeafValues(
 	left, right []int,
 	grad, hess []float64,
+	k int,
 	cfg Config,
 ) (leftVal, rightVal float64) {
-	gl, hl := sumGradHess(left, grad, hess)
-	gr, hr := sumGradHess(right, grad, hess)
+	gl, hl := sumGradHess(left, grad, hess, k)
+	gr, hr := sumGradHess(right, grad, hess, k)
 	lr := cfg.LearningRate
 	if lr <= 0 {
 		lr = 0.3
 	}
-	return leafWeightFromSums(gl, hl, cfg.Lambda) * lr,
-		leafWeightFromSums(gr, hr, cfg.Lambda) * lr
+	lw := leafWeightFromSums(gl, hl, cfg.Lambda, lr)
+	rw := leafWeightFromSums(gr, hr, cfg.Lambda, lr)
+	return lw[0], rw[0]
 }
 
 func monotoneAllowsSplit(
@@ -39,11 +41,16 @@ func monotoneAllowsSplit(
 	feat int,
 	left, right []int,
 	grad, hess []float64,
+	k int,
 ) bool {
 	c := monotoneConstraint(cfg, feat)
 	if c == 0 {
 		return true
 	}
-	lv, rv := childLeafValues(left, right, grad, hess, cfg)
+	if k > 1 {
+		// 单调约束仅对单输出定义；向量叶不强制。
+		return true
+	}
+	lv, rv := childLeafValues(left, right, grad, hess, k, cfg)
 	return splitRespectsMonotone(c, lv, rv)
 }

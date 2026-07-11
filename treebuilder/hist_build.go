@@ -12,14 +12,21 @@ func accumulateHistCPU(
 	cuts []float64,
 	cfg Config,
 ) (histG, histH []float64) {
-	histG = make([]float64, numBins)
-	histH = make([]float64, numBins)
+	k := cfg.OutputDim
+	if k < 1 {
+		k = 1
+	}
+	histG = make([]float64, numBins*k)
+	histH = make([]float64, numBins*k)
 	if cfg.GlobalBins != nil {
 		if rowBins := cfg.GlobalBins.RowBin(feat); rowBins != nil {
 			for _, i := range idx {
-				b := rowBins[i]
-				histG[b] += grad[i]
-				histH[b] += hess[i]
+				bk := int(rowBins[i]) * k
+				base := i * k
+				for c := 0; c < k; c++ {
+					histG[bk+c] += grad[base+c]
+					histH[bk+c] += hess[base+c]
+				}
 			}
 			recordHistBuildCPU()
 			return histG, histH
@@ -27,9 +34,12 @@ func accumulateHistCPU(
 	}
 	for _, i := range idx {
 		_ = dm.Row(i, row)
-		b := valueToBinCuts(row[feat], cuts)
-		histG[b] += grad[i]
-		histH[b] += hess[i]
+		bk := valueToBinCuts(row[feat], cuts) * k
+		base := i * k
+		for c := 0; c < k; c++ {
+			histG[bk+c] += grad[base+c]
+			histH[bk+c] += hess[base+c]
+		}
 	}
 	recordHistBuildCPU()
 	return histG, histH

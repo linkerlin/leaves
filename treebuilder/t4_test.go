@@ -58,7 +58,7 @@ func TestParallelHistMatchesSingleThread(t *testing.T) {
 func TestScanHistGainsCPU(t *testing.T) {
 	histG := []float64{1, 2, -1, 0.5}
 	histH := []float64{1, 1, 1, 1}
-	s, g := scanHistGainsCPU(histG, histH, 2.5, 4, 1)
+	s, g := scanHistGainsCPU(histG, histH, []float64{2.5}, []float64{4}, 1)
 	if s < 0 || g <= 0 {
 		t.Errorf("expected positive gain, got split=%d gain=%f", s, g)
 	}
@@ -79,8 +79,8 @@ func TestScanHistGainsBornMatchesCPU(t *testing.T) {
 		sumH += histH[i]
 	}
 	lambda := 1.0
-	sCPU, gCPU := scanHistGainsCPU(histG, histH, sumG, sumH, lambda)
-	sBorn, gBorn := scanHistGains(histG, histH, sumG, sumH, lambda, Config{})
+	sCPU, gCPU := scanHistGainsCPU(histG, histH, []float64{sumG}, []float64{sumH}, lambda)
+	sBorn, gBorn := scanHistGains(histG, histH, []float64{sumG}, []float64{sumH}, lambda, Config{})
 	if sCPU != sBorn || gCPU != gBorn {
 		t.Errorf("cpu=(%d,%v) born=(%d,%v)", sCPU, gCPU, sBorn, gBorn)
 	}

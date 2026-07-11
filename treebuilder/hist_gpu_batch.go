@@ -21,6 +21,10 @@ type gpuHistResult struct {
 }
 
 func gpuHistBatchEnabled(cfg Config) bool {
+	if cfg.OutputDim > 1 {
+		// 向量叶：GPU 批 hist 当前为标量，回退 CPU。
+		return false
+	}
 	if !cfg.UseGPUHist || effectiveAccelMode(cfg) != AccelModeWebGPU {
 		return false
 	}
@@ -60,7 +64,7 @@ func histSplitFromFeat(
 	idx []int,
 	feat int,
 	grad, hess []float64,
-	sumG, sumH float64,
+	sumG, sumH []float64,
 	row []float64,
 	cfg Config,
 	prebuilt *gpuHistResult,
@@ -105,7 +109,7 @@ func histSplitFromFeat(
 	if len(left) == 0 || len(right) == 0 {
 		return histSplitPick{}
 	}
-	if !monotoneAllowsSplit(cfg, feat, left, right, grad, hess) {
+	if !monotoneAllowsSplit(cfg, feat, left, right, grad, hess, len(sumG)) {
 		return histSplitPick{}
 	}
 	return histSplitPick{

@@ -53,7 +53,7 @@ func findBestHistSplit(
 	idx []int,
 	feats []int,
 	grad, hess []float64,
-	sumG, sumH float64,
+	sumG, sumH []float64,
 	row []float64,
 	depth int,
 	cfg Config,
@@ -81,7 +81,7 @@ func findBestHistSplit(
 
 	var gpuDone <-chan map[int]gpuHistResult
 	if len(gpuFeats) > 0 {
-		gpuDone = enqueueGPUHistBatch(gpuFeats, idx, grad, hess, sumG, sumH, cfg.Lambda, cfg)
+		gpuDone = enqueueGPUHistBatch(gpuFeats, idx, grad, hess, sumG[0], sumH[0], cfg.Lambda, cfg)
 	}
 
 	// 阶段 1：GPU worker 排队时，CPU 并行评估非 GPU 特征
@@ -107,7 +107,7 @@ func parallelEvalHistFeats(
 	idx []int,
 	feats []int,
 	grad, hess []float64,
-	sumG, sumH float64,
+	sumG, sumH []float64,
 	row []float64,
 	cfg Config,
 	prebuilt map[int]gpuHistResult,

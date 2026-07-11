@@ -384,7 +384,7 @@ go test -run TestBenchGateBornCPUSlowerBatch1 -count=1
 - [-] 官方 HTTP/gRPC serving 框架（`examples/http` 仅为 embed demo）
 - [-] 完整 ONNX Graph 导入（LIB-10 仅为 TreeEnsembleRegressor 子集）
 - [-] 根包 IO 物理迁移进 `io/`（兼容层保留）
-- [-] Multi-output **向量叶** 训练（`multi_output_tree` / `OutputDim>1` 生长；推理与 XGB 加载已有；训练为 one_output_per_tree）
+- [x] Multi-output **向量叶** 训练（`multi_output_tree` / `OutputDim>1` 生长）：**已实现 2026-07-11**（原列「明确不做」，A+B 落地。treebuilder 统一 k 维数学 + leaf-major flatten；booster `MultiOutputTree` 跳过 demux 建向量叶树；accel 对 k>1 回退 CPU。详见 CHANGELOG [Unreleased]）
 - [-] CUDA 直连推理（GPU 路线 = Born WebGPU / Windows）
 - [-] 把 recsys 召回/发牌并进 `cmd/leaves` 主 CLI
 - [-] 完整特征存储 / 实时特征平台

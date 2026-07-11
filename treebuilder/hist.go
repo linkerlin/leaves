@@ -24,23 +24,39 @@ func BuildHist(dm data.Matrix, indices []int, grad, hess []float64, cfg Config) 
 	if cfg.MaxBin <= 0 {
 		cfg.MaxBin = 256
 	}
+	k := cfg.OutputDim
+	if k < 1 {
+		k = 1
+	}
 	ensureGlobalBins(dm, &cfg)
 	root := buildHistNode(dm, indices, grad, hess, 0, cfg, intPtr1())
 	if root == nil {
-		w := leafWeight(indices, grad, hess, cfg.Lambda) * cfg.LearningRate
-		return tree.BuildTreeIR(nil, []float64{w}, nil, nil, 0)
+		w := leafWeight(indices, grad, hess, k, cfg.Lambda, cfg.LearningRate)
+		t := tree.BuildTreeIR(nil, w, nil, nil, 0)
+		t.OutputDim = k
+		return t
 	}
 	nodes, leaves := flatten(root)
-	return tree.BuildTreeIR(nodes, leaves, nil, nil, 0)
+	t := tree.BuildTreeIR(nodes, leaves, nil, nil, 0)
+	t.OutputDim = k
+	return t
 }
 
 func buildHistNode(dm data.Matrix, idx []int, grad, hess []float64, depth int, cfg Config, leaves *int) *node {
-	sumG, sumH := sumGradHess(idx, grad, hess)
-	if sumH < cfg.MinHessian || depth >= cfg.MaxDepth || len(idx) <= 1 || leafBudgetExceeded(cfg, leaves) {
+	k := cfg.OutputDim
+	if k < 1 {
+		k = 1
+	}
+	sumG, sumH := sumGradHess(idx, grad, hess, k)
+	totalH := 0.0
+	for c := 0; c < k; c++ {
+		totalH += sumH[c]
+	}
+	if totalH < cfg.MinHessian || depth >= cfg.MaxDepth || len(idx) <= 1 || leafBudgetExceeded(cfg, leaves) {
 		return &node{
 			leaf:    true,
-			leafVal: leafWeightFromSums(sumG, sumH, cfg.Lambda) * cfg.LearningRate,
-			sumHess: sumH,
+			leafVal: leafWeightFromSums(sumG, sumH, cfg.Lambda, cfg.LearningRate),
+			sumHess: totalH,
 		}
 	}
 
@@ -63,8 +79,8 @@ func buildHistNode(dm data.Matrix, idx []int, grad, hess []float64, depth int, c
 	if bestGain <= cfg.Gamma {
 		return &node{
 			leaf:    true,
-			leafVal: leafWeightFromSums(sumG, sumH, cfg.Lambda) * cfg.LearningRate,
-			sumHess: sumH,
+			leafVal: leafWeightFromSums(sumG, sumH, cfg.Lambda, cfg.LearningRate),
+			sumHess: totalH,
 		}
 	}
 
@@ -73,7 +89,7 @@ func buildHistNode(dm data.Matrix, idx []int, grad, hess []float64, depth int, c
 		threshold: bestThr,
 		left:      buildHistNode(dm, bestLeft, grad, hess, depth+1, cfg, splitBudget(cfg, leaves)),
 		right:     buildHistNode(dm, bestRight, grad, hess, depth+1, cfg, leaves),
-		sumHess:   sumH,
+		sumHess:   totalH,
 	}
 }
 

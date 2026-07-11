@@ -51,8 +51,8 @@ func TestBatchGPUHistMultipleFeats(t *testing.T) {
 	cpuCfg.UseGPUHist = false
 
 	feats := []int{0, 1, 2, 3}
-	sumG, sumH := sumGradHess(idx, grad, hess)
-	batch := batchAccumulateHistWebGPU(feats, idx, grad, hess, sumG, sumH, cfg.Lambda, cfg)
+	sumG, sumH := sumGradHess(idx, grad, hess, 1)
+	batch := batchAccumulateHistWebGPU(feats, idx, grad, hess, sumG[0], sumH[0], cfg.Lambda, cfg)
 	if len(batch) == 0 {
 		t.Skip("webgpu batch unavailable")
 	}
@@ -67,7 +67,7 @@ func TestBatchGPUHistMultipleFeats(t *testing.T) {
 		}
 		cpuG, cpuH := accumulateHistCPU(f, idx, grad, hess, numBins, dm, nil, cuts, cpuCfg)
 		if gr.hasGain {
-			sumG, sumH := sumGradHess(idx, grad, hess)
+			sumG, sumH := sumGradHess(idx, grad, hess, 1)
 			sCPU, gCPU := scanHistGainsCPU(cpuG, cpuH, sumG, sumH, cfg.Lambda)
 			if gr.splitIdx != sCPU || math.Abs(gr.gain-gCPU) > 1e-3 {
 				t.Fatalf("feat %d fused gain: gpu=(%d,%v) cpu=(%d,%v)", f, gr.splitIdx, gr.gain, sCPU, gCPU)
@@ -100,7 +100,7 @@ func TestFindBestHistSplitGPUBatch(t *testing.T) {
 		NumThreads:    4,
 	}
 	row := make([]float64, dm.NumCol())
-	pick := findBestHistSplit(dm, idx, []int{0, 1, 2, 3, 4, 5, 6, 7}, grad, hess, 0, 0, row, 0, cfg)
+	pick := findBestHistSplit(dm, idx, []int{0, 1, 2, 3, 4, 5, 6, 7}, grad, hess, []float64{0}, []float64{0}, row, 0, cfg)
 	_ = pick
 	treeIR := BuildHist(dm, idx, grad, hess, cfg)
 	if treeIR == nil {
@@ -129,8 +129,8 @@ func TestGPUHistBuildMatchesCPU(t *testing.T) {
 	cpuCfg.UseGPUHist = false
 
 	cpuG, cpuH := accumulateHist(1, idx, grad, hess, numBins, dm, nil, cuts, cpuCfg)
-	sumG, sumH := sumGradHess(idx, grad, hess)
-	batch := batchAccumulateHistWebGPU([]int{1}, idx, grad, hess, sumG, sumH, cfg.Lambda, cfg)
+	sumG, sumH := sumGradHess(idx, grad, hess, 1)
+	batch := batchAccumulateHistWebGPU([]int{1}, idx, grad, hess, sumG[0], sumH[0], cfg.Lambda, cfg)
 	if batch == nil {
 		t.Skip("webgpu hist build unavailable")
 	}

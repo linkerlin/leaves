@@ -5,6 +5,15 @@
 
 ## [Unreleased]
 
+### Added
+
+- **向量叶 `multi_output_tree` 训练**（XGBoost `multi_output_tree`，原列「明确不做」，现落地）：
+  - `train.Config.MultiOutputTree bool`：开启后每轮长**一棵** `OutputDim=numGroups` 的向量叶树（非 `one_output_per_tree` 的每类一棵）。
+  - 分裂增益跨输出组求和（同一 `(feat,thr)` 共享）；叶权重为逐类 `-G_c/(H_c+λ)` 向量。
+  - treebuilder 内部统一为 k 维（grad/hess `[n*k]`、`splitGain` 跨类求和、leaf-major `LeafValue` flatten）；k=1 退化为标量（现有路径零回归）。
+  - 适用 `multi:*` 与 `NumTarget>1`；`NewLearner` 校验需多输出。
+  - Born/WebGPU 增益扫描对 `k>1` 回退纯 CPU（正确，较慢；标量 k=1 仍享加速）。
+
 ---
 
 ## [2.1.6] - 2026-07-11

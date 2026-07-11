@@ -75,8 +75,8 @@ func TestAccelModeCPUForcesPureScan(t *testing.T) {
 	lambda := 1.0
 	ResetAccelStats()
 	cfg := Config{AccelMode: AccelModeCPU, UseGPUHist: true}
-	sCPU, gCPU := scanHistGainsCPU(histG, histH, sumG, sumH, lambda)
-	s, g := scanHistGains(histG, histH, sumG, sumH, lambda, cfg)
+	sCPU, gCPU := scanHistGainsCPU(histG, histH, []float64{sumG}, []float64{sumH}, lambda)
+	s, g := scanHistGains(histG, histH, []float64{sumG}, []float64{sumH}, lambda, cfg)
 	if sCPU != s || gCPU != g {
 		t.Fatalf("cpu mode mismatch cpu=(%d,%v) got=(%d,%v)", sCPU, gCPU, s, g)
 	}

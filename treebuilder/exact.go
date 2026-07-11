@@ -23,6 +23,7 @@ type Config struct {
 	HistBinPolicy       string // global（默认）| per_node
 	GlobalBins          *GlobalHistBins
 	MonotoneConstraints []int // 每特征 -1/0/1；长度可小于列数，不足视为 0
+	OutputDim           int   // 向量叶维度 k（multi_output_tree）；0 或 1 = 标量叶
 }
 
 func featureList(cfg Config, ncols int) []int {
@@ -50,13 +51,21 @@ func BuildExact(dm data.Matrix, indices []int, grad, hess []float64, cfg Config)
 	if cfg.LearningRate <= 0 {
 		cfg.LearningRate = 0.3
 	}
+	k := cfg.OutputDim
+	if k < 1 {
+		k = 1
+	}
 	root := buildNode(dm, indices, grad, hess, 0, cfg, intPtr1())
 	if root == nil {
-		w := leafWeight(indices, grad, hess, cfg.Lambda) * cfg.LearningRate
-		return tree.BuildTreeIR(nil, []float64{w}, nil, nil, 0)
+		w := leafWeight(indices, grad, hess, k, cfg.Lambda, cfg.LearningRate)
+		t := tree.BuildTreeIR(nil, w, nil, nil, 0)
+		t.OutputDim = k
+		return t
 	}
 	nodes, leaves := flatten(root)
-	return tree.BuildTreeIR(nodes, leaves, nil, nil, 0)
+	t := tree.BuildTreeIR(nodes, leaves, nil, nil, 0)
+	t.OutputDim = k
+	return t
 }
 
 type node struct {
@@ -65,18 +74,26 @@ type node struct {
 	left      *node
 	right     *node
 	leaf      bool
-	leafVal   float64
-	sumHess   float64
+	leafVal   []float64 // 长度 k；标量叶 k=1
+	sumHess   float64   // 总 hessian（跨类求和），用于停止/覆盖判断
 	catSmall  bool
 }
 
 func buildNode(dm data.Matrix, idx []int, grad, hess []float64, depth int, cfg Config, leaves *int) *node {
-	sumG, sumH := sumGradHess(idx, grad, hess)
-	if sumH < cfg.MinHessian || depth >= cfg.MaxDepth || len(idx) <= 1 || leafBudgetExceeded(cfg, leaves) {
+	k := cfg.OutputDim
+	if k < 1 {
+		k = 1
+	}
+	sumG, sumH := sumGradHess(idx, grad, hess, k)
+	totalH := 0.0
+	for c := 0; c < k; c++ {
+		totalH += sumH[c]
+	}
+	if totalH < cfg.MinHessian || depth >= cfg.MaxDepth || len(idx) <= 1 || leafBudgetExceeded(cfg, leaves) {
 		return &node{
 			leaf:    true,
-			leafVal: leafWeightFromSums(sumG, sumH, cfg.Lambda) * cfg.LearningRate,
-			sumHess: sumH,
+			leafVal: leafWeightFromSums(sumG, sumH, cfg.Lambda, cfg.LearningRate),
+			sumHess: totalH,
 		}
 	}
 
@@ -90,7 +107,7 @@ func buildNode(dm data.Matrix, idx []int, grad, hess []float64, depth int, cfg C
 	row := make([]float64, ncols)
 	for _, f := range featureList(cfg, ncols) {
 		if data.IsCategorical(dm, f) {
-			gain, thr, left, right, ok := bestCategoricalSplit(dm, idx, f, grad, hess, sumG, sumH, row, cfg)
+			gain, thr, left, right, ok := bestCategoricalSplit(dm, idx, f, grad, hess, sumG, sumH, k, row, cfg)
 			if ok && gain > bestGain {
 				bestGain = gain
 				bestFeat = f
@@ -121,10 +138,10 @@ func buildNode(dm data.Matrix, idx []int, grad, hess []float64, depth int, cfg C
 			if len(left) == 0 || len(right) == 0 {
 				continue
 			}
-			gl, hl := sumGradHess(left, grad, hess)
-			gr, hr := sumGradHess(right, grad, hess)
+			gl, hl := sumGradHess(left, grad, hess, k)
+			gr, hr := sumGradHess(right, grad, hess, k)
 			gain := splitGain(gl, hl, gr, hr, sumG, sumH, cfg.Lambda)
-			if gain > bestGain && monotoneAllowsSplit(cfg, f, left, right, grad, hess) {
+			if gain > bestGain && monotoneAllowsSplit(cfg, f, left, right, grad, hess, k) {
 				bestGain = gain
 				bestFeat = f
 				bestThr = thr
@@ -138,8 +155,8 @@ func buildNode(dm data.Matrix, idx []int, grad, hess []float64, depth int, cfg C
 	if bestGain <= cfg.Gamma {
 		return &node{
 			leaf:    true,
-			leafVal: leafWeightFromSums(sumG, sumH, cfg.Lambda) * cfg.LearningRate,
-			sumHess: sumH,
+			leafVal: leafWeightFromSums(sumG, sumH, cfg.Lambda, cfg.LearningRate),
+			sumHess: totalH,
 		}
 	}
 
@@ -148,7 +165,7 @@ func buildNode(dm data.Matrix, idx []int, grad, hess []float64, depth int, cfg C
 		threshold: bestThr,
 		left:      buildNode(dm, bestLeft, grad, hess, depth+1, cfg, splitBudget(cfg, leaves)),
 		right:     buildNode(dm, bestRight, grad, hess, depth+1, cfg, leaves),
-		sumHess:   sumH,
+		sumHess:   totalH,
 		catSmall:  bestCat,
 	}
 }
@@ -165,40 +182,57 @@ func splitIndices(dm data.Matrix, idx []int, feat int, thr float64, row []float6
 	return left, right
 }
 
-func sumGradHess(idx []int, grad, hess []float64) (g, h float64) {
+// sumGradHess 累加 idx 中各样本的逐类 grad/hess。grad/hess 布局为 [n*k] 行主序
+// （grad[i*k+c]）；k=1 退化为标量（返回 len-1 切片）。
+func sumGradHess(idx []int, grad, hess []float64, k int) (sumG, sumH []float64) {
+	sumG = make([]float64, k)
+	sumH = make([]float64, k)
 	for _, i := range idx {
-		g += grad[i]
-		h += hess[i]
+		base := i * k
+		for c := 0; c < k; c++ {
+			sumG[c] += grad[base+c]
+			sumH[c] += hess[base+c]
+		}
 	}
-	return g, h
+	return sumG, sumH
 }
 
-func leafWeight(idx []int, grad, hess []float64, lambda float64) float64 {
-	g, h := sumGradHess(idx, grad, hess)
-	return leafWeightFromSums(g, h, lambda)
-}
-
-func leafWeightFromSums(g, h, lambda float64) float64 {
-	return -g / (h + lambda)
-}
-
-func splitGain(gl, hl, gr, hr, g, h, lambda float64) float64 {
-	if hl <= 0 || hr <= 0 {
-		return 0
+// leafWeightFromSums 逐类叶权重 -g_c/(h_c+lambda)（已乘学习率）。
+func leafWeightFromSums(sumG, sumH []float64, lambda, lr float64) []float64 {
+	w := make([]float64, len(sumG))
+	for c := range sumG {
+		w[c] = -sumG[c] / (sumH[c] + lambda) * lr
 	}
-	left := gl * gl / (hl + lambda)
-	right := gr * gr / (hr + lambda)
-	total := g * g / (h + lambda)
-	return 0.5 * (left + right - total)
+	return w
+}
+
+func leafWeight(idx []int, grad, hess []float64, k int, lambda, lr float64) []float64 {
+	sg, sh := sumGradHess(idx, grad, hess, k)
+	return leafWeightFromSums(sg, sh, lambda, lr)
+}
+
+// splitGain 多输出分裂增益：同一 (feat,thr) 下逐类增益求和。k=1 即经典标量公式。
+// 某类一侧 hessian<=0 时该类贡献 0（不整体否决分裂）。
+func splitGain(gl, hl, gr, hr, sumG, sumH []float64, lambda float64) float64 {
+	var gain float64
+	for c := range sumG {
+		if hl[c] <= 0 || hr[c] <= 0 {
+			continue
+		}
+		left := gl[c] * gl[c] / (hl[c] + lambda)
+		right := gr[c] * gr[c] / (hr[c] + lambda)
+		total := sumG[c] * sumG[c] / (sumH[c] + lambda)
+		gain += 0.5 * (left + right - total)
+	}
+	return gain
 }
 
 func flatten(n *node) ([]tree.LgNodeData, []float64) {
-	if n == nil || n.leaf {
-		val := 0.0
-		if n != nil {
-			val = n.leafVal
-		}
-		return nil, []float64{val}
+	if n == nil {
+		return nil, nil
+	}
+	if n.leaf {
+		return nil, append([]float64(nil), n.leafVal...)
 	}
 	var countInternal func(*node) int
 	countInternal = func(cur *node) int {
@@ -209,12 +243,14 @@ func flatten(n *node) ([]tree.LgNodeData, []float64) {
 	}
 	nodes := make([]tree.LgNodeData, countInternal(n))
 	var leaves []float64
+	var leafCount uint32 // 叶序号（存储为叶引用）；与 leaves 的扁平偏移解耦
 	var nextInternal uint32
 	var fill func(*node) uint32
 	fill = func(cur *node) uint32 {
 		if cur.leaf {
-			idx := uint32(len(leaves))
-			leaves = append(leaves, cur.leafVal)
+			idx := leafCount
+			leafCount++
+			leaves = append(leaves, cur.leafVal...)
 			return idx
 		}
 		myIdx := nextInternal

@@ -15,6 +15,8 @@ type TrainParams struct {
 	Seed            int64
 	NumParallelTree int
 	DART            *DARTConfig
+	// MultiOutputTree 向量叶：每轮一棵 OutputDim=numGroups 的树（非 one_output_per_tree）。
+	MultiOutputTree bool
 }
 
 // GBTree 梯度提升树 booster。
@@ -100,6 +102,13 @@ func (b *GBTree) Boost(dm data.Matrix, grad, hess []float64) {
 		cfg.FeatureIndices = featIdx
 
 		if g <= 1 {
+			tir := treebuilder.Build(dm, idx, grad, hess, cfg, b.treeMethod)
+			b.appendTree(*tir, 0)
+			continue
+		}
+		if b.train.MultiOutputTree {
+			// 向量叶 multi_output_tree：一棵树，叶子为 g 维向量（TreeInfo=0，推理按 OutputDim scatter）。
+			cfg.OutputDim = g
 			tir := treebuilder.Build(dm, idx, grad, hess, cfg, b.treeMethod)
 			b.appendTree(*tir, 0)
 			continue

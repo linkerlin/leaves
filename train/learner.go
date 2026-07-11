@@ -45,8 +45,12 @@ type Config struct {
 	Callbacks           []TrainingCallback
 	// 多目标回归（LIB-21，one_output_per_tree：每轮每目标一棵标量树）
 	// NumTarget>1 时 numGroups=NumTarget；数据须为 data.MultiTarget。
-	// 与 multi:softmax 互斥。向量叶 multi_output_tree 训练未实现。
+	// 与 multi:softmax 互斥。
 	NumTarget int
+	// MultiOutputTree 向量叶训练（XGBoost multi_output_tree）：每轮一棵树，
+	// 叶子为 numGroups 维向量；分裂增益跨输出组求和。适用于 multi:* 与 NumTarget>1。
+	// 默认 false（one_output_per_tree）。
+	MultiOutputTree bool
 	// 排序学习（T5，对标 XGBoost LambdaMART）
 	NDCGK                      int     // eval / lambda ndcg@k；0=全量
 	LambdaRankNorm             bool    // lambdarank_norm，rank:ndcg 默认 true
@@ -135,6 +139,9 @@ func NewLearner(cfg Config) (*Learner, error) {
 			return nil, fmt.Errorf("train: NumTarget>1 cannot combine with ranking objective")
 		}
 		numGroups = cfg.NumTarget
+	}
+	if cfg.MultiOutputTree && numGroups <= 1 {
+		return nil, fmt.Errorf("train: MultiOutputTree requires multi-output (multi:* objective or NumTarget>1)")
 	}
 	metric, err := evalMetricFor(cfg, numGroups)
 	if err != nil {
@@ -281,6 +288,7 @@ func (l *Learner) initBooster(dm data.Matrix, labels []float64) error {
 		Seed:            l.cfg.Seed,
 		NumParallelTree: l.cfg.NumParallelTree,
 		DART:            l.cfg.DART,
+		MultiOutputTree: l.cfg.MultiOutputTree,
 	}
 	method := l.resolvedTreeMethod
 	if method == "" {
