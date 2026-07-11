@@ -32,6 +32,8 @@ N_GENRE = 19
 
 OUT_TRAIN = "rank_movielens_train.tsv"
 OUT_TEST = "rank_movielens_test.tsv"
+OUT_TRAIN_META = "rank_movielens_train_meta.jsonl"
+OUT_TEST_META = "rank_movielens_test_meta.jsonl"
 OUT_NDCG_BASELINE = "rank_movielens_ndcg_xgb_baseline.json"
 OUT_PAIRWISE_BASELINE = "rank_movielens_pairwise_xgb_baseline.json"
 
@@ -59,16 +61,17 @@ def parse_year(date_s):
 
 
 def load_movielens(zf):
-    movie_feat = {}
+    movie_feat = {}  # mid -> (year, genres, title)
     for raw in zf.open("ml-100k/u.item"):
         line = raw.decode("latin-1").strip()
         parts = line.split("|")
         if len(parts) < 5 + N_GENRE:
             continue
         mid = int(parts[0])
+        title = parts[1].strip()
         year = parse_year(parts[2])
         genres = [float(x) for x in parts[5 : 5 + N_GENRE]]
-        movie_feat[mid] = (year, genres)
+        movie_feat[mid] = (year, genres, title)
 
     ratings = []
     for raw in zf.open("ml-100k/u.data"):
@@ -85,14 +88,14 @@ def load_movielens(zf):
     for u, m, r in ratings:
         if m not in movie_feat:
             continue
-        year, genres = movie_feat[m]
+        year, genres, title = movie_feat[m]
         feat = [
             np.log1p(pop[m]),
             rating_sum[m] / pop[m],
             (year - 1970.0) / 50.0,
         ]
         feat.extend(genres)
-        by_user[u].append((m, r, feat))
+        by_user[u].append((m, r, feat, title))
 
     users = sorted(u for u, rows in by_user.items() if len(rows) >= MIN_RATINGS_PER_USER)
     return by_user, users
@@ -105,15 +108,27 @@ def split_users(users, train_n, test_n, seed):
 
 
 def build_rows(by_user, user_ids, qid_base=0):
+    """返回 ranking 行 (qid,label,feat) 与旁车 meta (qid,row,movie_id,title,user_id)。"""
     rows = []
+    meta = []
     groups = []
     for i, uid in enumerate(user_ids):
         qid = qid_base + i
         docs = by_user[uid]
         groups.append(len(docs))
-        for _m, rating, feat in docs:
+        for row_i, (mid, rating, feat, title) in enumerate(docs):
             rows.append((qid, rating, feat))
-    return rows, groups
+            meta.append(
+                {
+                    "qid": qid,
+                    "user_id": int(uid),
+                    "row": row_i,
+                    "movie_id": int(mid),
+                    "title": title,
+                    "label": float(rating),
+                }
+            )
+    return rows, groups, meta
 
 
 def write_ranking_tsv(path, rows):
@@ -124,6 +139,12 @@ def write_ranking_tsv(path, rows):
             feats = "\t".join(f"{v:.17g}" for v in feat)
             f.write(f"{qid}\t{label:.17g}\t{feats}\n")
     return n_feat
+
+
+def write_meta_jsonl(path, meta):
+    with open(path, "w", encoding="utf-8") as f:
+        for rec in meta:
+            f.write(json.dumps(rec, ensure_ascii=False) + "\n")
 
 
 def rows_to_dmatrix(rows, groups):
@@ -193,8 +214,11 @@ def main():
     ap.add_argument("--force", action="store_true")
     args = ap.parse_args()
 
-    outputs = [OUT_TRAIN, OUT_TEST, OUT_NDCG_BASELINE, OUT_PAIRWISE_BASELINE]
-    if not args.force and all(os.path.isfile(p) for p in outputs):
+    core = [OUT_TRAIN, OUT_TEST, OUT_NDCG_BASELINE, OUT_PAIRWISE_BASELINE]
+    meta_outs = [OUT_TRAIN_META, OUT_TEST_META]
+    need_xgb = args.force or not all(os.path.isfile(p) for p in core)
+    need_meta = args.force or not all(os.path.isfile(p) for p in meta_outs)
+    if not need_xgb and not need_meta:
         print("outputs exist, use --force to regenerate")
         return
 
@@ -203,42 +227,51 @@ def main():
         by_user, users = load_movielens(zf)
 
     train_u, test_u = split_users(users, TRAIN_USERS, TEST_USERS, SEED)
-    train_rows, train_groups = build_rows(by_user, train_u, 0)
-    test_rows, test_groups = build_rows(by_user, test_u, len(train_u))
+    train_rows, train_groups, train_meta = build_rows(by_user, train_u, 0)
+    test_rows, test_groups, test_meta = build_rows(by_user, test_u, len(train_u))
 
-    n_feat = write_ranking_tsv(OUT_TRAIN, train_rows)
-    write_ranking_tsv(OUT_TEST, test_rows)
+    if need_xgb:
+        n_feat = write_ranking_tsv(OUT_TRAIN, train_rows)
+        write_ranking_tsv(OUT_TEST, test_rows)
+    else:
+        n_feat = len(train_rows[0][2]) if train_rows else 0
+        print("TSV/baseline exist; refreshing meta only", file=sys.stderr)
 
-    dtrain = rows_to_dmatrix(train_rows, train_groups)
-    dtest = rows_to_dmatrix(test_rows, test_groups)
-    extra = {
-        "n_feat": n_feat,
-        "min_ratings_per_user": MIN_RATINGS_PER_USER,
-        "train_users": len(train_u),
-        "test_users": len(test_u),
-        "train_rows": len(train_rows),
-        "test_rows": len(test_rows),
-        "label_range": "1-5 stars as relevance",
-    }
+    write_meta_jsonl(OUT_TRAIN_META, train_meta)
+    write_meta_jsonl(OUT_TEST_META, test_meta)
 
-    for objective, out_path in (
-        ("rank:ndcg", OUT_NDCG_BASELINE),
-        ("rank:pairwise", OUT_PAIRWISE_BASELINE),
-    ):
-        _, metric_key, train_hist, test_hist, eval_metric = train_baseline(
-            objective, dtrain, dtest
-        )
-        write_baseline(
-            out_path, objective, eval_metric, metric_key, train_hist, test_hist, extra
-        )
-        print(
-            f"{objective}: {out_path}; "
-            f"train {train_hist[0]:.4f}->{train_hist[-1]:.4f}; "
-            f"test {test_hist[0]:.4f}->{test_hist[-1]:.4f}"
-        )
+    if need_xgb:
+        dtrain = rows_to_dmatrix(train_rows, train_groups)
+        dtest = rows_to_dmatrix(test_rows, test_groups)
+        extra = {
+            "n_feat": n_feat,
+            "min_ratings_per_user": MIN_RATINGS_PER_USER,
+            "train_users": len(train_u),
+            "test_users": len(test_u),
+            "train_rows": len(train_rows),
+            "test_rows": len(test_rows),
+            "label_range": "1-5 stars as relevance",
+        }
+
+        for objective, out_path in (
+            ("rank:ndcg", OUT_NDCG_BASELINE),
+            ("rank:pairwise", OUT_PAIRWISE_BASELINE),
+        ):
+            _, metric_key, train_hist, test_hist, eval_metric = train_baseline(
+                objective, dtrain, dtest
+            )
+            write_baseline(
+                out_path, objective, eval_metric, metric_key, train_hist, test_hist, extra
+            )
+            print(
+                f"{objective}: {out_path}; "
+                f"train {train_hist[0]:.4f}->{train_hist[-1]:.4f}; "
+                f"test {test_hist[0]:.4f}->{test_hist[-1]:.4f}"
+            )
 
     print(f"wrote {OUT_TRAIN} ({len(train_rows)} rows, {len(train_groups)} users)")
     print(f"wrote {OUT_TEST} ({len(test_rows)} rows, {len(test_groups)} users)")
+    print(f"wrote {OUT_TRAIN_META} / {OUT_TEST_META} (movie_id+title sidecar)")
 
 
 if __name__ == "__main__":

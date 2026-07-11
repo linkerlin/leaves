@@ -16,7 +16,7 @@
 ## 1. 准备数据
 
 ```powershell
-# 多数情况仓库已带 TSV；缺失时：
+# 多数情况仓库已带 TSV；缺失或需片名旁车时：
 cd testdata && python gen_rank_movielens.py && cd ..
 # 或
 go run ./demos/movielens/cmd/agent prepare
@@ -26,7 +26,13 @@ go run ./demos/movielens/cmd/agent prepare
 |------|------|
 | `testdata/rank_movielens_train.tsv` | 60 用户训练 |
 | `testdata/rank_movielens_test.tsv` | 15 用户测试 |
+| `rank_movielens_*_meta.jsonl` | **movie_id / title** 旁车（推荐展示用） |
 | `rank_movielens_*_xgb_baseline.json` | XGB NDCG 基准 |
+
+```powershell
+# 脚本 walkthrough（Agent CLI 分步）
+pwsh demos/movielens/scripts/walkthrough.ps1
+```
 
 ## 2. Agent 一键闭环
 
@@ -64,7 +70,7 @@ go test ./demos/movielens/agentops -count=1
 ## 5. 特征与语义
 
 TSV：`qid \t label \t feat1..feat22`（流行度、均分、年份、19 类 one-hot）。  
-`label` = 星级 1–5；推荐 JSON 里 `row` 为组内行号（非 movie_id）。详见教程 §4。
+`label` = 星级 1–5；推荐输出含 `movie_id`/`title`（需 meta 旁车）。详见教程 §4 / §8.3。
 
 ## 6. 与 recsys 四段流水线
 

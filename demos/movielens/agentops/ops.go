@@ -448,17 +448,31 @@ func Recommend(p RecommendParams) Result {
 	if err != nil {
 		return errResult("recommend", err.Error(), "")
 	}
+	userQID := rankutil.GroupQID(groupIdx, TrainUsers)
+	metaRows, _ := rankutil.LoadTestMeta(dataDir)
+	metaIdx := rankutil.MetaIndex(metaRows)
 	list := make([]map[string]any, 0, len(items))
 	for i, it := range items {
-		list = append(list, map[string]any{
+		rec := map[string]any{
 			"rank": i + 1, "score": it.Score, "label": it.Label, "row": it.RowInGroup,
-		})
+		}
+		if m, ok := metaIdx[[2]int{userQID, it.RowInGroup}]; ok {
+			rec["movie_id"] = m.MovieID
+			rec["title"] = m.Title
+			rec["user_id"] = m.UserID
+		}
+		list = append(list, rec)
 	}
-	userQID := rankutil.GroupQID(groupIdx, TrainUsers)
+	note := "label=历史星级 1–5；row=组内行号"
+	if len(metaRows) > 0 {
+		note += "；含 movie_id/title（旁车 meta）"
+	} else {
+		note += "；无 meta 旁车时仅有 row（运行 gen_rank_movielens.py 生成 rank_movielens_*_meta.jsonl）"
+	}
 	payload := map[string]any{
 		"qid": userQID, "group": groupIdx, "topk": len(list),
 		"model": modelPath, "items": list,
-		"note": "label=历史星级 1–5；row=组内行号（非 movie_id）",
+		"note": note,
 	}
 	outDir, _ := rankutil.OutDir()
 	outJSON := p.OutJSON

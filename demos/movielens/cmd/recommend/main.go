@@ -64,11 +64,26 @@ func main() {
 	}
 
 	userQID := rankutil.GroupQID(*groupIdx, trainUserCount)
+	dataDir, _ := rankutil.DataDir()
+	metaRows, _ := rankutil.LoadTestMeta(dataDir)
+	metaIdx := rankutil.MetaIndex(metaRows)
 	fmt.Printf("用户 qid=%d（测试集第 %d 位），Top-%d 推荐（label=历史星级 1–5）\n",
 		userQID, *groupIdx, len(items))
-	fmt.Println("rank  score      stars  row")
-	for i, it := range items {
-		fmt.Printf("%4d  %9.4f  %5.0f  %d\n", i+1, it.Score, it.Label, it.RowInGroup)
+	if len(metaRows) > 0 {
+		fmt.Println("rank  score      stars  mid   title")
+		for i, it := range items {
+			title, mid := "", 0
+			if m, ok := metaIdx[[2]int{userQID, it.RowInGroup}]; ok {
+				title, mid = m.Title, m.MovieID
+			}
+			fmt.Printf("%4d  %9.4f  %5.0f  %4d  %s\n", i+1, it.Score, it.Label, mid, title)
+		}
+	} else {
+		fmt.Println("rank  score      stars  row")
+		for i, it := range items {
+			fmt.Printf("%4d  %9.4f  %5.0f  %d\n", i+1, it.Score, it.Label, it.RowInGroup)
+		}
+		fmt.Fprintln(os.Stderr, "提示: 无 title 旁车；python testdata/gen_rank_movielens.py 可生成 rank_movielens_test_meta.jsonl")
 	}
 }
 

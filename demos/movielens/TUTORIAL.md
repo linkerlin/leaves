@@ -34,7 +34,7 @@
 | **Agent 闭环** | 用 JSON 契约驱动：准备 → 训练 → 评估 → 推荐，无需手写 Go |
 | **双通道调用** | Shell CLI **或** MCP `tools/call`（同一套 `agentops`） |
 | **可对比 baseline** | 与 XGBoost NDCG 基准对齐（`testdata/rank_movielens_*_xgb_baseline.json`） |
-| **可审计产物** | `metrics_*.json`、`runs.jsonl`、`recommend_g*.json`、`leaves.json` 模型 |
+| **可审计产物** | `metrics_*.json`、`runs.jsonl`、`recommend_g*.json`（含 **movie_id/title**）、`leaves.json` 模型 |
 
 **非目标（本教程不做）**：
 
@@ -180,6 +180,13 @@ go run ./demos/movielens/cmd/agent prepare -force
 
 ```powershell
 go run ./demos/movielens/cmd/agent full-pipeline
+```
+
+或仓库脚本：
+
+```powershell
+pwsh demos/movielens/scripts/walkthrough.ps1
+# bash demos/movielens/scripts/walkthrough.sh
 ```
 
 内部顺序：`prepare`（若需要）→ `train` → `eval` → `recommend`（默认 group=0, topk=10）。
@@ -385,11 +392,32 @@ demos/movielens/out/
   "qid": 60,
   "group": 0,
   "items": [
-    {"rank": 1, "score": 1.23, "label": 5, "row": 12}
+    {
+      "rank": 1,
+      "score": 1.23,
+      "label": 5,
+      "row": 12,
+      "movie_id": 100,
+      "title": "Fargo (1996)",
+      "user_id": 699
+    }
   ],
-  "note": "label=历史星级；row=组内行号（非 movie_id）"
+  "note": "label=历史星级；含 movie_id/title（旁车 meta）"
 }
 ```
+
+旁车文件（由 `gen_rank_movielens.py` 写出）：
+
+- `testdata/rank_movielens_test_meta.jsonl`
+- `testdata/rank_movielens_train_meta.jsonl`
+
+若仅有 TSV 无 meta，执行：
+
+```powershell
+cd testdata; python gen_rank_movielens.py; cd ..
+```
+
+（TSV/baseline 已存在时会**只刷新 meta**，不必重训 XGB。）
 
 解读：`label` 高且 `rank` 靠前 → 排序在用户真实喜好上合理（离线回放，不是在线 CTR）。
 
@@ -445,7 +473,7 @@ demos/movielens/out/
 | train 找不到 TSV | 先 `prepare` |
 | MCP 无输出 | 确认 stdout 未被日志污染；只用 stderr 打日志 |
 | 推荐 label 全是 0 | 检查是否用了错误测试文件 / 组号越界 |
-| 想要片名 | 扩展 `gen_rank_movielens.py` 写 movie_id 列（当前 demo 仅组内 row） |
+| 推荐无 title | `python testdata/gen_rank_movielens.py` 生成 `*_meta.jsonl` |
 
 ---
 

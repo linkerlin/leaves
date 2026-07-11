@@ -5,7 +5,12 @@
 
 ## [Unreleased]
 
-（下一 patch 在此累积。）
+### Added
+
+- MovieLens 推荐旁车 `rank_movielens_*_meta.jsonl`（movie_id/title）；`agent recommend` / `cmd/recommend` 展示片名
+- `demos/movielens/scripts/walkthrough.ps1` / `.sh` 端到端脚本
+
+---
 
 ## [2.1.3] - 2026-07-11
 
