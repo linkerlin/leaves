@@ -61,7 +61,7 @@
 
 - int8 阈值量化（带 parity 门禁）
 - `Ensemble.Reload` 线上热更新；按 batch 维度的推理 profiling
-- [WASM demo](examples/wasm/README.md)（js / wasm，Native CPU）、[HTTP embed demo](examples/http/README.md)（批量服务）、[train-from-model demo](examples/train_from_model/README.md)
+- [WASM demo](examples/wasm/README.md)（js / wasm，Native CPU）、[HTTP embed demo](examples/http/README.md)（批量服务）、[train-from-model demo](examples/train_from_model/README.md)、[扩展 objective/metric](examples/extension/README.md)、[多目标回归](examples/multitarget/README.md)
 
 ## 安装
 
@@ -113,7 +113,7 @@ func main() {
 | XGBoost binary | **稳定** | `binf` / header | 经典 Booster；优先改用 JSON |
 | LightGBM text/JSON | **稳定** | `tree=` / `tree_info` | text 与 JSON |
 | scikit-learn | **实验** | `.pkl` / `.joblib` | 窄协议；生产请转 XGB/leaves JSON |
-| ONNX | **占位** | `.onnx` | 不实现导入；先转 JSON/leaves |
+| ONNX | **实验** | `.onnx` | TreeEnsembleRegressor 子集；复杂图请先转 JSON/leaves |
 
 加载失败返回 `*io.LoadError`（含 `hint:` 下一步）。数值表误用 `.txt` 会提示改用 `data.FromFile`。
 
@@ -476,7 +476,7 @@ go run ./cmd/leaves publish --model m.leaves.json --out-dir release/ --quantize 
 | [AGENTS.md](AGENTS.md) | 项目规约 |
 | [docs/testdata-matrix.md](docs/testdata-matrix.md) | 回归矩阵 |
 | [docs/benchmark-baseline.md](docs/benchmark-baseline.md) | Bench 门禁 |
-| [examples/](examples/) | autotrain / wasm / http / train_from_model |
+| [examples/](examples/) | autotrain / wasm / http / train_from_model / extension / multitarget |
 
 ## 兼容性
 

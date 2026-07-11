@@ -86,7 +86,7 @@ func writeError(err error) int {
 	ae := classifyError(err)
 	code := 2
 	switch ae.Code {
-	case "usage", "data_load", "non_numeric", "missing_value", "objective_mismatch", "model_load":
+	case "usage", "data_load", "non_numeric", "missing_value", "objective_mismatch", "model_load", "cv_conflict":
 		code = 1
 	}
 	if errorFormat == "json" {

@@ -14,7 +14,7 @@
 | **Metric** | `metrics.Register` | ✅ 全量注册（含 mlogloss / ndcg@K） | [`metrics/register.go`](../metrics/register.go)、[`metrics/builtins.go`](../metrics/builtins.go) |
 | **Booster** | 无 registry | 🔒 边界固定 | `train` 内 `gbtree` / `dart` / `gblinear` 三选一 |
 | **Tree method** | 无 registry | 🔒 边界固定 | `hist` / `exact` / `auto`（+ 训练 hist 加速） |
-| **IO 格式** | `io` 探测链 | 实验性扩展需改 `io/` | 稳定：leaves.json / XGB JSON；实验：SK；占位：ONNX |
+| **IO 格式** | `io` 探测链 | 实验性扩展需改 `io/` | 稳定：leaves.json / XGB JSON；实验：SK / ONNX TreeEnsemble 子集 |
 
 **设计说明（booster / tree method 为何不做 registry）**
 
@@ -116,7 +116,31 @@ m, err := metrics.Resolve("custom_score", metrics.Options{})
 
 ---
 
-## 5. 相关路径速查
+## 5. 可运行示例
+
+[`examples/extension/`](../examples/extension/)：注册 `custom:l1` + `max_abs_error`，`go run` / `go test` 闭环。
+
+```powershell
+go run ./examples/extension/
+go test ./examples/extension/ -count=1
+```
+
+### 多目标回归（LIB-21）
+
+```go
+dm, _ := data.NewMultiTargetDense(X, n, p, Yflat /* n*k */, k, nil)
+learner, _ := train.NewLearner(train.Config{
+    Objective: "reg:squarederror",
+    NumTarget: k, // one_output_per_tree
+    NumRound:  40,
+})
+_ = learner.Fit(dm)
+```
+
+CLI：`leaves train --data mt.csv --objective reg:squarederror --num-target 2`（CSV 列序：`f...,y0,y1`）。  
+**向量叶** `multi_output_tree` 训练不做；XGB 向量叶 **推理**仍支持。
+
+## 6. 相关路径速查
 
 | 任务 | 路径 |
 |------|------|
@@ -124,10 +148,11 @@ m, err := metrics.Resolve("custom_score", metrics.Options{})
 | 训练接 metric | [`train/metric.go`](../train/metric.go) → `metrics.Resolve` |
 | CLI train/eval | [`cmd/leaves/train.go`](../cmd/leaves/train.go)、[`eval.go`](../cmd/leaves/eval.go) |
 | 内置列表 | `objective.RegisteredNames()` / `metrics.RegisteredNames()` |
+| 可跑 demo | [`examples/extension/`](../examples/extension/) |
 
 ---
 
-## 6. 与 Agentic / 库路线的关系
+## 7. 与 Agentic / 库路线的关系
 
 - **Agent 闭环**不依赖自定义扩展；扩展是库能力。
 - 自定义 objective 的 Agent 使用方式：用户进程 `import _ "yours/plugin"` 后仍用 `leaves` CLI，或直接调 `train` API。

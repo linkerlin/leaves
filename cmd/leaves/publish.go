@@ -29,6 +29,7 @@ func cmdPublish(args []string) error {
 	metricsPath := fs.String("metrics", "", "训练 metrics.json（快照进 manifest）")
 	dataPath := fs.String("data", "", "数据路径（量化 parity 用；可选）")
 	emitRepro := fs.String("emit-repro-script", "", "生成复现脚本：ps1|sh|both（写入 out-dir；空=不生成）")
+	printRepro := fs.Bool("print-repro", false, "将复现 train 命令打印到 stdout（需 --metrics 含 params；与 --emit-repro-script 可并用）")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -127,6 +128,13 @@ func cmdPublish(args []string) error {
 	reproCmd := buildReproduceCommand(metricsSnap, *dataPath, objective)
 	if reproCmd != "" {
 		manifest["reproduce"] = reproCmd
+	}
+	// POST-11：stdout 一键打印（Agent 可管道捕获；不写文件）。
+	if *printRepro {
+		if reproCmd == "" {
+			return errUsage("--print-repro 需要 --metrics（含 params）以生成训练命令")
+		}
+		fmt.Println(reproCmd)
 	}
 	// WP-19：可选写出可执行复现脚本（需 metrics 以拼出 train 命令）。
 	if reproMode != "" {

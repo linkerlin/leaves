@@ -43,6 +43,10 @@ type Config struct {
 	DART                *booster.DARTConfig
 	LRScheduler         LearningRateScheduler
 	Callbacks           []TrainingCallback
+	// 多目标回归（LIB-21，one_output_per_tree：每轮每目标一棵标量树）
+	// NumTarget>1 时 numGroups=NumTarget；数据须为 data.MultiTarget。
+	// 与 multi:softmax 互斥。向量叶 multi_output_tree 训练未实现。
+	NumTarget int
 	// 排序学习（T5，对标 XGBoost LambdaMART）
 	NDCGK                      int    // eval / lambda ndcg@k；0=全量
 	LambdaRankNorm             bool   // lambdarank_norm，rank:ndcg 默认 true
@@ -123,6 +127,15 @@ func NewLearner(cfg Config) (*Learner, error) {
 	if mc, ok := objective.IsMulticlass(obj); ok {
 		numGroups = mc.Classes()
 	}
+	if cfg.NumTarget > 1 {
+		if _, ok := objective.IsMulticlass(obj); ok {
+			return nil, fmt.Errorf("train: NumTarget>1 cannot combine with multiclass objective")
+		}
+		if _, ok := objective.IsRanking(obj); ok {
+			return nil, fmt.Errorf("train: NumTarget>1 cannot combine with ranking objective")
+		}
+		numGroups = cfg.NumTarget
+	}
 	metric, err := evalMetricFor(cfg, numGroups)
 	if err != nil {
 		return nil, err
@@ -159,6 +172,17 @@ func (l *Learner) Fit(dm data.Matrix) error {
 	labels := dm.Labels()
 	n := dm.NumRow()
 	g := l.numGroups
+	mt, isMT := data.AsMultiTarget(dm)
+	if isMT {
+		if mt.NumTarget() != g {
+			return fmt.Errorf("train: multi-target data NumTarget=%d != config groups %d (set Config.NumTarget)", mt.NumTarget(), g)
+		}
+	} else if g > 1 {
+		// 多分类用标量 label；多目标必须 MultiTarget
+		if _, ok := objective.IsMulticlass(l.obj); !ok {
+			return fmt.Errorf("train: NumTarget/groups=%d requires data.MultiTarget matrix", g)
+		}
+	}
 
 	if err := l.initBooster(dm, labels); err != nil {
 		return err
@@ -175,6 +199,10 @@ func (l *Learner) Fit(dm data.Matrix) error {
 	hessRow := make([]float64, g)
 
 	mc, isMC := objective.IsMulticlass(l.obj)
+	var targets []float64
+	if isMT {
+		targets = mt.Targets()
+	}
 
 	for round := l.resumeFromRound; round < l.cfg.NumRound; round++ {
 		l.onRoundStart(round)
@@ -186,6 +214,15 @@ func (l *Learner) Fit(dm data.Matrix) error {
 				mc.GradHessVec(predRow, labels[i], w, gradRow, hessRow)
 				copy(grad[i*g:(i+1)*g], gradRow)
 				copy(hess[i*g:(i+1)*g], hessRow)
+			}
+		} else if isMT {
+			// one_output_per_tree：各目标独立 squared/grad，每轮 g 棵树
+			for i := 0; i < n; i++ {
+				w := data.WeightAt(dm, i)
+				base := i * g
+				for t := 0; t < g; t++ {
+					grad[base+t], hess[base+t] = l.obj.GradHess(preds[base+t], targets[base+t], w)
+				}
 			}
 		} else {
 			for i := 0; i < n; i++ {
@@ -199,7 +236,11 @@ func (l *Learner) Fit(dm data.Matrix) error {
 		var metricOK bool
 		if l.metric != nil {
 			l.predictMarginsInternal(dm, evalPreds, false)
-			metricLabels, metricPreds := metricInputs(l.cfg, labels, evalPreds, g)
+			metricLabels := labels
+			if isMT {
+				metricLabels = targets
+			}
+			metricLabels, metricPreds := metricInputs(l.cfg, metricLabels, evalPreds, g)
 			if v, err := evaluateTrainMetric(l, metricLabels, metricPreds, dm); err == nil {
 				l.metricHistory = append(l.metricHistory, v)
 				trainMetric = v
@@ -267,9 +308,48 @@ func (l *Learner) initBooster(dm data.Matrix, labels []float64) error {
 			}
 			return nil
 		}
+		// 多目标：每目标独立 mean 作 base；NumOutputGroups=NumTarget
+		if l.numGroups > 1 {
+			l.booster = booster.NewGBTree(dm.NumCol(), base, l.numGroups, tbCfg, method, trainParams)
+			if gt, ok := l.booster.(*booster.GBTree); ok {
+				if mt, ok := data.AsMultiTarget(dm); ok {
+					vec := multiTargetInitial(mt, dm.Weights())
+					if len(vec) == l.numGroups {
+						gt.Forest().BaseScores = vec
+						if len(vec) > 0 {
+							gt.Forest().BaseScore = vec[0]
+						}
+					}
+				}
+			}
+			return nil
+		}
 		l.booster = booster.NewGBTree(dm.NumCol(), base, 1, tbCfg, method, trainParams)
 		return nil
 	}
+}
+
+// multiTargetInitial 各目标加权均值。
+func multiTargetInitial(mt data.MultiTarget, weights []float64) []float64 {
+	k := mt.NumTarget()
+	n := mt.NumRow()
+	tg := mt.Targets()
+	out := make([]float64, k)
+	for t := 0; t < k; t++ {
+		var sw, sy float64
+		for i := 0; i < n; i++ {
+			w := 1.0
+			if weights != nil && i < len(weights) {
+				w = weights[i]
+			}
+			sw += w
+			sy += w * tg[i*k+t]
+		}
+		if sw > 0 {
+			out[t] = sy / sw
+		}
+	}
+	return out
 }
 
 func metricInputs(cfg Config, labels, margins []float64, numGroups int) ([]float64, []float64) {
@@ -296,6 +376,10 @@ func metricInputs(cfg Config, labels, margins []float64, numGroups int) ([]float
 		}
 		return labels, vals
 	default:
+		// 多目标回归：labels 与 margins 均为 n*g 扁平；RMSE/MAE 直接对齐元素
+		if cfg.NumTarget > 1 && len(labels) == len(margins) {
+			return labels, margins
+		}
 		return labels, margins
 	}
 }

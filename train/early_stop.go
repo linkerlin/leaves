@@ -99,7 +99,7 @@ func evalMetricOnSet(l *Learner, dm data.Matrix) (float64, error) {
 	if err := l.PredictMargins(dm, preds); err != nil {
 		return 0, err
 	}
-	labels, metricPreds := metricInputs(l.cfg, dm.Labels(), preds, g)
+	labels, metricPreds := metricInputs(l.cfg, labelsForMetric(l.cfg, dm), preds, g)
 	return metrics.Evaluate(l.metric, labels, metricPreds, groupsFromMatrix(dm))
 }
 

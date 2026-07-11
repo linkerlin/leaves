@@ -94,7 +94,7 @@ func applyParamsIfUnset(
 	p *paramsRecord,
 	objective *string,
 	evalMetric *string,
-	numClass, rounds, depth, maxLeaves *int,
+	numClass, numTarget, rounds, depth, maxLeaves *int,
 	lr, lambda, minChildWeight, gamma *float64,
 	maxBin *int,
 	subsample, colsample *float64,
@@ -149,6 +149,7 @@ func applyParamsIfUnset(
 		*seed = p.Seed
 	}
 	setInt("num-class", numClass, p.NumClass, true)
+	setInt("num-target", numTarget, p.NumTarget, true)
 	setInt("ndcg-k", ndcgK, p.NDCGK, true)
 	setInt("early-stop", earlyStop, p.EarlyStop, true)
 	setInt("cv", cv, p.CVFolds, true)

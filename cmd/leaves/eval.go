@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 
+	"github.com/linkerlin/leaves/data"
 	leavesio "github.com/linkerlin/leaves/io"
 	"github.com/linkerlin/leaves/metrics"
 )
@@ -17,6 +18,7 @@ func cmdEval(args []string) error {
 	objective := fs.String("objective", "", "目标函数（margin→pred 变换；可从 metric 推断）")
 	metricsPath := fs.String("metrics", "", "输出 metrics.json（空=stdout）")
 	naPolicy := fs.String("na-policy", "error", "缺失值策略：error|skip-row")
+	numTarget := fs.Int("num-target", 0, "多目标评估：CSV 末 N 列标签（≥2；可从模型 n_output_groups 推断）")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -41,7 +43,17 @@ func cmdEval(args []string) error {
 	}
 	defer m.Close()
 
-	dm, err := loadMatrix(*dataPath, *naPolicy)
+	nc := m.NOutputGroups()
+	if nc < 1 {
+		nc = 1
+	}
+	// 多目标：优先 CLI --num-target；否则模型 groups>1 且非 multi 时自动用 groups
+	nt := *numTarget
+	if nt < 2 && nc > 1 && !isMulticlassObjective(obj) {
+		nt = nc
+	}
+
+	dm, err := loadMatrixOpts(*dataPath, *naPolicy, nt)
 	if err != nil {
 		return err
 	}
@@ -50,10 +62,6 @@ func cmdEval(args []string) error {
 		return err
 	}
 
-	nc := m.NOutputGroups()
-	if nc < 1 {
-		nc = 1
-	}
 	preds := make([]float64, dm.NumRow()*nc)
 	if err := m.PredictDense(vals, dm.NumRow(), dm.NumCol(), preds, 0, 0); err != nil {
 		return fmt.Errorf("predict: %w", err)
@@ -65,16 +73,31 @@ func cmdEval(args []string) error {
 		return fmt.Errorf("resolve metric %q: %w", metric, err)
 	}
 	metricPreds := metricInputs(metric, obj, preds, nc)
-	score, err := metrics.Evaluate(mt, dm.Labels(), metricPreds, groups)
+	labels := dm.Labels()
+	if nt >= 2 {
+		if mtm, ok := data.AsMultiTarget(dm); ok {
+			labels = mtm.Targets()
+			// 多目标回归：pred 已是 n*k 扁平 margin，与 Targets 对齐；不做 multiclass 变换
+			if !isMulticlassObjective(obj) {
+				metricPreds = preds
+			}
+		}
+	}
+	score, err := metrics.Evaluate(mt, labels, metricPreds, groups)
 	if err != nil {
 		return fmt.Errorf("evaluate: %w", err)
 	}
 
-	return writeMetrics(*metricsPath, metricsDoc{
+	doc := metricsDoc{
 		Objective: obj,
 		Metric:    metric,
 		Value:     score,
 		Maximize:  mt.HigherIsBetter(),
 		NRows:     dm.NumRow(),
-	})
+		NFeatures: dm.NumCol(),
+	}
+	if nt >= 2 {
+		doc.Params = &paramsRecord{NumTarget: nt, EvalMetric: metric}
+	}
+	return writeMetrics(*metricsPath, doc)
 }

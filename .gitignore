@@ -1,6 +1,9 @@
 # IDE & Editor
 .chong/
-.cursor/
+# Cursor 本地配置忽略；skills 镜像需入库（POST-01 / 演进方案 WP-06）
+.cursor/*
+!.cursor/skills/
+!.cursor/skills/**
 .codebuddy/
 .vscode/
 .idea/

@@ -53,6 +53,9 @@ go test ./cmd/leaves ./tree ./io ./objective ./metrics -count=1
 |------|------|
 | [examples/autotrain](../examples/autotrain/) | 零准备 CLI 闭环可跑 |
 | [examples/train_from_model](../examples/train_from_model/) | `NewLearnerFromModelAndData` |
+| [examples/extension](../examples/extension/) | 自定义 objective/metric Register |
+| [examples/multitarget](../examples/multitarget/) | multi-target one_output_per_tree |
+| ONNX 子集 | `go test ./io -run ONNX -count=1` |
 | [examples/wasm](../examples/wasm/) | 构建 + README 部署建议 |
 | [examples/http](../examples/http/) | embed 批预测 demo（非官方 serving） |
 | quantize | `publish --quantize` 或 `quantize` 包测试绿 |
@@ -61,7 +64,7 @@ go test ./cmd/leaves ./tree ./io ./objective ./metrics -count=1
 ## 4. 兼容与互操作
 
 - [ ] 稳定格式加载路径未回归（LGB / XGB JSON·UBJ·bin / leaves.json）
-- [ ] SK 仍标 **实验**；ONNX 仍 **占位**
+- [ ] SK 仍标 **实验**；ONNX 为 **实验子集**（非完整 Graph）
 - [ ] `DefaultLoadOptions().AutoTransform == true` 行为有 NOTES/README 说明
 - [ ] 根包 `LGEnsembleFromFile` / `XGEnsembleFromFile` 仍委托可用（兼容层）
 - [ ] 无「静默破坏」metrics/CLI schema（升 `schema_version` 须记 versioning）
@@ -105,4 +108,4 @@ go test ./cmd/leaves ./tree ./io ./objective ./metrics -count=1
 
 - [ ] GitHub Release 已发布
 - [ ] （可选）`go install` / 模块代理可拉 tag
-- [ ] 若有 Agentic 契约变更：同步 `skills/leaves-autotrain` 与 `.cursor/skills` 镜像
+- [ ] 若有 Agentic 契约变更：同步 `skills/leaves-autotrain` 与 `.cursor/skills` 镜像（`go test ./docs -run TestSkillsMirrorSync`）

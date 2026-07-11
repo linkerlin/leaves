@@ -40,6 +40,15 @@ func (l *Learner) resolveEffectiveAccel(nRow int) string {
 	return treebuilder.ResolveEffectiveAccelMode(requested, nRow, tree.BornWebGPUAvailable())
 }
 
+// EffectiveAccelMode 返回最近一次 Fit 解析后的训练加速模式（cpu|born_cpu|webgpu 等）。
+// 未 Fit 时返回空串。与推理 BackendAuto 无关（见 docs/backend-auto.md）。
+func (l *Learner) EffectiveAccelMode() string {
+	if l == nil {
+		return ""
+	}
+	return l.effectiveAccelMode
+}
+
 func usesHistTreeMethod(method string) bool {
 	switch method {
 	case treebuilder.MethodHist, treebuilder.MethodGPUHist:

@@ -23,6 +23,9 @@ type Dense struct {
 	FNames []string
 	// SkippedRows：CSV 在 NAPolicySkipRow 下因缺失跳过的行数（仅信息字段）。
 	SkippedRows int
+	// 多目标回归（LIB-21）：NTargets>1 时 YMulti 为行优先 [n*k]，Y 为第 0 目标副本。
+	NTargets int
+	YMulti   []float64
 }
 
 // NewDense 创建 Dense 矩阵；vals 行优先 [rows*cols]。

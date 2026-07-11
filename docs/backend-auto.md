@@ -44,6 +44,33 @@ type WorkloadHint struct {
 }
 ```
 
+## 训练加速 vs 推理 BackendAuto（LIB-03）
+
+二者 **独立**，名称相似但作用面不同——Agent / 文档勿混用：
+
+| 维度 | 训练加速 | 推理 BackendAuto |
+|------|----------|------------------|
+| **配置** | `train.Config.AccelMode` 或环境变量 **`LEAVES_TRAIN_ACCEL`** | `tree.BackendAuto` + `WorkloadHint`（batch/GPU/稀疏） |
+| **取值** | `auto` / `webgpu` / `born_cpu` / `cpu` | `Native` / `BornCPU` / `BornGPU`（由决策表选出） |
+| **作用** | hist 增益扫描等 **训练** 路径（`treebuilder`） | 已训练模型的 **预测** 遍历（`tree` Engine） |
+| **与 objective** | 无关 | 无关 |
+| **文档** | README「训练加速」；`train/accel.go` | 本文决策表；`tree/backend_select.go` |
+
+`metrics.json` 在单次 `leaves train` Fit 后可含 **`train_accel`**（实际训练加速模式）；**不含**推理 BackendAuto 字段。调试性能时分别设置 `LEAVES_TRAIN_ACCEL` / 显式 `tree.Backend`，不要用训练环境变量期望改变推理选型。
+
+## 第二轮候选（LIB-01，默认不进主线）
+
+当前 2.0 决策表已用固定阈值 + 单测锁定。**仅在有明确 workload 证据时**再考虑：
+
+| 候选 | 动机 | 风险 |
+|------|------|------|
+| 短 profiling 探测（warm-up 几次选更快后端） | 跨机差异大 | 延迟抖动、破坏可解释 Rule |
+| 更细 batch 分段（如 16/32） | 中等 batch 灰色区 | 阈值爆炸、文档漂移 |
+| 设备能力细探测（VRAM、DX 版本） | BornGPU 误选 | 平台分支增多 |
+| 训练 hist 与推理 Auto 的统一环境变量 | 用户混淆 | 已明确分离（§训练 vs 推理） |
+
+原则不变：**任何自动选择必须能被 Rule 码解释**；第二轮须先改 `docs/backend-auto.md` + `TestBackendAutoDecisionTable`，再改代码。
+
 ## 部署建议（写实）
 
 | 场景 | 建议 |

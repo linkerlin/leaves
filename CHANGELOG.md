@@ -5,7 +5,31 @@
 
 ## [Unreleased]
 
-（tag 之后在此累积下一次变更。）
+> v2.1.0 之后的加固（尚未打 patch tag；可并入 v2.1.1）。
+
+### Added
+
+- **CLI / Agent 契约加固**
+  - `skills/` ↔ `.cursor/skills/` 镜像入库 + `TestSkillsMirrorSync` CI 门禁
+  - `train --strict-flags` → `error=cv_conflict`（cv 与 val/early-stop 冲突）
+  - `publish --print-repro`：stdout 打印复现 train 命令
+  - `train --out-final`：早停时另存 final-round 侧车（`final_model` / `final_round`）
+  - metrics.`train_accel`：Fit 后实际训练加速模式（与推理 BackendAuto 无关）
+- **扩展示例** [`examples/extension/`](examples/extension/)：`custom:l1` + `max_abs_error`
+- **Bench 样例工件** [`docs/bench/`](docs/bench/)：`BenchRecord` JSONL 格式对照
+- **ONNX（实验）**：`TreeEnsembleRegressor` 极小子集导入（`BRANCH_LEQ`/`SUM`/`NONE`）
+- **多目标训练（LIB-21）**：`data.MultiTarget` + `train.Config.NumTarget` + CLI `--num-target`（CSV 末 N 列标签；one_output_per_tree）
+  - `predict` / `eval --num-target` 多目标闭环；[`examples/multitarget/`](examples/multitarget/)
+
+### Changed
+
+- cli.md：错误码表、data_quality 扫描上限（5000 行）、save-best「内存截断非重训」、registry 对接模板（S3/gh/OCI）
+- [`docs/backend-auto.md`](docs/backend-auto.md)：训练 vs 推理交叉说明；第二轮候选边界
+- ONNX 支持等级：占位 → **实验子集**（完整 Graph 仍不做）
+
+### Documentation
+
+- 演进方案 / TODO / interop-matrix / api-surface 同步
 
 ## [2.1.0] - 2026-07-10
 

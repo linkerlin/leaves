@@ -34,8 +34,8 @@ func TestSupportTableComplete(t *testing.T) {
 	if io.SupportOf(io.FormatSklearn).Level != io.SupportExperimental {
 		t.Fatal("sklearn should be experimental")
 	}
-	if io.SupportOf(io.FormatONNX).Level != io.SupportPlaceholder {
-		t.Fatal("onnx should be placeholder")
+	if io.SupportOf(io.FormatONNX).Level != io.SupportExperimental {
+		t.Fatal("onnx should be experimental (TreeEnsemble subset)")
 	}
 	if io.SupportOf(io.FormatXGBoostJSON).Level != io.SupportStable {
 		t.Fatal("xgb json should be stable")
@@ -58,7 +58,13 @@ func TestDetectFormatONNX(t *testing.T) {
 }
 
 func TestLoadONNXActionableError(t *testing.T) {
-	err := io.LoadONNX("model.onnx", io.DefaultLoadOptions())
+	// 不可解析的伪 ONNX → LoadError experimental + hint
+	dir := t.TempDir()
+	p := filepath.Join(dir, "bad.onnx")
+	if err := os.WriteFile(p, []byte{0x08, 0x08}, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, err := io.LoadONNX(p, io.DefaultLoadOptions())
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -66,31 +72,25 @@ func TestLoadONNXActionableError(t *testing.T) {
 	if !errors.As(err, &le) {
 		t.Fatalf("want *LoadError, got %T %v", err, err)
 	}
-	if le.Format != io.FormatONNX || le.Level != io.SupportPlaceholder {
+	if le.Format != io.FormatONNX || le.Level != io.SupportExperimental {
 		t.Fatalf("%+v", le)
 	}
-	if !strings.Contains(le.Hint, "json") && !strings.Contains(le.Hint, "leaves") {
-		t.Fatalf("hint should suggest conversion: %q", le.Hint)
+	if !strings.Contains(le.Hint, "json") && !strings.Contains(le.Hint, "leaves") && !strings.Contains(le.Hint, "TreeEnsemble") {
+		t.Fatalf("hint should suggest conversion or subset: %q", le.Hint)
 	}
-	if !io.IsNotImplemented(err) {
-		t.Fatal("IsNotImplemented")
-	}
-	// LoadFromFile 同路径
-	if _, err := io.LoadFromFile(filepath.Join(t.TempDir(), "x.onnx"), io.DefaultLoadOptions()); err == nil {
-		// 文件不存在可能先失败；写一个空 onnx
-	}
-	dir := t.TempDir()
-	p := filepath.Join(dir, "x.onnx")
-	_ = os.WriteFile(p, []byte("x"), 0o644)
-	_, err = io.LoadFromFile(p, io.DefaultLoadOptions())
-	if err == nil {
+	// LoadFromFile 同路径：不可解析内容
+	dir2 := t.TempDir()
+	p2 := filepath.Join(dir2, "x.onnx")
+	_ = os.WriteFile(p2, []byte("x"), 0o644)
+	_, err2 := io.LoadFromFile(p2, io.DefaultLoadOptions())
+	if err2 == nil {
 		t.Fatal("LoadFromFile onnx should fail")
 	}
-	if !errors.As(err, &le) || le.Level != io.SupportPlaceholder {
-		t.Fatalf("LoadFromFile: %v", err)
+	if !errors.As(err2, &le) || le.Level != io.SupportExperimental {
+		t.Fatalf("LoadFromFile: %v", err2)
 	}
-	if !strings.Contains(err.Error(), "hint:") {
-		t.Fatalf("error should include hint: %v", err)
+	if !strings.Contains(err2.Error(), "hint:") {
+		t.Fatalf("error should include hint: %v", err2)
 	}
 }
 

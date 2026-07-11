@@ -31,8 +31,8 @@ m, err := leaves.LoadFromFile(path, &leaves.LoadOptions{AutoTransform: false})
 
 - **已废弃**：GoMLX、`born_train` build tag、gogpu 直连推理。  
 - **现用**：[Born](https://github.com/born-ml/born)；`NativeEngine` = 正确性 golden。  
-- **BackendAuto 2.0**：见 [`docs/backend-auto.md`](docs/backend-auto.md)。  
-- 训练加速：`LEAVES_TRAIN_ACCEL` / `train.Config.AccelMode`。
+- **BackendAuto 2.0**（**推理**选型）：见 [`docs/backend-auto.md`](docs/backend-auto.md)。  
+- **训练加速**（独立）：`LEAVES_TRAIN_ACCEL` / `train.Config.AccelMode`——**不会**改推理 BackendAuto；交叉说明见 backend-auto §训练 vs 推理。
 
 ---
 

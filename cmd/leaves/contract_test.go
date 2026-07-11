@@ -73,6 +73,123 @@ func TestSniffFeatureDimContract(t *testing.T) {
 	}
 }
 
+// TestCLIMultiTarget 锁定 LIB-21 CLI：--num-target 2 末两列标签，模型 n_groups=2，predict 出 margins。
+func TestCLIMultiTarget(t *testing.T) {
+	dir := t.TempDir()
+	var rows []string
+	for i := 0; i < 40; i++ {
+		x0 := float64(i%8) * 0.1
+		x1 := float64(i%5) * 0.2
+		y0 := x0 + 0.1*x1
+		y1 := 2*x1 - 0.05*x0
+		rows = append(rows, f2(x0)+","+f2(x1)+","+f2(y0)+","+f2(y1))
+	}
+	p := filepath.Join(dir, "mt.csv")
+	writeCSV(t, p, "x0,x1,y0,y1", rows)
+	// 仅特征的预测输入
+	var featRows []string
+	for i := 0; i < 5; i++ {
+		featRows = append(featRows, f2(float64(i)*0.1)+","+f2(float64(i)*0.05))
+	}
+	featPath := filepath.Join(dir, "feat.csv")
+	writeCSV(t, featPath, "x0,x1", featRows)
+
+	modelPath := filepath.Join(dir, "mt.leaves.json")
+	metricsPath := filepath.Join(dir, "mt.json")
+	if err := cmdTrain([]string{
+		"--data", p, "--objective", "reg:squarederror",
+		"--num-target", "2",
+		"--rounds", "20", "--depth", "3", "--lr", "0.25",
+		"--out-model", modelPath, "--metrics", metricsPath,
+	}); err != nil {
+		t.Fatalf("train multi-target: %v", err)
+	}
+	var doc metricsDoc
+	mustJSON(t, metricsPath, &doc)
+	if doc.Params == nil || doc.Params.NumTarget != 2 {
+		t.Fatalf("params.num_target want 2: %+v", doc.Params)
+	}
+	insp := filepath.Join(dir, "insp.json")
+	if err := cmdInspect([]string{"--model", modelPath, "--metrics", insp}); err != nil {
+		t.Fatalf("inspect: %v", err)
+	}
+	var idoc map[string]any
+	mustJSON(t, insp, &idoc)
+	ng := intFrom(idoc["n_output_groups"])
+	if ng <= 0 {
+		ng = intFrom(idoc["n_raw_output_groups"])
+	}
+	if ng != 2 {
+		t.Fatalf("inspect output groups=%d want 2; doc=%v", ng, idoc)
+	}
+
+	predOut := filepath.Join(dir, "pred.jsonl")
+	if err := cmdPredict([]string{
+		"--model", modelPath, "--data", featPath, "--out", predOut,
+		"--objective", "reg:squarederror",
+	}); err != nil {
+		t.Fatalf("predict: %v", err)
+	}
+	b, err := os.ReadFile(predOut)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// 首行应含 margins/predictions，且无 class（非 multiclass）
+	line := strings.Split(string(b), "\n")[0]
+	if !strings.Contains(line, "margins") && !strings.Contains(line, "predictions") {
+		t.Fatalf("predict jsonl missing margins: %s", line)
+	}
+	if strings.Contains(line, `"class"`) {
+		t.Fatalf("multi-target predict should not emit class: %s", line)
+	}
+
+	// eval：带标签的多目标 holdout
+	evalPath := filepath.Join(dir, "eval.json")
+	if err := cmdEval([]string{
+		"--model", modelPath, "--data", p,
+		"--objective", "reg:squarederror", "--eval-metric", "rmse",
+		"--num-target", "2", "--metrics", evalPath,
+	}); err != nil {
+		t.Fatalf("eval multi-target: %v", err)
+	}
+	var edoc metricsDoc
+	mustJSON(t, evalPath, &edoc)
+	if edoc.Value < 0 || edoc.Value > 5 {
+		t.Fatalf("eval rmse out of range: %g", edoc.Value)
+	}
+}
+
+// TestTrainAccelInMetrics 锁定 POST-13：单次 train 后 metrics 含 train_accel（训练加速，非推理后端）。
+func TestTrainAccelInMetrics(t *testing.T) {
+	dir := t.TempDir()
+	var rows []string
+	for i := 0; i < 20; i++ {
+		fi := float64(i)
+		rows = append(rows, f2(fi)+","+f2(fi*0.5)+","+f2(fi))
+	}
+	p := filepath.Join(dir, "t.csv")
+	writeCSV(t, p, "x0,x1,label", rows)
+	mout := filepath.Join(dir, "m.json")
+	if err := cmdTrain([]string{
+		"--data", p, "--objective", "reg:squarederror",
+		"--rounds", "5", "--depth", "2",
+		"--metrics", mout,
+	}); err != nil {
+		t.Fatalf("train: %v", err)
+	}
+	var doc metricsDoc
+	mustJSON(t, mout, &doc)
+	if doc.TrainAccel == "" {
+		t.Fatalf("train_accel empty; want effective accel mode after Fit")
+	}
+	switch doc.TrainAccel {
+	case "cpu", "born_cpu", "webgpu":
+		// treebuilder.ResolveEffectiveAccelMode 规范名
+	default:
+		t.Fatalf("train_accel unexpected %q (want cpu|born_cpu|webgpu)", doc.TrainAccel)
+	}
+}
+
 // TestMetricsSchemaVersion 锁定 WP-18：metrics / sniff 含 schema_version=1。
 func TestMetricsSchemaVersion(t *testing.T) {
 	dir := t.TempDir()
@@ -322,6 +439,77 @@ func TestSaveBestDefault(t *testing.T) {
 	}
 }
 
+// TestOutFinalModel 锁定 POST-12：--out-final 在 save-best 截断前保存 final-round。
+func TestOutFinalModel(t *testing.T) {
+	dir := t.TempDir()
+	var trainRows []string
+	for i := 0; i < 40; i++ {
+		x := float64(i) * 0.1
+		y := 2*x + 0.01*float64(i%3)
+		trainRows = append(trainRows, f2(x)+","+f2(x*0.5)+","+f2(y))
+	}
+	trainPath := filepath.Join(dir, "tr.csv")
+	writeCSV(t, trainPath, "x0,x1,label", trainRows)
+	var valRows []string
+	for i := 0; i < 20; i++ {
+		x := float64(i+50) * 0.1
+		y := float64((i * 7) % 11)
+		valRows = append(valRows, f2(x)+","+f2(x*0.3)+","+f2(y))
+	}
+	valPath := filepath.Join(dir, "va.csv")
+	writeCSV(t, valPath, "x0,x1,label", valRows)
+
+	bestPath := filepath.Join(dir, "best.leaves.json")
+	finalPath := filepath.Join(dir, "final.leaves.json")
+	metricsPath := filepath.Join(dir, "m.json")
+	if err := cmdTrain([]string{
+		"--data", trainPath, "--objective", "reg:squarederror",
+		"--val", valPath, "--early-stop", "5",
+		"--rounds", "80", "--depth", "4", "--lr", "0.3",
+		"--out-model", bestPath, "--out-final", finalPath,
+		"--metrics", metricsPath,
+	}); err != nil {
+		t.Fatalf("train: %v", err)
+	}
+	var doc metricsDoc
+	mustJSON(t, metricsPath, &doc)
+	if doc.BestRound <= 0 || doc.StoppedRound < doc.BestRound {
+		t.Fatalf("expected early-stop shape: %+v", doc)
+	}
+	if doc.ModelRound != doc.BestRound {
+		t.Fatalf("out-model should be best: model_round=%d best=%d", doc.ModelRound, doc.BestRound)
+	}
+	if doc.FinalModel != finalPath {
+		t.Fatalf("final_model=%q want %q", doc.FinalModel, finalPath)
+	}
+	if doc.FinalRound != doc.StoppedRound {
+		t.Fatalf("final_round=%d want stopped_round=%d", doc.FinalRound, doc.StoppedRound)
+	}
+
+	// inspect 两文件树数
+	for _, tc := range []struct {
+		path string
+		want int
+	}{
+		{bestPath, doc.ModelRound},
+		{finalPath, doc.FinalRound},
+	} {
+		insp := filepath.Join(dir, filepath.Base(tc.path)+".insp.json")
+		if err := cmdInspect([]string{"--model", tc.path, "--metrics", insp}); err != nil {
+			t.Fatalf("inspect %s: %v", tc.path, err)
+		}
+		var idoc map[string]any
+		mustJSON(t, insp, &idoc)
+		if got := intFrom(idoc["n_trees"]); got != tc.want {
+			t.Fatalf("%s n_trees=%d want %d", tc.path, got, tc.want)
+		}
+	}
+	if doc.FinalRound <= doc.ModelRound {
+		// 允许相等（最后一轮即最优）；若严格更大则双产物才有差异
+		t.Logf("note: final_round=%d model_round=%d (equal ok if last improved)", doc.FinalRound, doc.ModelRound)
+	}
+}
+
 // TestErrorFormatJSON 锁定 WP-10：--error-format=json 输出可解析错误对象。
 func TestErrorFormatJSON(t *testing.T) {
 	// 直接测 classify + writeError 契约（不启子进程）。
@@ -339,6 +527,79 @@ func TestErrorFormatJSON(t *testing.T) {
 	ae = classifyError(fmt.Errorf("load train: open x.csv: no such file or directory"))
 	if ae.Code != "data_load" {
 		t.Fatalf("data_load classify got %s", ae.Code)
+	}
+}
+
+// TestErrorCodesHighFrequency 锁定 POST-10：高频错误码可分类且 exit_code 语义正确。
+func TestErrorCodesHighFrequency(t *testing.T) {
+	cases := []struct {
+		err      error
+		wantCode string
+		wantExit int
+	}{
+		{errUsage("--objective 必需"), "usage", 1},
+		{errAgent("objective_mismatch", "need num-class", "use sniff", false), "objective_mismatch", 1},
+		{errAgent("cv_conflict", "cv vs val", "drop cv or val", false), "cv_conflict", 1},
+		{errAgent("missing_value", "empty cell", "use --na-policy skip-row", false), "missing_value", 1},
+		{errAgent("non_numeric", "parse float", "encode categories", false), "non_numeric", 1},
+		{fmt.Errorf("open data: no such file or directory"), "data_load", 1},
+		{fmt.Errorf("strconv.ParseFloat: invalid syntax"), "non_numeric", 1},
+		{fmt.Errorf("boosting failed: hessian singular"), "internal", 2},
+	}
+	for _, tc := range cases {
+		ae := classifyError(tc.err)
+		if ae.Code != tc.wantCode {
+			t.Errorf("classify(%v) code=%q want %q", tc.err, ae.Code, tc.wantCode)
+		}
+		// writeError 副作用写 stderr；用同等 exit 映射核对
+		exit := 2
+		switch ae.Code {
+		case "usage", "data_load", "non_numeric", "missing_value", "objective_mismatch", "model_load", "cv_conflict":
+			exit = 1
+		}
+		if exit != tc.wantExit {
+			t.Errorf("code %s exit=%d want %d", ae.Code, exit, tc.wantExit)
+		}
+	}
+}
+
+// TestCVConflictStrictFlags 锁定 POST-02：--strict-flags 时 cv 与 val 冲突为 cv_conflict。
+func TestCVConflictStrictFlags(t *testing.T) {
+	dir := t.TempDir()
+	var rows []string
+	for i := 0; i < 24; i++ {
+		fi := float64(i)
+		rows = append(rows, f2(fi)+","+f2(fi*0.5)+","+f2(fi))
+	}
+	trainPath := filepath.Join(dir, "t.csv")
+	valPath := filepath.Join(dir, "v.csv")
+	writeCSV(t, trainPath, "x0,x1,label", rows)
+	writeCSV(t, valPath, "x0,x1,label", rows[:8])
+
+	// 默认：警告但成功（兼容）
+	if err := cmdTrain([]string{
+		"--data", trainPath, "--objective", "reg:squarederror",
+		"--cv", "3", "--val", valPath, "--early-stop", "5",
+		"--rounds", "6", "--depth", "2",
+		"--metrics", filepath.Join(dir, "compat.json"),
+	}); err != nil {
+		t.Fatalf("default warn path should succeed: %v", err)
+	}
+
+	// --strict-flags：失败且 code=cv_conflict
+	err := cmdTrain([]string{
+		"--data", trainPath, "--objective", "reg:squarederror",
+		"--cv", "3", "--val", valPath,
+		"--strict-flags",
+		"--rounds", "6", "--depth", "2",
+		"--metrics", filepath.Join(dir, "strict.json"),
+	})
+	if err == nil {
+		t.Fatal("strict-flags expected cv_conflict error")
+	}
+	ae := classifyError(err)
+	if ae.Code != "cv_conflict" {
+		t.Fatalf("strict error code=%q want cv_conflict; err=%v", ae.Code, err)
 	}
 }
 
@@ -391,6 +652,51 @@ func TestPublishReproduce(t *testing.T) {
 		if !strings.Contains(string(b), "leaves train") || !strings.Contains(string(b), "0.2") {
 			t.Fatalf("%s incomplete: %s", name, b)
 		}
+	}
+}
+
+// TestPublishPrintRepro 锁定 POST-11：--print-repro 写出完整 train 命令到 stdout。
+func TestPublishPrintRepro(t *testing.T) {
+	dir := t.TempDir()
+	var rows []string
+	for i := 0; i < 16; i++ {
+		fi := float64(i)
+		rows = append(rows, f2(fi)+","+f2(fi)+","+f2(fi))
+	}
+	trainPath := filepath.Join(dir, "t.csv")
+	writeCSV(t, trainPath, "x0,x1,label", rows)
+	modelPath := filepath.Join(dir, "m.leaves.json")
+	metricsPath := filepath.Join(dir, "m.json")
+	if err := cmdTrain([]string{
+		"--data", trainPath, "--objective", "reg:squarederror",
+		"--rounds", "6", "--depth", "2", "--lr", "0.15",
+		"--out-model", modelPath, "--metrics", metricsPath,
+	}); err != nil {
+		t.Fatalf("train: %v", err)
+	}
+
+	old := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Stdout = w
+	pubErr := cmdPublish([]string{
+		"--model", modelPath, "--out-dir", filepath.Join(dir, "out"),
+		"--metrics", metricsPath, "--data", trainPath,
+		"--print-repro",
+	})
+	_ = w.Close()
+	os.Stdout = old
+	var buf [4096]byte
+	n, _ := r.Read(buf[:])
+	_ = r.Close()
+	if pubErr != nil {
+		t.Fatalf("publish: %v", pubErr)
+	}
+	out := string(buf[:n])
+	if !strings.Contains(out, "leaves train") || !strings.Contains(out, "0.15") {
+		t.Fatalf("print-repro incomplete: %q", out)
 	}
 }
 

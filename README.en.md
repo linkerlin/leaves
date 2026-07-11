@@ -139,7 +139,7 @@ tiers (stable / experimental / placeholder): [docs/interop-matrix.md](docs/inter
 | XGBoost binary | **stable** | `binf` / header | Prefer JSON/UBJ for new work |
 | LightGBM text/JSON | **stable** | `tree=` / `tree_info` | Both text and JSON |
 | scikit-learn | **experimental** | `.pkl` / `.joblib` | Narrow protocol; export to XGB/leaves JSON for production |
-| ONNX | **placeholder** | `.onnx` | Not implemented; convert first |
+| ONNX | **experimental** | `.onnx` | TreeEnsembleRegressor subset; convert complex graphs first |
 
 Load failures return `*io.LoadError` with an actionable `hint:`. Numeric tables
 misnamed as `.txt` models point you to `data.FromFile`.

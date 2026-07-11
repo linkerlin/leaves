@@ -26,6 +26,16 @@ func (l *Learner) Eval(dm data.Matrix) (float64, error) {
 	g := l.numGroups
 	preds := make([]float64, n*g)
 	l.predictMarginsInternal(dm, preds, false)
-	labels, metricPreds := metricInputs(l.cfg, dm.Labels(), preds, g)
+	labels, metricPreds := metricInputs(l.cfg, labelsForMetric(l.cfg, dm), preds, g)
 	return evaluateTrainMetric(&Learner{cfg: l.cfg, metric: metric, numGroups: l.numGroups}, labels, metricPreds, dm)
+}
+
+// labelsForMetric 多目标用扁平 Targets，否则 Labels。
+func labelsForMetric(cfg Config, dm data.Matrix) []float64 {
+	if cfg.NumTarget > 1 {
+		if mt, ok := data.AsMultiTarget(dm); ok {
+			return mt.Targets()
+		}
+	}
+	return dm.Labels()
 }

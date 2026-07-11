@@ -29,6 +29,7 @@ type paramsRecord struct {
 	TreeMethod     string  `json:"tree_method"`
 	Seed           int64   `json:"seed"`
 	NumClass       int     `json:"num_class,omitempty"`
+	NumTarget      int     `json:"num_target,omitempty"`
 	NDCGK          int     `json:"ndcg_k,omitempty"`
 	EarlyStop      int     `json:"early_stop,omitempty"`
 	CVFolds        int     `json:"cv_folds,omitempty"`
@@ -55,7 +56,12 @@ type metricsDoc struct {
 	BestRound     int           `json:"best_round,omitempty"`
 	StoppedRound  int           `json:"stopped_round,omitempty"`
 	ModelRound    int           `json:"model_round,omitempty"`
-	Params        *paramsRecord `json:"params,omitempty"`
+	// TrainAccel：Fit 后实际生效的训练加速模式（POST-13）；与推理 BackendAuto 无关。
+	TrainAccel string `json:"train_accel,omitempty"`
+	// FinalModel / FinalRound：--out-final 侧车（POST-12）；早停时为截断前 final-round。
+	FinalModel string        `json:"final_model,omitempty"`
+	FinalRound int           `json:"final_round,omitempty"`
+	Params     *paramsRecord `json:"params,omitempty"`
 }
 
 // newParamsRecord 从 train CLI 旋钮组装完备 params（Agent 账本复现用）。
@@ -66,7 +72,7 @@ func newParamsRecord(
 	subsample, colsample float64,
 	treeMethod string,
 	seed int64,
-	numClass, ndcgK, earlyStop, cv int,
+	numClass, numTarget, ndcgK, earlyStop, cv int,
 	evalMetric string,
 ) *paramsRecord {
 	p := &paramsRecord{
@@ -83,6 +89,7 @@ func newParamsRecord(
 		TreeMethod:     treeMethod,
 		Seed:           seed,
 		NumClass:       numClass,
+		NumTarget:      numTarget,
 		EarlyStop:      earlyStop,
 		CVFolds:        cv,
 		EvalMetric:     evalMetric,

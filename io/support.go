@@ -112,11 +112,11 @@ func SupportOf(f Format) FormatSupport {
 	case FormatONNX:
 		return FormatSupport{
 			Format:  f,
-			Level:   SupportPlaceholder,
+			Level:   SupportExperimental,
 			Name:    "ONNX",
-			Summary: "占位：不实现 Graph 导入",
-			Hint:    "用外部工具转为 XGBoost JSON 或 leaves.json 后 io.LoadFromFile",
-			Matrix:  "io/onnx.go ErrONNXNotImplemented",
+			Summary: "实验：仅 TreeEnsembleRegressor（BRANCH_LEQ/SUM/NONE）；非完整 Graph",
+			Hint:    "复杂 ONNX 请外部转 XGB JSON / leaves.json；子集见 docs/interop-matrix.md",
+			Matrix:  "io/onnx_test.go TestONNXTreeEnsembleStump",
 		}
 	default:
 		return FormatSupport{

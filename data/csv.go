@@ -22,8 +22,10 @@ type CSVOptions struct {
 	HasHeader      bool
 	HasLabelColumn bool // 为 true 时从 LabelCol 读取标签
 	LabelCol       int  // 标签列索引（需 HasLabelColumn）
-	Delim          rune
-	SkipCols       []int
+	// NumTrailingTargets：≥2 时末 N 列为多目标标签（LIB-21；优先于单 LabelCol）。
+	NumTrailingTargets int
+	Delim              rune
+	SkipCols           []int
 	// NAPolicy：error（默认）| skip-row。空串等同 error。
 	// 缺失 = 空单元格或 nan/na/null/none/n/a/?（大小写不敏感）。
 	// 非数值且非缺失 token 始终报错（不做类别编码）。
@@ -80,6 +82,11 @@ func FromCSVReader(r io.Reader, opts CSVOptions) (*Dense, error) {
 	reader.Comma = delim
 	reader.FieldsPerRecord = -1
 	reader.LazyQuotes = true
+
+	nTrail := opts.NumTrailingTargets
+	if nTrail >= 2 {
+		return fromCSVMultiTarget(reader, opts, policy, nTrail)
+	}
 
 	skip := make(map[int]bool)
 	for _, c := range opts.SkipCols {
@@ -164,6 +171,89 @@ func FromCSVReader(r io.Reader, opts CSVOptions) (*Dense, error) {
 		labels = make([]float64, len(rows))
 	}
 	d, err := NewDense(vals, len(rows), cols, labels, nil)
+	if err != nil {
+		return nil, err
+	}
+	d.FNames = fnames
+	d.SkippedRows = skipped
+	return d, nil
+}
+
+// fromCSVMultiTarget 末 nTrail 列为多目标标签，其余为特征。
+func fromCSVMultiTarget(reader *csv.Reader, opts CSVOptions, policy string, nTrail int) (*Dense, error) {
+	var featRows [][]float64
+	var targetRows [][]float64
+	var fnames []string
+	first := true
+	lineNo := 0
+	skipped := 0
+	for {
+		rec, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("data: csv read: %w", err)
+		}
+		lineNo++
+		if first && opts.HasHeader {
+			if len(rec) <= nTrail {
+				return nil, fmt.Errorf("data: multi-target needs >%d columns, got %d", nTrail, len(rec))
+			}
+			for i := 0; i < len(rec)-nTrail; i++ {
+				fnames = append(fnames, strings.TrimSpace(rec[i]))
+			}
+			first = false
+			continue
+		}
+		first = false
+		if len(rec) <= nTrail {
+			return nil, fmt.Errorf("data: line %d: need >%d cols for multi-target, got %d", lineNo, nTrail, len(rec))
+		}
+		nFeat := len(rec) - nTrail
+		feats := make([]float64, nFeat)
+		tg := make([]float64, nTrail)
+		miss := false
+		for i := 0; i < len(rec); i++ {
+			cell := strings.TrimSpace(rec[i])
+			if IsMissingCell(cell) {
+				miss = true
+				break
+			}
+			v, e := strconv.ParseFloat(cell, 64)
+			if e != nil {
+				return nil, fmt.Errorf("data: line %d col %d %q: non-numeric: %w", lineNo, i, cell, e)
+			}
+			if i < nFeat {
+				feats[i] = v
+			} else {
+				tg[i-nFeat] = v
+			}
+		}
+		if miss {
+			if policy == NAPolicySkipRow {
+				skipped++
+				continue
+			}
+			return nil, fmt.Errorf("data: line %d: missing value; use na-policy=skip-row", lineNo)
+		}
+		featRows = append(featRows, feats)
+		targetRows = append(targetRows, tg)
+	}
+	if len(featRows) == 0 {
+		return nil, fmt.Errorf("data: csv empty (multi-target)")
+	}
+	cols := len(featRows[0])
+	vals := make([]float64, len(featRows)*cols)
+	targets := make([]float64, len(featRows)*nTrail)
+	for i := range featRows {
+		if len(featRows[i]) != cols {
+			return nil, fmt.Errorf("data: row %d cols mismatch", i)
+		}
+		copy(vals[i*cols:(i+1)*cols], featRows[i])
+		copy(targets[i*nTrail:(i+1)*nTrail], targetRows[i])
+	}
+	d, err := NewMultiTargetDense(vals, len(featRows), cols, targets, nTrail, nil)
 	if err != nil {
 		return nil, err
 	}

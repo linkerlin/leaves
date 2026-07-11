@@ -1,11 +1,15 @@
 package docs_test
 
 import (
+	"bufio"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/linkerlin/leaves/tree"
 )
 
 // TestReleaseDocsPresent 锁定 Phase E：发版文档与关键矩阵文件存在。
@@ -27,6 +31,8 @@ func TestReleaseDocsPresent(t *testing.T) {
 		filepath.Join(docsDir, "extension-points.md"),
 		filepath.Join(docsDir, "testdata-matrix.md"),
 		filepath.Join(docsDir, "benchmark-baseline.md"),
+		filepath.Join(docsDir, "bench", "sample_benchrecords.jsonl"),
+		filepath.Join(docsDir, "bench", "README.md"),
 		filepath.Join(root, "NOTES.md"),
 		filepath.Join(root, "CHANGELOG.md"),
 		filepath.Join(root, "README.md"),
@@ -66,5 +72,44 @@ func TestREADMELanguageCrossLinks(t *testing.T) {
 	}
 	if !strings.Contains(string(en), "](README.md)") {
 		t.Error("README.en.md should link to Chinese README.md")
+	}
+}
+
+// TestBenchSampleArtifact 锁定 LIB-02：样例 JSONL 存在且符合 tree.BenchRecord 契约。
+func TestBenchSampleArtifact(t *testing.T) {
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller")
+	}
+	path := filepath.Join(filepath.Dir(file), "bench", "sample_benchrecords.jsonl")
+	f, err := os.Open(path)
+	if err != nil {
+		t.Fatalf("open sample: %v", err)
+	}
+	defer f.Close()
+	sc := bufio.NewScanner(f)
+	n := 0
+	for sc.Scan() {
+		line := strings.TrimSpace(sc.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		var r tree.BenchRecord
+		if err := json.Unmarshal([]byte(line), &r); err != nil {
+			t.Fatalf("line %d: %v\n%s", n+1, err, line)
+		}
+		if r.SchemaVersion != tree.BenchRecordSchemaVersion {
+			t.Fatalf("line %d schema_version=%d want %d", n+1, r.SchemaVersion, tree.BenchRecordSchemaVersion)
+		}
+		if r.Name == "" || r.Backend == "" || r.BatchSize <= 0 || r.NsPerOp <= 0 {
+			t.Fatalf("line %d incomplete: %+v", n+1, r)
+		}
+		n++
+	}
+	if err := sc.Err(); err != nil {
+		t.Fatal(err)
+	}
+	if n < 3 {
+		t.Fatalf("expected ≥3 sample records, got %d", n)
 	}
 }

@@ -24,13 +24,14 @@
 | **LightGBM text** | 稳定 | `tree=` / `version=` | text model | 勿把数值 TSV 当模型 | `lg_breast_cancer.txt` |
 | **LightGBM JSON** | 稳定 | `tree_info` | LGB JSON | 与 text 同源导出 | `lg_dart_*.json` |
 | **scikit-learn** | **实验** | `.pkl` / `.joblib` / pickle 魔数 | 窄协议 GB 历史 pickle | **优先转 XGB JSON / leaves.json** | `sk_*.model`（实验） |
-| **ONNX** | **占位** | `.onnx` | 不实现 Graph 导入 | 外部转 JSON/leaves 后再加载 | `LoadONNX` / `ErrONNXNotImplemented` |
+| **ONNX** | **实验** | `.onnx` | **TreeEnsembleRegressor 子集**（BRANCH_LEQ/SUM/NONE） | 完整 Graph 仍请转 JSON/leaves | `io/onnx_test.go` |
 
-## ONNX 策略（冻结）
+## ONNX 策略（LIB-10 子集）
 
-1. **继续占位**，不承诺完整 Graph 导入。  
-2. 用户路径：`onnx` →（外部）→ `xgb json` 或 `leaves.json` → `io.LoadFromFile`。  
-3. 若未来实现，仅可能是 **TreeEnsemble 极小子集**，须新开里程碑并写入本表 + testdata-matrix。
+1. **实验性导入**：仅 `ai.onnx.ml` **TreeEnsembleRegressor**；`BRANCH_LEQ` + `LEAF`；`aggregate=SUM`；`post_transform=NONE`。  
+2. **不做**：任意 Graph 算子链、Classifier 后处理、类别分裂、向量叶多目标单树、外部 initializer 依赖。  
+3. 失败时 `*LoadError` level=`experimental`，hint 指向转 XGB JSON / leaves.json。  
+4. 完整 Graph 仍 **明确不做**（见 TODO 非目标）。
 
 ## scikit-learn 策略（冻结）
 

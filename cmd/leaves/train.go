@@ -22,6 +22,7 @@ func cmdTrain(args []string) error {
 	objective := fs.String("objective", "", "目标函数（必需；可由 --from-run 账本补全）")
 	evalMetric := fs.String("eval-metric", "", "评估指标（默认按 objective）")
 	numClass := fs.Int("num-class", 0, "多分类类数（multi:* 必需）")
+	numTarget := fs.Int("num-target", 0, "多目标回归目标维（≥2；CSV 末 N 列为标签；one_output_per_tree）")
 	rounds := fs.Int("rounds", 50, "boosting 轮数")
 	depth := fs.Int("depth", 6, "最大深度")
 	maxLeaves := fs.Int("max-leaves", 0, "lossguide 叶数（0=depthwise）")
@@ -38,7 +39,8 @@ func cmdTrain(args []string) error {
 	valPath := fs.String("val", "", "独立验证集路径")
 	earlyStop := fs.Int("early-stop", 0, "N 轮无改进早停（建议配 --val）")
 	seed := fs.Int64("seed", 42, "随机种子")
-	outModel := fs.String("out-model", "", "输出 leaves.json 路径")
+	outModel := fs.String("out-model", "", "输出 leaves.json 路径（早停+save-best 时为 best_round）")
+	outFinal := fs.String("out-final", "", "早停时另存 final-round 模型（在截断前写出；POST-12）")
 	metricsPath := fs.String("metrics", "", "输出 metrics.json（空=stdout）")
 	runsPath := fs.String("runs", "", "运行账本 JSONL（追加本次记录，Agent 优化记忆）")
 	tag := fs.String("tag", "", "本次运行标签（写入账本；与 --from-run 联用时兼作选行键）")
@@ -46,6 +48,7 @@ func cmdTrain(args []string) error {
 	saveBest := fs.Bool("save-best", true, "早停时截断并保存 best_round 模型（默认 true；false=保留 final-round）")
 	fromRun := fs.String("from-run", "", "从 runs.jsonl 加载 params 作默认（CLI 覆盖优先；无 --tag 则取最优行）")
 	naPolicy := fs.String("na-policy", "error", "缺失值策略：error（默认，遇空/NA 失败）| skip-row（丢弃含缺失的整行）")
+	strictFlags := fs.Bool("strict-flags", false, "严格模式：--cv 与 --val/--early-stop/--emit-rounds 并存时失败（默认仅警告）")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -61,7 +64,7 @@ func cmdTrain(args []string) error {
 		// 但用户若未传 --tag，from-run 选最优时 tag 已是最优行的 tag——不覆盖用户新 tag。
 		// 注意：tag 在 load 时已用于选行，这里不再改 *tag。
 		applyParamsIfUnset(set, rec.Params, objective, evalMetric,
-			numClass, rounds, depth, maxLeaves,
+			numClass, numTarget, rounds, depth, maxLeaves,
 			lr, lambda, minChildWeight, gamma,
 			maxBin, subsample, colsample, treeMethod,
 			ndcgK, cv, earlyStop, seed, rec.Objective)
@@ -78,31 +81,49 @@ func cmdTrain(args []string) error {
 	if *outModel != "" && *metricsPath != "" && filepath.Clean(*outModel) == filepath.Clean(*metricsPath) {
 		return errUsage("--out-model 与 --metrics 不能是同一路径（metrics 会覆盖模型文件）")
 	}
+	if *outFinal != "" && *outModel != "" && filepath.Clean(*outFinal) == filepath.Clean(*outModel) {
+		return errUsage("--out-final 与 --out-model 不能是同一路径")
+	}
+	if *outFinal != "" && *metricsPath != "" && filepath.Clean(*outFinal) == filepath.Clean(*metricsPath) {
+		return errUsage("--out-final 与 --metrics 不能是同一路径")
+	}
 	if (*objective == "multi:softmax" || *objective == "multi:softprob") && *numClass < 2 {
 		return errAgent("objective_mismatch", "multi:* 目标需要 --num-class >= 2",
 			"先 leaves sniff --data ... 取 label.n_unique 作为 --num-class", false)
+	}
+	if *numTarget >= 2 {
+		if strings.HasPrefix(*objective, "multi:") || strings.HasPrefix(*objective, "rank:") {
+			return errAgent("objective_mismatch", "--num-target 不能与 multi:*/rank:* 同用",
+				"多目标回归用 reg:squarederror 等 + --num-target N", false)
+		}
 	}
 	metric := *evalMetric
 	if metric == "" {
 		metric = defaultMetric(*objective)
 	}
 	if *cv >= 2 && (*valPath != "" || *earlyStop > 0 || *emitRounds != "") {
-		fmt.Fprintln(os.Stderr, "leaves: 注意：--cv 路径不使用 --val/--early-stop/--emit-rounds（后者被忽略）；要逐轮诊断请去掉 --cv 改用 --val")
+		msg := "--cv 与 --val/--early-stop/--emit-rounds 互斥：cv 路径忽略后者"
+		hint := "基线用 --cv；逐轮诊断/早停去掉 --cv 改用 --val --early-stop；Agent 建议加 --strict-flags"
+		if *strictFlags {
+			return errAgent("cv_conflict", msg, hint, false)
+		}
+		fmt.Fprintf(os.Stderr, "leaves: 注意：%s（要强制失败请加 --strict-flags）\n", msg)
 	}
 	// 自动建输出父目录（与 publish 一致，免 Agent 踩坑）。
-	for _, p := range []string{filepath.Dir(*outModel), filepath.Dir(*metricsPath), filepath.Dir(*runsPath), filepath.Dir(*emitRounds)} {
+	for _, p := range []string{filepath.Dir(*outModel), filepath.Dir(*outFinal), filepath.Dir(*metricsPath), filepath.Dir(*runsPath), filepath.Dir(*emitRounds)} {
 		if p != "" && p != "." {
 			_ = os.MkdirAll(p, 0o755)
 		}
 	}
 
-	dm, err := loadMatrix(*dataPath, *naPolicy)
+	dm, err := loadMatrixOpts(*dataPath, *naPolicy, *numTarget)
 	if err != nil {
 		return err
 	}
 
 	cfg := train.Config{
 		Objective:       *objective,
+		NumTarget:       *numTarget,
 		NumRound:        *rounds,
 		MaxDepth:        *depth,
 		MaxLeaves:       *maxLeaves,
@@ -141,7 +162,7 @@ func cmdTrain(args []string) error {
 			*lr, *lambda, *minChildWeight, *gamma,
 			*maxBin, *subsample, *colsample,
 			*treeMethod, *seed,
-			*numClass, ndcgKParam, *earlyStop, *cv,
+			*numClass, *numTarget, ndcgKParam, *earlyStop, *cv,
 			metric,
 		),
 	}
@@ -165,6 +186,7 @@ func cmdTrain(args []string) error {
 			if err := full.Fit(dm); err != nil {
 				return err
 			}
+			doc.TrainAccel = full.EffectiveAccelMode()
 			if err := full.Save(*outModel); err != nil {
 				return err
 			}
@@ -178,7 +200,7 @@ func cmdTrain(args []string) error {
 	// 单次训练路径。
 	var valDM data.Matrix
 	if *valPath != "" {
-		valDM, err = loadMatrix(*valPath, *naPolicy)
+		valDM, err = loadMatrixOpts(*valPath, *naPolicy, *numTarget)
 		if err != nil {
 			return err
 		}
@@ -215,17 +237,33 @@ func cmdTrain(args []string) error {
 	if err := learner.Fit(dm); err != nil {
 		return err
 	}
+	doc.TrainAccel = learner.EffectiveAccelMode()
 
 	// 早停后：记录实际训练轮数，可选截断到 best_round 再 Save（WP-03）。
+	// POST-12：--out-final 在截断前写出 final-round 侧车。
 	doc.StoppedRound = learner.BoostRounds()
 	if cfg.EarlyStop != nil {
 		doc.BestRound = cfg.EarlyStop.BestRound()
 		if doc.BestRound > 0 {
 			doc.Value = cfg.EarlyStop.BestScore // 报告 best-round val，而非 final-round
 		}
+		if *outFinal != "" {
+			if err := learner.Save(*outFinal); err != nil {
+				return fmt.Errorf("save final model: %w", err)
+			}
+			doc.FinalModel = *outFinal
+			doc.FinalRound = learner.BoostRounds()
+		}
 		if *saveBest && doc.BestRound > 0 {
 			learner.ApplyBestRound()
 		}
+	} else if *outFinal != "" {
+		// 无早停：final 与主模型同内容；仍写出便于 Agent 固定路径读取。
+		if err := learner.Save(*outFinal); err != nil {
+			return fmt.Errorf("save final model: %w", err)
+		}
+		doc.FinalModel = *outFinal
+		doc.FinalRound = learner.BoostRounds()
 	}
 	doc.ModelRound = learner.BoostRounds()
 

@@ -24,6 +24,10 @@ jobs:
       - name: go test
         run: go test ./...
 
+      # POST-01：skills/（真源）与 .cursor/skills/（Cursor 发现镜像）哈希一致
+      - name: skills mirror gate
+        run: go test ./docs -run TestSkillsMirrorSync -count=1
+
   wasm:
     name: wasm build
     runs-on: ubuntu-latest

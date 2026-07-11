@@ -224,7 +224,8 @@ func LoadFromFile(filename string, opts *LoadOptions) (*model.Ensemble, error) {
 		return nil, wrapDetectError(filename, derr)
 	}
 	if format == FormatONNX {
-		return nil, newPlaceholderError(filename, FormatONNX)
+		// LIB-10：TreeEnsembleRegressor 极小子集；失败带 experimental hint。
+		return LoadONNX(filename, opts)
 	}
 
 	legacy, err := registeredLoader(filename, opts)

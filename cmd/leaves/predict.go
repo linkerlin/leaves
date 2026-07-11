@@ -66,8 +66,9 @@ func cmdPredict(args []string) error {
 	}
 	defer f.Close()
 
+	multiClass := isMulticlassObjective(obj)
 	if *format == "csv" {
-		return writeCSVDense(f, nc, n, preds)
+		return writeCSVDenseObj(f, nc, n, preds, multiClass)
 	}
 
 	enc := json.NewEncoder(f)
@@ -79,9 +80,15 @@ func cmdPredict(args []string) error {
 			if obj == "binary:logistic" {
 				rec["probability"] = sigmoid(row[0])
 			}
-		} else {
+		} else if multiClass {
 			rec["class"] = argmax(row)
 			rec["probabilities"] = softmaxRows(row, nc)
+		} else {
+			// 多目标回归（LIB-21）：输出各目标 margin，不做 softmax
+			margins := make([]float64, nc)
+			copy(margins, row)
+			rec["margins"] = margins
+			rec["predictions"] = margins
 		}
 		if err := enc.Encode(rec); err != nil {
 			return err
@@ -90,17 +97,42 @@ func cmdPredict(args []string) error {
 	return nil
 }
 
-func writeCSVDense(w io.Writer, numClass, n int, preds []float64) error {
-	if numClass > 1 {
+func isMulticlassObjective(obj string) bool {
+	return obj == "multi:softmax" || obj == "multi:softprob"
+}
+
+// writeCSVDenseObj multiClass=true 时多列为 argmax 类；false 时输出 pred_0..pred_k-1。
+func writeCSVDenseObj(w io.Writer, numOut, n int, preds []float64, multiClass bool) error {
+	if numOut > 1 && multiClass {
 		fmt.Fprintln(w, "prediction")
 		for i := 0; i < n; i++ {
-			fmt.Fprintf(w, "%d\n", argmax(preds[i*numClass:(i+1)*numClass]))
+			fmt.Fprintf(w, "%d\n", argmax(preds[i*numOut:(i+1)*numOut]))
 		}
-	} else {
-		fmt.Fprintln(w, "prediction")
+		return nil
+	}
+	if numOut > 1 {
+		// 多目标回归：多列
+		for k := 0; k < numOut; k++ {
+			if k > 0 {
+				fmt.Fprint(w, ",")
+			}
+			fmt.Fprintf(w, "pred_%d", k)
+		}
+		fmt.Fprintln(w)
 		for i := 0; i < n; i++ {
-			fmt.Fprintf(w, "%g\n", preds[i])
+			for k := 0; k < numOut; k++ {
+				if k > 0 {
+					fmt.Fprint(w, ",")
+				}
+				fmt.Fprintf(w, "%g", preds[i*numOut+k])
+			}
+			fmt.Fprintln(w)
 		}
+		return nil
+	}
+	fmt.Fprintln(w, "prediction")
+	for i := 0; i < n; i++ {
+		fmt.Fprintf(w, "%g\n", preds[i])
 	}
 	return nil
 }

@@ -12,7 +12,7 @@ func (e ErrFormatNotImplemented) Error() string {
 	return string(e)
 }
 
-// IsNotImplemented 判断是否为未实现格式错误（含 ONNX 占位）。
+// IsNotImplemented 判断是否为未实现格式错误（含 ONNX 子集外失败）。
 func IsNotImplemented(err error) bool {
 	if err == nil {
 		return false
@@ -24,7 +24,8 @@ func IsNotImplemented(err error) bool {
 		return true
 	}
 	var le *LoadError
-	if errors.As(err, &le) && (le.Level == SupportPlaceholder || le.Format == FormatONNX) {
+	// 占位等级仍算未实现；ONNX 实验路径仅在 cause 为 ErrONNXNotImplemented 时算
+	if errors.As(err, &le) && le.Level == SupportPlaceholder {
 		return true
 	}
 	return false

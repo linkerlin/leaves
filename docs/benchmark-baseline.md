@@ -46,6 +46,9 @@ line, _ := r.MarshalJSONL()
 
 跨版本比较时：同 `name`+`backend`+`batch_size` 比 `ns_per_op`；Auto 变更看 `auto_rule` 是否漂移。
 
+**样例工件（LIB-02）**：[bench/sample_benchrecords.jsonl](bench/sample_benchrecords.jsonl) + [bench/README.md](bench/README.md)  
+（说明性数字，非 CI 门禁；`go test ./docs -run TestBenchSampleArtifact` 校验格式。）
+
 ## 本地完整 benchmark
 
 需显式开启（避免 CI 拖慢）：

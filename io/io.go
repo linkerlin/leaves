@@ -30,7 +30,7 @@ const (
 	FormatSklearn
 	// FormatLeavesJSON leaves 训练产出 JSON。
 	FormatLeavesJSON
-	// FormatONNX ONNX 占位（不实现导入；见 SupportOf）。
+	// FormatONNX ONNX（实验：TreeEnsembleRegressor 子集；见 SupportOf）。
 	FormatONNX
 )
 

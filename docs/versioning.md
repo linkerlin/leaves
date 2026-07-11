@@ -10,7 +10,7 @@
 | **推荐 API** | 文档与示例主推；优先修 bug、加能力 | `LoadFromFile`、`train.NewLearner`、`cmd/leaves` |
 | **兼容 API** | 保留至少整个 v2.x；新能力不首发于此 | `LGEnsembleFromFile`、`XGEnsembleFromFile`、根包旧 Ensemble 方法 |
 | **实验 API** | 可改语义/收窄；README 标明 experimental | scikit-learn pickle 加载 |
-| **占位 API** | 调用失败并 hint；不保证实现时间表 | `LoadONNX` |
+| **占位 API** | 调用失败并 hint；不保证实现时间表 | （历史）完整 ONNX Graph |
 
 详见 [api-surface.md](api-surface.md)。
 
