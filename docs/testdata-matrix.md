@@ -23,7 +23,8 @@
 | XGB dart JSON | `xgboost_dart_smoke.json` | 内嵌 | `io/xgb_interop_test.go`（嵌套 gbtree） | 同上 | 同上 |
 | XGB multiclass JSON | `xgboost_multiclass_smoke.json` | 内嵌 | `io/xgb_interop_test.go`（softprob） | 同上 | 同上 |
 | XGB 二进制 | `xgagaricus.model` | 内嵌 | `io/xgb_bin.go` + `io/xgb_interop_test.go` | 同上 | 同上 |
-| SK pickle（**实验**） | `sk_gradient_boosting_classifier.model` | `sk_gradient_boosting_classifier_test.libsvm` | 同上 | 同上 | 同上 |
+| SK pickle（**实验**） | `sk_gradient_boosting_classifier.model` | `sk_gradient_boosting_classifier_test.libsvm` | 同上 + `TestSklearnGoldenLoads` | 同上 | 同上 |
+| SK iris（**实验**） | `sk_iris.model` | `iris_test.libsvm` | `TestSKIris` | Native | — |
 | ONNX（**实验**） | 内存 `SampleONNXStump` | — | `TestONNXTreeEnsembleStump` | Native margin | 不进 Born parity |
 
 \* BornGPU 仅在 Windows WebGPU 可用时运行；不可用时跳过。

@@ -33,11 +33,25 @@
 3. 失败时 `*LoadError` level=`experimental`，hint 指向转 XGB JSON / leaves.json。  
 4. 完整 Graph 仍 **明确不做**（见 TODO 非目标）。
 
-## scikit-learn 策略（冻结）
+## scikit-learn 策略（LIB-11 收窄）
 
-1. 保持 **实验性**；不扩全版本 / 全 estimator 矩阵。  
+1. 保持 **实验性**；**不**扩全版本 / 全 estimator 矩阵。  
 2. 生产推荐：训练后导出 **XGB JSON** 或 **leaves.json**。  
-3. 加载失败时 `LoadError.Hint` 会标明实验边界。
+3. 加载失败时 `LoadError.Hint` 标明实验边界。
+
+### 协议矩阵（写实）
+
+| 能力 | 状态 | 说明 / 回归锚点 |
+|------|------|-----------------|
+| `GradientBoostingClassifier` 历史 pickle | 实验可用 | `testdata/sk_gradient_boosting_classifier.model` + `TestSKGradientBoostingClassifier` |
+| `GradientBoostingClassifier` / 多类 iris | 实验可用 | `testdata/sk_iris.model` + `TestSKIris`（允许少量 float32 边界 mismatch） |
+| 探测 `.pkl` / `.joblib` / pickle 魔数 | 稳定探测 | `DetectFormat` → `FormatSklearn` |
+| 任意 sklearn 版本 round-trip | **不做** | 新版 joblib/cloudpickle 协议可能失败 |
+| HistGradientBoosting / RandomForest / Pipeline | **不做** | 无 loader |
+| 类别特征 / 缺失处理对齐 SK | **不做** | 数值树子集 |
+| 生产部署直接依赖 SK pickle | **不推荐** | 优先转 JSON |
+
+失败用例：`io` 对损坏 pickle / 非 pickle 伪装文件返回可操作 `LoadError`（见 `TestSklearnLoadFailureActionable`）。
 
 ## 错误契约
 

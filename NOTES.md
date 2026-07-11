@@ -46,7 +46,23 @@ m, err := leaves.LoadFromFile(path, &leaves.LoadOptions{AutoTransform: false})
 
 ---
 
-## 4. 文档地图（避免重复阶段史）
+## 4. 模块版本与 `go get`
+
+模块路径为 `github.com/linkerlin/leaves`（**无** `/v2` 后缀）。  
+semver tag 使用 `v2.1.x` 时，部分代理会提示 “module path must match major version”；若遇此错误：
+
+```powershell
+# 按 commit / 伪版本拉取
+go get github.com/linkerlin/leaves@v2.1.1
+# 或
+go get github.com/linkerlin/leaves@master
+```
+
+是否迁移到 `.../leaves/v2` 属破坏性 MAJOR 决策，不在 v2.1 patch 范围。
+
+---
+
+## 5. 文档地图（避免重复阶段史）
 
 | 文档 | 读什么 |
 |------|--------|

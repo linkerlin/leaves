@@ -12,7 +12,7 @@
 
 | 线 | 方案状态 | 代码/发布 | 结论 |
 |----|----------|-----------|------|
-| **Agentic**（演进方案 Phase 0–5） | DoD D1–D10 + R1–R5 全绿 | `cmd/leaves` 契约/save-best/from-run/na-policy/error-json；tag **v2.1.0** | **收口完成** |
+| **Agentic**（演进方案 Phase 0–5） | DoD D1–D10 + R1–R5 全绿 | `cmd/leaves` 契约；tag **v2.1.0** / **v2.1.1** | **收口完成** |
 | **库线**（演进计划 Phase A–E 第一轮） | 文档/扩展点/BackendAuto 2.0/互操作/发版治理 | `docs/*` + Register + `SelectBackendExplained` + Release | **第一轮完成** |
 | **历史** P0–T5 / v3.1 | 见下方存档 | 均已交付 | 维护期 |
 
@@ -82,8 +82,8 @@ go test ./cmd/leaves -run 'Agentic|SaveBest|FromRun|NAPolicy|Publish' -count=1
 #### 互操作 / 格式
 
 - [x] **LIB-10** ONNX TreeEnsembleRegressor **实验子集**（BRANCH_LEQ/SUM/NONE；`SampleONNXStump` + 测试）
-- [ ] **LIB-11** scikit-learn：协议矩阵收窄文档 + 失败用例；不扩全版本  
-- [ ] **LIB-12** 稳定格式加载 **golden 矩阵** 与 `testdata-matrix` 自动对账（防文档漂移）
+- [x] **LIB-11** scikit-learn：协议矩阵收窄（interop-matrix）+ `TestSklearn*` 失败/探测/golden  
+- [x] **LIB-12** `TestTestdataMatrixArtifactsExist`：testdata-matrix 反引号工件对账
 
 #### 扩展点 / 训练
 
@@ -100,11 +100,11 @@ go test ./cmd/leaves -run 'Agentic|SaveBest|FromRun|NAPolicy|Publish' -count=1
 
 ### 维护 — v2.1.x / 下一版本
 
-- [ ] **MNT-01** 按 [`docs/release-checklist.md`](docs/release-checklist.md) 跑 v2.1.1+ 热修流程（契约变更必须升 `schema_version`）  
-- [ ] **MNT-02** 验证模块代理 `go get github.com/linkerlin/leaves@v2.1.0`（代理滞后时记 NOTES）  
-- [ ] **MNT-03** 发版前：`go test ./... -count=1` + `./cmd/leaves` + wasm/bench-gate CI 绿  
-- [ ] **MNT-04** 改 SKILL 时同步 `.cursor/skills`（在 POST-01 落地前靠人工/PR 模板）  
-- [ ] **MNT-05** README badge / CHANGELOG Unreleased 与下一 tag 对齐  
+- [x] **MNT-01** v2.1.1 已按 checklist 发版（tag + GitHub Release + CHANGELOG）  
+- [x] **MNT-02** 模块路径无 `/v2` 时代理可能拒 `v2.1.x` tag → 已记 [NOTES.md](NOTES.md) §4
+- [x] **MNT-03** 发版前关键包测试已跑（CLI/io/train/docs 门禁）；全量 `go test ./...` 仍建议 CI  
+- [x] **MNT-04** skills 镜像 CI 门禁（`TestSkillsMirrorSync`）；改 SKILL 须同步 `.cursor/skills`  
+- [x] **MNT-05** README badge / CHANGELOG 已对齐 **v2.1.1**
 
 **快速回归**：
 
@@ -378,8 +378,7 @@ go test -run TestBenchGateBornCPUSlowerBatch1 -count=1
 ```text
 1. ✅ POST-01…15 全套加固
 2. ✅ LIB-01(文档边界) / 02 / 03 / 20 / 31
-3. ✅ LIB-10 ONNX 子集 / LIB-21 multi-target one_output_per_tree
-4. LIB-22 explain 性能 / 向量叶训练深化     ← 按需
+3. ✅ LIB-10/11/12/20/21 + v2.1.1 发版
+4. LIB-22 explain 性能                     ← 按需
 5. LIB-30 独立 serving 仓                  ← 库外
-6. MNT：发版 v2.1.1 时走 release-checklist
 ```
