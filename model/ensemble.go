@@ -80,7 +80,7 @@ func (e *Ensemble) PredictDense(
 				}
 				for i := startIdx; i < endIdx; i++ {
 					fvals := vals[i*ncols : (i+1)*ncols]
-					e.engine.Predict(fvals, nEstimators, predictions[i*e.NOutputGroups():(i+1)*e.NOutputGroups()])
+					_ = e.engine.Predict(fvals, nEstimators, predictions[i*e.NOutputGroups():(i+1)*e.NOutputGroups()])
 				}
 			}
 		}()
@@ -113,22 +113,22 @@ func (e *Ensemble) PredictCSR(
 // ---- 元数据查询 ----
 
 // NEstimators 每组估计器数量。
-func (e *Ensemble) NEstimators() int       { return e.engine.NEstimators() }
+func (e *Ensemble) NEstimators() int { return e.engine.NEstimators() }
 
 // NRawOutputGroups 原始输出维度。
-func (e *Ensemble) NRawOutputGroups() int   { return e.engine.NRawOutputGroups() }
+func (e *Ensemble) NRawOutputGroups() int { return e.engine.NRawOutputGroups() }
 
 // NOutputGroups 变换后输出维度。
-func (e *Ensemble) NOutputGroups() int      { return e.engine.NOutputGroups() }
+func (e *Ensemble) NOutputGroups() int { return e.engine.NOutputGroups() }
 
 // NFeatures 输入特征数。
-func (e *Ensemble) NFeatures() int          { return e.engine.NFeatures() }
+func (e *Ensemble) NFeatures() int { return e.engine.NFeatures() }
 
 // NLeaves 每棵树叶子数。
-func (e *Ensemble) NLeaves() []int          { return e.engine.NLeaves() }
+func (e *Ensemble) NLeaves() []int { return e.engine.NLeaves() }
 
 // Name 模型名称。
-func (e *Ensemble) Name() string            { return e.engine.Name() }
+func (e *Ensemble) Name() string { return e.engine.Name() }
 
 // Engine 返回底层 predict.Engine（高级用法）。
 func (e *Ensemble) Engine() predict.Engine { return e.engine }

@@ -44,11 +44,10 @@ func lgTreeFromSklearnDecisionTreeRegressor(tree pickle.SklearnDecisionTreeRegre
 
 	// Numerical only
 	createNode := func(idx int) (lgNode, error) {
-		node := lgNode{}
 		refNode := &tree.Tree.Nodes[idx]
 		missingType := uint8(0)
 		defaultType := uint8(0)
-		node = numericalNode(uint32(refNode.Feature), missingType, refNode.Threshold, defaultType)
+		node := numericalNode(uint32(refNode.Feature), missingType, refNode.Threshold, defaultType)
 		if tree.Tree.Nodes[refNode.LeftChild].LeftChild < 0 {
 			node.Flags |= leftLeaf
 			node.Left = uint32(len(t.leafValues))

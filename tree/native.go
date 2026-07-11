@@ -44,12 +44,12 @@ func (e *NativeEngine) adjustNEstimators(nEstimators int) int {
 // ---- Engine 接口实现 ----
 
 func (e *NativeEngine) NOutputGroups() int    { return e.nOutputGroups }
-func (e *NativeEngine) NRawOutputGroups() int  { return e.nRawOutputGroups }
-func (e *NativeEngine) NFeatures() int         { return e.forest.NumFeatures }
-func (e *NativeEngine) NEstimators() int       { return e.forest.NEstimators() }
-func (e *NativeEngine) NLeaves() []int         { return e.forest.NLeaves() }
-func (e *NativeEngine) Name() string           { return e.forest.Name }
-func (e *NativeEngine) Close() error           { return nil }
+func (e *NativeEngine) NRawOutputGroups() int { return e.nRawOutputGroups }
+func (e *NativeEngine) NFeatures() int        { return e.forest.NumFeatures }
+func (e *NativeEngine) NEstimators() int      { return e.forest.NEstimators() }
+func (e *NativeEngine) NLeaves() []int        { return e.forest.NLeaves() }
+func (e *NativeEngine) Name() string          { return e.forest.Name }
+func (e *NativeEngine) Close() error          { return nil }
 
 // ---- 核心预测逻辑 ----
 
@@ -113,7 +113,7 @@ func (e *NativeEngine) PredictDense(
 	if e.outputType == TransformLeafIndex {
 		for i := 0; i < nrows; i++ {
 			fvals := vals[i*ncols : (i+1)*ncols]
-			e.predictLeafIndicesInner(fvals, nEstimators, predictions, i*e.NOutputGroups())
+			_ = e.predictLeafIndicesInner(fvals, nEstimators, predictions, i*e.NOutputGroups())
 		}
 		return nil
 	}
@@ -170,7 +170,7 @@ func (e *NativeEngine) PredictCSR(
 					fvals[cols[j]] = vals[j]
 				}
 			}
-			e.predictLeafIndicesInner(fvals, nEstimators, predictions, i*e.NOutputGroups())
+			_ = e.predictLeafIndicesInner(fvals, nEstimators, predictions, i*e.NOutputGroups())
 		}
 		return nil
 	}
@@ -267,7 +267,7 @@ func (e *NativeEngine) applyTransform(rawPredictions []float64, output []float64
 		return
 	}
 	raw := rawPredictions[startIndex : startIndex+e.nRawOutputGroups]
-	e.transform(raw, output, startIndex)
+	_ = e.transform(raw, output, startIndex)
 }
 
 // resetFVals 重置特征值数组。useNaN=true 用于 XGBoost（NaN 表示缺失）。

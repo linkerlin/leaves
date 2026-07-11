@@ -132,14 +132,6 @@ func treeClassIndex(f *tree.ForestIR, treeIdx int) int {
 	return treeIdx % f.NumOutputGroups
 }
 
-func predictForestMarginClass(f *tree.ForestIR, fvals []float64, classIdx int, nEstimators int) float64 {
-	m := tree.ForestMargins(f, fvals, nEstimators)
-	if classIdx < 0 || classIdx >= len(m) {
-		return 0
-	}
-	return m[classIdx]
-}
-
 func predictForestMargins(f *tree.ForestIR, fvals []float64, nEstimators int) []float64 {
 	return tree.ForestMargins(f, fvals, nEstimators)
 }

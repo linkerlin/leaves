@@ -1,21 +1,21 @@
 # leaves 演进 TODO
 
 > **对齐文档**：[`演进计划.md`](演进计划.md) v5.4（库线）· [`演进方案.md`](演进方案.md) v1.5+（Agentic）  
-> **更新**：2026-07-11（**维护期** + **v2.1.5** MovieLens 四段流水线）  
+> **更新**：2026-07-11（**开发期** + **v2.1.5** MovieLens 四段流水线）  
 > **原则**：Native golden 不变；Born 直读 `ForestIR`；不做分布式/serving 框架 / 内置 HPO / 官方 registry。
 
 **图例**：`[ ]` 待办 · `[~]` 进行中 · `[x]` 完成 · `[-]` 明确不做
 
 ---
 
-## 现状快照（2026-07-11 · 维护期）
+## 现状快照（2026-07-11 · 开发期）
 
 | 线 | 方案状态 | 代码/发布 | 结论 |
 |----|----------|-----------|------|
 | **Agentic** | Phase 0–5 + POST 加固 | tag **v2.1.0** … **v2.1.5** | **完成** |
 | **库线 Phase A–E** | 第一轮 + 按需深化 | 扩展点 / BackendAuto 2.0 / interop / ONNX 子集 / multi-target / explain 缓存 / serving 模板 | **完成** |
 | **Demo** | MovieLens ranker + 四段 | meta 旁车 / Agent·MCP / `agent four-stage` | **完成** |
-| **历史** P0–T5 / v3.1 | 存档 | 均已交付 | 维护期 |
+| **历史** P0–T5 / v3.1 | 存档 | 均已交付 | 开发期 |
 
 **对照结论**：可执行 backlog **已清空**；Unreleased 已落盘。默认 **维护 + 按需开新项**；新需求先写进本文件再实现。发版走 [`docs/release-checklist.md`](docs/release-checklist.md)。
 
@@ -25,7 +25,17 @@
 
 ## 后续工作（现行 backlog）
 
-> 新工作请在本节追加 `[ ]` 项。维护期默认无打开主线；案例 demo 可并列追加。
+> 新工作请在本节追加 `[ ]` 项。开发期默认无打开主线；案例 demo 可并列追加。
+
+### LINT-DEBT — 渐进式 lint 启用
+
+> 门禁已全量落地（`.golangci.yml`：govet[关闭 composites] + ineffassign + **unused** + **staticcheck** + **errcheck** + **gofmt** formatter；CI `lint` job blocking）。
+> 基线（2026-07-11）全部清零：~~errcheck 50~~ / ~~unused 21~~ / ~~staticcheck 20~~ / ~~gofmt 176~~。
+
+- [x] **LINT-1** errcheck：~~存量 ~50 处~~。**已清零并启用 blocking**。用 v2 `std-error-handling` 预设排除惯例忽略项（Close/Flush/Fprint*/stdout.Write/Remove）；测试文件按 `path` 规则豁免（测试靠值断言）；生产路径 10 处真实忽略改 `_ =` 显式丢弃（transform.Transform、engine.Predict、predictLeafIndicesInner、transform、Seek、Iterate）。
+- [x] **LINT-2** unused：~~存量 ~20 处~~。**已清零并启用 blocking**（删 21 处死代码：explain interventional SHAP 簇 + treeShapFast/computeNodeWeights、treebuilder 被 batchAccumulateHistWebGPU 取代的 GPU hist 旧路径 accumulateHistWebGPU×3/prebuildGPUHists/gpuHistBuildEnabled/gpuHistMinSamples、各处孤立 helper）。
+- [x] **LINT-3** staticcheck：~~存量 ~20 处~~。**已清零并启用 blocking**。修 12 处真实项（SA4006 xgensemble 死赋值、SA9003×2 空分支、S1002 bool 比较、S1009 nil-len、S1021 递归闭包合并、QF1004 ReplaceAll、QF1008/QF1011）；关闭 QF1003（tagged-switch 风格，冻结兼容层不宜改写）+ ST1000/ST1003（包注释/命名风格）。
+- [x] **LINT-4** 全仓 gofmt 归一：**已完成并锁定 gofmt formatter**。`gofmt -w .`（176 处 CRLF→LF + 对齐）+ `gofmt -s -w`（1 处 composite literal 类型名冗余）；CI `lint` job 经 `golangci/golangci-lint-action` 自动应用 formatter。
 
 ### Demo / 教程
 
@@ -389,7 +399,7 @@ go test -run TestBenchGateBornCPUSlowerBatch1 -count=1
 2. ✅ LIB-01…03 / 20 / 31
 3. ✅ LIB-10/11/12/21 + v2.1.1
 4. ✅ LIB-22 explain 性能 + LIB-30 serving-template + v2.1.2
-5. ✅ 进入维护期（本文件无打开 backlog）
+5. ✅ 进入开发期（本文件无打开 backlog）
 ```
 
 ### 按需可开（默认不做，需产品信号）

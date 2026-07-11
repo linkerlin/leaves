@@ -40,10 +40,6 @@ func xgbDefaultLeft(origNode *xgbin.Node) bool {
 	return (origNode.SIndex >> 31) != 0
 }
 
-func xgbIsLeaf(origNode *xgbin.Node) bool {
-	return origNode.CLeft == -1
-}
-
 func xgbVectorLeafValues(origTree *xgbin.TreeModel, leafOrigNodes []int32, dim int) []float64 {
 	if dim <= 0 {
 		dim = 1

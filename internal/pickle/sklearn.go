@@ -75,7 +75,7 @@ func (t *SklearnTree) Reduce(reduce Reduce) (err error) {
 	if len(arr.Shape) != 1 && arr.Shape[0] != t.NOutputs {
 		return fmt.Errorf("expected 1 dim array with %d values (got: %v)", t.NOutputs, arr.Shape)
 	}
-	if arr.Type.Type != "i8" || arr.Type.LittleEndinan != true {
+	if arr.Type.Type != "i8" || !arr.Type.LittleEndinan {
 		return fmt.Errorf("expected ndtype \"i8\" little endian (got: %#v)", arr.Type)
 	}
 
@@ -271,7 +271,7 @@ func (t *SklearnGradientBoosting) Build(build Build) (err error) {
 	if len(arr.Shape) != 1 && arr.Shape[0] != t.NClasses {
 		return fmt.Errorf("expected 1 dim array with %d values (got: %v)", t.NClasses, arr.Shape)
 	}
-	if arr.Type.Type != "i8" || arr.Type.LittleEndinan != true {
+	if arr.Type.Type != "i8" || !arr.Type.LittleEndinan {
 		return fmt.Errorf("expected ndtype \"i8\" little endian (got: %#v)", arr.Type)
 	}
 
@@ -381,7 +381,7 @@ func (e *SKlearnInitEstimator) Build(build Build) (err error) {
 		if numpyArray.Type.Type != "f8" {
 			return fmt.Errorf("expected f8, got (%#v)", numpyArray.Type)
 		}
-		numpyArray.Data.Iterate(8, func(bytes []byte) error {
+		_ = numpyArray.Data.Iterate(8, func(bytes []byte) error {
 			e.Prior = append(e.Prior, util.Float64FromBytes(bytes, numpyArray.Type.LittleEndinan))
 			return nil
 		})

@@ -87,13 +87,10 @@ func Prepare(force bool) Result {
 		}
 	}
 	dataDir, err := rankutil.DataDir()
-	repoRoot := ""
-	if err == nil {
-		repoRoot = filepath.Dir(dataDir)
-	} else {
+	if err != nil {
 		// 尝试 cwd 向上找
 		cwd, _ := os.Getwd()
-		repoRoot = findRepoRoot(cwd)
+		repoRoot := findRepoRoot(cwd)
 		dataDir = filepath.Join(repoRoot, "testdata")
 	}
 	script := filepath.Join(dataDir, "gen_rank_movielens.py")
@@ -140,15 +137,15 @@ func findRepoRoot(start string) string {
 
 // TrainParams 训练参数。
 type TrainParams struct {
-	Objective string `json:"objective"`
-	Rounds    int    `json:"rounds"`
-	Depth     int    `json:"depth"`
+	Objective string  `json:"objective"`
+	Rounds    int     `json:"rounds"`
+	Depth     int     `json:"depth"`
 	LR        float64 `json:"lr"`
 	Lambda    float64 `json:"lambda"`
-	NDCGK     int    `json:"ndcg_k"`
-	Seed      int64  `json:"seed"`
-	OutModel  string `json:"out_model"`
-	Metrics   string `json:"metrics"`
+	NDCGK     int     `json:"ndcg_k"`
+	Seed      int64   `json:"seed"`
+	OutModel  string  `json:"out_model"`
+	Metrics   string  `json:"metrics"`
 }
 
 func defaultTrain() TrainParams {
@@ -578,24 +575,24 @@ func FourStage(p FourStageParams) Result {
 	sample, sampleUser := sampleDeal(w.DealTest(), titles, p.SampleUser)
 	reportPath := filepath.Join(w.MetaDir(), "four_stage_report.json")
 	dataOut := map[string]any{
-		"workspace":     w.Root,
-		"train_users":   res.Prep.TrainUsers,
-		"test_users":    res.Prep.TestUsers,
-		"catalog_size":  res.Prep.CatalogSize,
-		"recall_train":  res.RecallTrain,
-		"recall_test":   res.RecallTest,
-		"rank_train":    res.RankTrain,
-		"rank_test":     res.RankTest,
-		"ndcg_k":        res.Eval.NDCGK,
-		"train_ndcg":    res.Eval.TrainNDCG,
-		"test_ndcg":     res.Eval.TestNDCG,
-		"deal_rows":     res.DealRows,
-		"deal_tsv":      w.DealTest(),
-		"model":         w.ModelPath(),
-		"item_titles":   filepath.Join(w.MetaDir(), "item_titles.tsv"),
-		"sample_user":   sampleUser,
-		"sample_deal":   sample,
-		"report":        reportPath,
+		"workspace":    w.Root,
+		"train_users":  res.Prep.TrainUsers,
+		"test_users":   res.Prep.TestUsers,
+		"catalog_size": res.Prep.CatalogSize,
+		"recall_train": res.RecallTrain,
+		"recall_test":  res.RecallTest,
+		"rank_train":   res.RankTrain,
+		"rank_test":    res.RankTest,
+		"ndcg_k":       res.Eval.NDCGK,
+		"train_ndcg":   res.Eval.TrainNDCG,
+		"test_ndcg":    res.Eval.TestNDCG,
+		"deal_rows":    res.DealRows,
+		"deal_tsv":     w.DealTest(),
+		"model":        w.ModelPath(),
+		"item_titles":  filepath.Join(w.MetaDir(), "item_titles.tsv"),
+		"sample_user":  sampleUser,
+		"sample_deal":  sample,
+		"report":       reportPath,
 	}
 	_ = writeJSON(reportPath, dataOut)
 	return okResult("four_stage",

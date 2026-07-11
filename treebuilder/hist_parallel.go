@@ -117,7 +117,7 @@ func parallelEvalHistFeats(
 		return best
 	}
 
-	evalFeat := func(f int) histSplitPick {
+	evalFeat := func(f int, rowBuf []float64) histSplitPick {
 		var gh *gpuHistResult
 		if prebuilt != nil {
 			if r, ok := prebuilt[f]; ok && r.ok {
@@ -125,13 +125,13 @@ func parallelEvalHistFeats(
 				gh = &rr
 			}
 		}
-		return histSplitFromFeat(dm, idx, f, grad, hess, sumG, sumH, row, cfg, gh)
+		return histSplitFromFeat(dm, idx, f, grad, hess, sumG, sumH, rowBuf, cfg, gh)
 	}
 
 	nThreads := effectiveThreads(cfg.NumThreads)
 	if nThreads <= 1 || len(feats) < 4 {
 		for _, f := range feats {
-			if pick := evalFeat(f); pick.ok {
+			if pick := evalFeat(f, row); pick.ok {
 				best = betterHistPick(best, pick)
 			}
 		}
@@ -153,9 +153,10 @@ func parallelEvalHistFeats(
 		wg.Add(1)
 		go func(featBlock []int) {
 			defer wg.Done()
+			localRow := make([]float64, cap(row))
 			local := histSplitPick{gain: cfg.Gamma}
 			for _, f := range featBlock {
-				if pick := evalFeat(f); pick.ok {
+				if pick := evalFeat(f, localRow); pick.ok {
 					local = betterHistPick(local, pick)
 				}
 			}

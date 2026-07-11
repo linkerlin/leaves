@@ -240,9 +240,6 @@ func buildONNXTreeIR(nodes []onnxNodeRec, leafW map[onnxTKey]map[int]float64, ti
 		if strings.Contains(n.mode, "LEAF") {
 			continue
 		}
-		if !strings.Contains(n.mode, "BRANCH") && !strings.Contains(n.mode, "LEQ") {
-			// 未知 mode 当分支尝试
-		}
 		branches = append(branches, n)
 	}
 
@@ -316,11 +313,9 @@ func buildONNXTreeIR(nodes []onnxNodeRec, leafW map[onnxTKey]map[int]float64, ti
 	}
 
 	// 根必须是 branch 0：重排使 root 在 index 0
-	rootBranch := -1
+	rootBranch := 0
 	if bi, ok := branchIdx[rootID]; ok {
 		rootBranch = bi
-	} else {
-		rootBranch = 0
 	}
 	if rootBranch != 0 {
 		branches[0], branches[rootBranch] = branches[rootBranch], branches[0]

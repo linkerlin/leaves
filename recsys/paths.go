@@ -46,16 +46,24 @@ func (w Workspace) PrepReport() string   { return filepath.Join(w.MetaDir(), "pr
 func (w Workspace) RecallTrain() string { return filepath.Join(w.RecallDir(), "recall_train.tsv") }
 func (w Workspace) RecallTest() string  { return filepath.Join(w.RecallDir(), "recall_test.tsv") }
 
-func (w Workspace) RankTrain() string           { return filepath.Join(w.RankDir(), "rank_train.tsv") }
-func (w Workspace) RankTest() string            { return filepath.Join(w.RankDir(), "rank_test.tsv") }
-func (w Workspace) RankTrainManifest() string   { return filepath.Join(w.RankDir(), "rank_train_manifest.jsonl") }
-func (w Workspace) RankTestManifest() string    { return filepath.Join(w.RankDir(), "rank_test_manifest.jsonl") }
-func (w Workspace) RankTestScored() string      { return filepath.Join(w.RankDir(), "rank_test_scored.jsonl") }
+func (w Workspace) RankTrain() string { return filepath.Join(w.RankDir(), "rank_train.tsv") }
+func (w Workspace) RankTest() string  { return filepath.Join(w.RankDir(), "rank_test.tsv") }
+func (w Workspace) RankTrainManifest() string {
+	return filepath.Join(w.RankDir(), "rank_train_manifest.jsonl")
+}
+func (w Workspace) RankTestManifest() string {
+	return filepath.Join(w.RankDir(), "rank_test_manifest.jsonl")
+}
+func (w Workspace) RankTestScored() string {
+	return filepath.Join(w.RankDir(), "rank_test_scored.jsonl")
+}
 
-func (w Workspace) ModelPath() string   { return filepath.Join(w.ModelsDir(), "model_rank_ndcg.leaves.json") }
-func (w Workspace) RankEval() string    { return filepath.Join(w.MetaDir(), "rank_eval.json") }
-func (w Workspace) DealTest() string    { return filepath.Join(w.DealDir(), "deal_test.tsv") }
-func (w Workspace) DealLog() string     { return filepath.Join(w.DealDir(), "deal_log.jsonl") }
+func (w Workspace) ModelPath() string {
+	return filepath.Join(w.ModelsDir(), "model_rank_ndcg.leaves.json")
+}
+func (w Workspace) RankEval() string { return filepath.Join(w.MetaDir(), "rank_eval.json") }
+func (w Workspace) DealTest() string { return filepath.Join(w.DealDir(), "deal_test.tsv") }
+func (w Workspace) DealLog() string  { return filepath.Join(w.DealDir(), "deal_log.jsonl") }
 
 // Ensure 创建全部子目录。
 func (w Workspace) Ensure() error {

@@ -13,11 +13,11 @@ const gpuHistPartialMaxFeats = 32
 
 // gpuHistResult 预计算的 GPU/CPU 直方图；hasGain 时 splitIdx/gain 已在 GPU 上算好。
 type gpuHistResult struct {
-	histG, histH       []float64
-	splitIdx           int
-	gain               float64
-	hasGain            bool
-	ok                 bool
+	histG, histH []float64
+	splitIdx     int
+	gain         float64
+	hasGain      bool
+	ok           bool
 }
 
 func gpuHistBatchEnabled(cfg Config) bool {
@@ -53,24 +53,6 @@ func gpuHistFeatCap(lenIdx int) int {
 		return 0
 	}
 	return gpuHistPartialMaxFeats
-}
-
-func prebuildGPUHists(
-	feats []int,
-	idx []int,
-	grad, hess []float64,
-	sumG, sumH float64,
-	depth int,
-	cfg Config,
-) map[int]gpuHistResult {
-	if !gpuHistBatchEnabled(cfg) {
-		return nil
-	}
-	gpuFeats := filterGPUHistFeats(feats, idx, depth, cfg)
-	if len(gpuFeats) == 0 {
-		return nil
-	}
-	return batchAccumulateHistWebGPU(gpuFeats, idx, grad, hess, sumG, sumH, cfg.Lambda, cfg)
 }
 
 func histSplitFromFeat(

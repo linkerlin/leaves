@@ -100,15 +100,6 @@ func toDict(obj interface{}) (Dict, error) {
 	return dict, nil
 }
 
-func toBuild(obj interface{}) (Build, error) {
-	def := Build{}
-	build, ok := obj.(Build)
-	if !ok {
-		return def, fmt.Errorf("expected Build object (got %T)", obj)
-	}
-	return build, nil
-}
-
 func toReduce(obj interface{}) (Reduce, error) {
 	def := Reduce{}
 	reduce, ok := obj.(Reduce)

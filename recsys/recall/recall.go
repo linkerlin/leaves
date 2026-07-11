@@ -265,7 +265,7 @@ func Validate(rows []recsys.RecallRow, need int) error {
 
 // MaxRecallScore 辅助测试。
 func MaxRecallScore(rows []recsys.RecallRow) float64 {
-	var max float64 = -math.MaxFloat64
+	max := -math.MaxFloat64
 	for _, r := range rows {
 		if r.RecallScore > max {
 			max = r.RecallScore

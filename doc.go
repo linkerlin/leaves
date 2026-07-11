@@ -1,5 +1,5 @@
 /*
-Package leaves is pure Go implemetation of prediction part for GBRT (Gradient
+Package leaves is pure Go implementation of prediction part for GBRT (Gradient
 Boosting Regression Trees) models from popular frameworks.
 
 Recommended API (v2.x) — see docs/api-surface.md
@@ -17,7 +17,7 @@ Legacy (compat, not preferred for new code): LGEnsembleFromFile / XGEnsembleFrom
 Versioning: docs/versioning.md · Release: docs/release-checklist.md.
 
 General
-All loaded models exibit the same interface from `Ensemble struct`. One can
+All loaded models exhibit the same interface from `Ensemble struct`. One can
 use method `Name` to get string representation of model origin. Possible name
 values are "lightgbm.gbdt", "lightgbm.rf", "xgboost.gbtree", "xgboost.gblinear", etc.
 
@@ -189,7 +189,7 @@ predict_iris_model.go:
 		model.PredictCSR(csr.RowHeaders, csr.ColIndexes, csr.Values, predictions, 0, 1)
 		// compare results
 		const tolerance = 1e-6
-		// compare results. Count number of mismatched values beacase of floating point
+		// compare results. Count number of mismatched values because of floating point
 		// tolerances in decision rule
 		mismatch, err := util.NumMismatchedFloat64Slices(truePredictions.Values, predictions, tolerance)
 		if err != nil {

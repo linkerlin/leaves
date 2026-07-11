@@ -23,7 +23,7 @@ func (s *stubExternal) Batch(b int) (*data.ExternalBatch, error) {
 		Cols:   s.NumCol(),
 		Labels: s.Labels(),
 		RowAt: func(row int, buf []float64) error {
-			return s.Dense.Row(row, buf)
+			return s.Row(row, buf)
 		},
 	}, nil
 }

@@ -6,18 +6,16 @@ import (
 	"github.com/linkerlin/leaves/tree"
 )
 
-const maxTreeDepth = 64
-
 // TreeExplainer 基于 Tree SHAP 的可解释器（CPU，margin 空间）。
 type TreeExplainer struct {
 	forest      *tree.ForestIR
 	nFeatures   int
 	nEstimators int
 	// LIB-22 缓存：按树预计算节点覆盖权重与背景（全零）margin。
-	nodeWCache  [][]float64
-	treeBase    []float64
-	pathBufMax  int
-	cacheReady  bool
+	nodeWCache [][]float64
+	treeBase   []float64
+	pathBufMax int
+	cacheReady bool
 }
 
 // NewTreeExplainer 创建 Tree SHAP 解释器。
@@ -308,113 +306,6 @@ func (e *TreeExplainer) ApproximateContributionsMulticlass(features [][]float64)
 		out[i] = phi
 	}
 	return out, nil
-}
-
-// treeInteractionInterventional 对单棵树累加路径特征对的交互 SHAP（非对角，对称）。
-func treeInteractionInterventional(t *tree.TreeIR, x []float64, phi [][]float64) {
-	path := treePathFeatures(t, x)
-	m := len(path)
-	if m < 2 {
-		return
-	}
-	for pi := 0; pi < m; pi++ {
-		for pj := pi + 1; pj < m; pj++ {
-			fi := path[pi]
-			fj := path[pj]
-			if fi < 0 || fj < 0 || fi >= len(phi) || fj >= len(phi[fi]) {
-				continue
-			}
-			var sum float64
-			for mask := 0; mask < (1 << m); mask++ {
-				if (mask>>pi)&1 != 0 || (mask>>pj)&1 != 0 {
-					continue
-				}
-				coalitionSize := 0
-				for k := 0; k < m; k++ {
-					if (mask>>k)&1 != 0 {
-						coalitionSize++
-					}
-				}
-				w := interactionWeight(m, coalitionSize)
-				mask11 := mask | (1 << pi) | (1 << pj)
-				mask10 := mask | (1 << pi)
-				mask01 := mask | (1 << pj)
-				v11 := predictTreeMargin(t, maskFeatures(x, path, mask11, len(x)))
-				v10 := predictTreeMargin(t, maskFeatures(x, path, mask10, len(x)))
-				v01 := predictTreeMargin(t, maskFeatures(x, path, mask01, len(x)))
-				v00 := predictTreeMargin(t, maskFeatures(x, path, mask, len(x)))
-				sum += w * (v11 - v10 - v01 + v00)
-			}
-			phi[fi][fj] += sum
-			phi[fj][fi] += sum
-		}
-	}
-}
-
-func interactionWeight(pathLen, coalitionSize int) float64 {
-	if pathLen < 2 || coalitionSize < 0 || coalitionSize > pathLen-2 {
-		return 0
-	}
-	return factorial(coalitionSize) * factorial(pathLen-coalitionSize-2) / (2 * factorial(pathLen-1))
-}
-
-func factorial(n int) float64 {
-	r := 1.0
-	for k := 2; k <= n; k++ {
-		r *= float64(k)
-	}
-	return r
-}
-
-// treeShapInterventional 对单棵树做路径精确 SHAP。
-func treeShapInterventional(t *tree.TreeIR, x []float64, phi []float64) {
-	path := treePathFeatures(t, x)
-	if len(path) == 0 {
-		return
-	}
-	m := len(path)
-	for i := 0; i < m; i++ {
-		feat := path[i]
-		var sum float64
-		for mask := 0; mask < (1 << m); mask++ {
-			if (mask>>i)&1 == 0 {
-				continue
-			}
-			coalitionSize := 0
-			for j := 0; j < m; j++ {
-				if (mask>>j)&1 != 0 {
-					coalitionSize++
-				}
-			}
-			weight := shapleyWeight(m, coalitionSize)
-			xMasked := maskFeatures(x, path, mask, len(x))
-			vWith := predictTreeMargin(t, xMasked)
-			maskWithout := mask & ^(1 << i)
-			xWithout := maskFeatures(x, path, maskWithout, len(x))
-			vWithout := predictTreeMargin(t, xWithout)
-			sum += weight * (vWith - vWithout)
-		}
-		if feat >= 0 && feat < len(phi) {
-			phi[feat] += sum
-		}
-	}
-}
-
-func shapleyWeight(pathLen, coalitionSize int) float64 {
-	if coalitionSize <= 0 || coalitionSize > pathLen {
-		return 0
-	}
-	return factorial(coalitionSize-1) * factorial(pathLen-coalitionSize) / factorial(pathLen)
-}
-
-func maskFeatures(x []float64, path []int, mask int, n int) []float64 {
-	out := make([]float64, n) // interventional 背景：未激活特征置 0
-	for j, feat := range path {
-		if (mask>>j)&1 != 0 && feat >= 0 && feat < n {
-			out[feat] = x[feat]
-		}
-	}
-	return out
 }
 
 func treePathFeatures(t *tree.TreeIR, x []float64) []int {

@@ -22,7 +22,7 @@ func TestResolveTrainTreeMethodWithAccel(t *testing.T) {
 		t.Fatalf("explicit hist: got method=%q useGPU=%v", res, gpu)
 	}
 
-	res, gpu = train.ResolveTrainTreeMethodWithAccel(
+	res, _ = train.ResolveTrainTreeMethodWithAccel(
 		treebuilder.MethodAuto, 1000, treebuilder.AccelModeCPU, true,
 	)
 	if res != treebuilder.MethodExact {

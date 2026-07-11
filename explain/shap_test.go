@@ -70,9 +70,6 @@ func TestModelExplainAPI(t *testing.T) {
 	if exp == nil {
 		t.Fatal("nil explainer")
 	}
-	if exp.ExpectedValue() != 0 {
-		// LightGBM breast_cancer base is 0
-	}
 	imp := exp.Importance(explain.ImportanceWeight, nil)
 	if imp == nil || len(imp.Scores) == 0 {
 		t.Fatal("empty importance")

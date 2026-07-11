@@ -77,22 +77,6 @@ func buildHistNode(dm data.Matrix, idx []int, grad, hess []float64, depth int, c
 	}
 }
 
-func bestHistSplit(
-	dm data.Matrix,
-	idx []int,
-	feat int,
-	grad, hess []float64,
-	sumG, sumH float64,
-	row []float64,
-	cfg Config,
-) (bestFeat int, bestThr, bestGain float64, bestLeft, bestRight []int) {
-	pick := histSplitFromFeat(dm, idx, feat, grad, hess, sumG, sumH, row, cfg, nil)
-	if !pick.ok {
-		return 0, 0, 0, nil, nil
-	}
-	return pick.feat, pick.thr, pick.gain, pick.left, pick.right
-}
-
 func histCutPoints(vals []float64, maxBin int) (cuts []float64, numBins int) {
 	if len(vals) == 0 {
 		return nil, 0

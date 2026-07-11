@@ -58,6 +58,18 @@ func TestReadGBTree(t *testing.T) {
 			t.Fatalf("unexpected TreeParam values (got %v)", tree.Param)
 		}
 	}
-	// NOTE: below I don't check values of trees because of float values comparison complexity..
-	// TODO: add checks
+	// Golden snapshot of tree 0's 7 nodes (xgagaricus.model). Catches float/int
+	// parsing regressions in ReadGBTreeModel. Info is the leaf-value/threshold union.
+	wantTree0 := []Node{
+		{Parent: -1, CLeft: 1, CRight: 2, SIndex: 2147483677, Info: -9.536743e-07},
+		{Parent: -2147483648, CLeft: 3, CRight: 4, SIndex: 2147483704, Info: -9.536743e-07},
+		{Parent: 0, CLeft: 5, CRight: 6, SIndex: 2147483757, Info: -9.536743e-07},
+		{Parent: -2147483647, CLeft: -1, CRight: -1, SIndex: 0, Info: 1.7121772},
+		{Parent: 1, CLeft: -1, CRight: -1, SIndex: 0, Info: -1.7004405},
+		{Parent: -2147483646, CLeft: -1, CRight: -1, SIndex: 0, Info: -1.9407086},
+		{Parent: 2, CLeft: -1, CRight: -1, SIndex: 0, Info: 1.8596492},
+	}
+	if got := gBTreeModel.Trees[0].Nodes; !reflect.DeepEqual(wantTree0, got) {
+		t.Fatalf("tree0 nodes mismatch:\nwant=%+v\ngot =%+v", wantTree0, got)
+	}
 }

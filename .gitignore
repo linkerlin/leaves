@@ -24,6 +24,8 @@ Desktop.ini
 *.dylib
 *.test
 *.out
+coverage
+coverage.out
 go.work
 vendor/
 

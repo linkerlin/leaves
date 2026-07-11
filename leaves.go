@@ -45,7 +45,7 @@ func (e *Ensemble) predictInnerAndTransform(fvals []float64, nEstimators int, pr
 		// TODO: avoid allocation here
 		rawPredictions := make([]float64, e.NRawOutputGroups())
 		e.predictInner(fvals, nEstimators, rawPredictions, 0)
-		e.transform.Transform(rawPredictions, predictions, startIndex)
+		_ = e.transform.Transform(rawPredictions, predictions, startIndex)
 	}
 }
 
@@ -297,9 +297,12 @@ func (e *Ensemble) NFeatures() int {
 // NLeaves returns number of leaves in each tree of the ensemble. Returned
 // vector has size NRawOutputGroups() * NEstimators(). For example to get number
 // of leaves in group groupID for estimator estimatorID:
-//   NLeaves()[groupID*NEstimators() + estimatorID].
+//
+//	NLeaves()[groupID*NEstimators() + estimatorID].
+//
 // In case of NRawOutputGroups() == 1 (binary classification or regression):
-//   NLeaves()[estimatorID]
+//
+//	NLeaves()[estimatorID]
 func (e *Ensemble) NLeaves() []int {
 	return e.ensembleBaseInterface.NLeaves()
 }

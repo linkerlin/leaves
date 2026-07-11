@@ -58,3 +58,33 @@ jobs:
 
       - name: batch=1 BornCPU slower than Native (>=20x)
         run: go test -run TestBenchGateBornCPUSlowerBatch1 -count=1 -timeout 5m
+
+  race:
+    name: race detector
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.0"
+          cache-dependency-path: go.sum
+
+      - name: go test -race
+        run: go test -race -short ./... -count=1
+
+  lint:
+    name: lint (golangci-lint)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.0"
+          cache-dependency-path: go.sum
+
+      - uses: golangci/golangci-lint-action@v6
+        with:
+          version: v2.11.4
+          args: --timeout 5m

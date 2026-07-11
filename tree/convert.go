@@ -16,7 +16,7 @@ func LgTreeToTreeIR(tree interface{}, useXGBoostStyle bool) *TreeIR {
 	return nil
 }
 
-// ConvertLgTree 将 LeafNode/DecisionNode 风格的数据转为 TreeIR。
+// BuildTreeIR 将 LeafNode/DecisionNode 风格的数据转为 TreeIR。
 // nodes: 节点数组，叶子值数组分开存储。
 // 这是通用的转换函数，与具体框架无关。
 func BuildTreeIR(
@@ -38,18 +38,18 @@ func BuildTreeIR(
 	}
 
 	t := &TreeIR{
-		NumLeaves:     nNodes + 1,
-		NumNodes:      nNodes,
-		SplitFeature:  make([]int32, nNodes),
+		NumLeaves:      nNodes + 1,
+		NumNodes:       nNodes,
+		SplitFeature:   make([]int32, nNodes),
 		SplitThreshold: make([]float64, nNodes),
 		DefaultLeft:    make([]bool, nNodes),
 		MissingZero:    make([]bool, nNodes),
 		MissingNan:     make([]bool, nNodes),
-		LeftChild:     make([]int32, nNodes),
-		RightChild:    make([]int32, nNodes),
-		IsCategorical: make([]bool, nNodes),
-		CatOneHot:     make([]bool, nNodes),
-		CatSmall:      make([]bool, nNodes),
+		LeftChild:      make([]int32, nNodes),
+		RightChild:     make([]int32, nNodes),
+		IsCategorical:  make([]bool, nNodes),
+		CatOneHot:      make([]bool, nNodes),
+		CatSmall:       make([]bool, nNodes),
 	}
 
 	// 计算深度

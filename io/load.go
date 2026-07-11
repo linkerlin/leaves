@@ -163,7 +163,7 @@ func detectBinaryFormat(filename string) (Format, error) {
 	}
 
 	// LightGBM 文本：tree= 或 version=
-	f.Seek(0, 0)
+	_, _ = f.Seek(0, 0)
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		line := scanner.Text()

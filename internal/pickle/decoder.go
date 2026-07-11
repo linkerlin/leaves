@@ -194,9 +194,9 @@ func (d *Decoder) readLine() ([]byte, error) {
 
 func decodeUnicode(rawString []byte) Unicode {
 	// \u000a == \n
-	ret := bytes.Replace(rawString, []byte{'\\', 'u', '0', '0', '0', 'a'}, []byte{'\n'}, -1)
+	ret := bytes.ReplaceAll(rawString, []byte{'\\', 'u', '0', '0', '0', 'a'}, []byte{'\n'})
 	// \u005c' == \\
-	ret = bytes.Replace(ret, []byte{'\\', 'u', '0', '0', '5', 'c'}, []byte{'\\'}, -1)
+	ret = bytes.ReplaceAll(ret, []byte{'\\', 'u', '0', '0', '5', 'c'}, []byte{'\\'})
 	return Unicode(ret)
 }
 

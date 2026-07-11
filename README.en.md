@@ -550,7 +550,7 @@ For a Born-backend microbench (Windows / WebGPU) see
 
 The roadmap now focuses on the current codebase audit and the next 12
 months of work after P0–T5 / v3.1 were delivered. See
-[演进计划.md](演进计划.md) for the **v5.0** plan, and [TODO.md](TODO.md)
+[演进计划.md](演进计划.md) for the **v5.4** plan, and [TODO.md](TODO.md)
 for the closed historical backlog.
 
 ## Contact

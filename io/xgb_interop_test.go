@@ -259,4 +259,3 @@ func TestXGBoostJSONPreservesVersionAndBoostFromAverage(t *testing.T) {
 		t.Fatal("expected boost_from_average=true")
 	}
 }
-

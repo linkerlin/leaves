@@ -164,7 +164,8 @@ var multiplyDeBruijnBitPosition = [...]uint32{
 	31, 27, 13, 23, 21, 19, 16, 7, 26, 12, 18, 6, 11, 5, 10, 9,
 }
 
-// https://stackoverflow.com/questions/757059/position-of-least-significant-bit-that-is-set
+// FirstNonZeroBit 返回 bitset 中首个被置位的位位置。
+// 参考：https://stackoverflow.com/questions/757059/position-of-least-significant-bit-that-is-set
 func FirstNonZeroBit(bitset []uint32) (uint32, error) {
 	pos := uint32(0)
 	for _, bitsetElement := range bitset {
@@ -176,7 +177,8 @@ func FirstNonZeroBit(bitset []uint32) (uint32, error) {
 	return 0, fmt.Errorf("no bits set")
 }
 
-// https://stackoverflow.com/questions/109023/how-to-count-the-number-of-set-bits-in-a-32-bit-integer
+// NumberOfSetBits 统计 bitset 中被置位的位数。
+// 参考：https://stackoverflow.com/questions/109023/how-to-count-the-number-of-set-bits-in-a-32-bit-integer
 func NumberOfSetBits(bitset []uint32) uint32 {
 	numberOfSetBitsInBitsetElement := func(e uint32) uint32 {
 		e = e - ((e >> 1) & 0x55555555)
@@ -267,7 +269,7 @@ func SoftmaxFloat64Slice(rawValues []float64, outputValues []float64, startIndex
 	}
 	if sum != 0.0 {
 		inv_sum := 1.0 / sum
-		for i := startIndex; i < startIndex + len(rawValues); i++ {
+		for i := startIndex; i < startIndex+len(rawValues); i++ {
 			outputValues[i] *= inv_sum
 		}
 	}

@@ -205,5 +205,5 @@ func (e *BornEngine) applyTransform(predictions []float64, startIndex int) {
 		return
 	}
 	raw := predictions[startIndex : startIndex+e.nRawOutputGroups]
-	e.transform(raw, predictions, startIndex)
+	_ = e.transform(raw, predictions, startIndex)
 }

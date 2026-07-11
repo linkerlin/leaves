@@ -136,18 +136,6 @@ func treeVectorMargin(t *TreeIR, fvals []float64) []float64 {
 	return treeLeafVector(t, walkTree(t, fvals))
 }
 
-// treeMargin 标量叶贡献（向量叶时返回 dim0，供旧式单输出路径）。
-func treeMargin(t *TreeIR, fvals []float64) float64 {
-	if t.OutputDim > 1 {
-		vec := treeVectorMargin(t, fvals)
-		if len(vec) > 0 {
-			return vec[0]
-		}
-		return 0
-	}
-	return predictTreeScalar(t, fvals)
-}
-
 func predictTreeScalar(t *TreeIR, fvals []float64) float64 {
 	if t.NumNodes == 0 {
 		if len(t.LeafValue) > 0 {

@@ -21,12 +21,12 @@ type Config struct {
 
 // QuantizedForest 阈值 int8 量化后的森林（叶子 float 不变）。
 type QuantizedForest struct {
-	Forest       tree.ForestIR
-	QThreshold   [][]int8
-	Quantized    [][]bool
-	FeatureMin   []float64
-	FeatureSpan  []float64
-	levels       int
+	Forest      tree.ForestIR
+	QThreshold  [][]int8
+	Quantized   [][]bool
+	FeatureMin  []float64
+	FeatureSpan []float64
+	levels      int
 }
 
 // QuantizeForest 对数值分裂阈值做 per-feature int8 仿射量化。
@@ -198,10 +198,10 @@ func (qf *QuantizedForest) MaxThresholdQuantError() float64 {
 
 // Engine 量化阈值推理引擎（叶子 float；实现 predict.Engine）。
 type Engine struct {
-	qf           *QuantizedForest
-	transform    tree.TransformFn
-	outputType   tree.TransformType
-	nRawGroups   int
+	qf            *QuantizedForest
+	transform     tree.TransformFn
+	outputType    tree.TransformType
+	nRawGroups    int
 	nOutputGroups int
 }
 
@@ -328,5 +328,5 @@ func (e *Engine) applyTransform(raw, output []float64, start int) {
 	if e.transform == nil || e.outputType == tree.TransformRaw {
 		return
 	}
-	e.transform(raw, output, start)
+	_ = e.transform(raw, output, start)
 }

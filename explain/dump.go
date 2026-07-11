@@ -43,11 +43,9 @@ func dumpNode(b *strings.Builder, t *tree.TreeIR, nodeIdx int32, depth int, name
 	ni := int(nodeIdx)
 	feat := int(t.SplitFeature[ni])
 	name := featureNameOrDefault(names, feat)
-	cond := "<"
+	cond := "<="
 	if ni < len(t.IsCategorical) && t.IsCategorical[ni] {
 		cond = "=="
-	} else {
-		cond = "<="
 	}
 	dl := 0
 	if ni < len(t.DefaultLeft) && t.DefaultLeft[ni] {

@@ -2,12 +2,6 @@ package treebuilder
 
 import "github.com/linkerlin/leaves/data"
 
-const gpuHistMinSamples = 64 // 保留名供文档引用；运行时用 gpuHistMinSamplesForDepth
-
-func gpuHistBuildEnabled(cfg Config) bool {
-	return false // Phase 3：单特征 GPU hist 由 batchAccumulateHistWebGPU 统一处理
-}
-
 func accumulateHistCPU(
 	feat int,
 	idx []int,

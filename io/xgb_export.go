@@ -103,11 +103,11 @@ func buildXGBExportDoc(ir *model.ModelIR, objective string) map[string]interface
 				"model": modelObj,
 			},
 			"learner_model_param": map[string]string{
-				"base_score":           baseScoreStr,
-				"boost_from_average":   boostFromAvg,
-				"num_class":            strconv.Itoa(numClass),
-				"num_feature":          strconv.Itoa(f.NumFeatures),
-				"num_target":           strconv.Itoa(maxInt(1, ir.NRawOutputGroups)),
+				"base_score":         baseScoreStr,
+				"boost_from_average": boostFromAvg,
+				"num_class":          strconv.Itoa(numClass),
+				"num_feature":        strconv.Itoa(f.NumFeatures),
+				"num_target":         strconv.Itoa(maxInt(1, ir.NRawOutputGroups)),
 			},
 			"objective": map[string]interface{}{
 				"name": objective,
@@ -177,21 +177,21 @@ func exportTreeJSON(t *tree.TreeIR, id int) map[string]interface{} {
 }
 
 type xgbFlatTree struct {
-	numNodes             int
-	numFeature           int
-	left                 []int32
-	right                []int32
-	splitIdx             []int32
-	splitCond            []float64
-	splitType            []int
-	defaultLeft          []int
-	baseWeights          []float64
-	lossChanges          []float64
-	sumHessian           []float64
-	categories           []int32
-	categoriesNodes      []int32
-	categoriesSegments   []int64
-	categoriesSizes      []int64
+	numNodes           int
+	numFeature         int
+	left               []int32
+	right              []int32
+	splitIdx           []int32
+	splitCond          []float64
+	splitType          []int
+	defaultLeft        []int
+	baseWeights        []float64
+	lossChanges        []float64
+	sumHessian         []float64
+	categories         []int32
+	categoriesNodes    []int32
+	categoriesSegments []int64
+	categoriesSizes    []int64
 }
 
 func treeIRToXGBFlat(t *tree.TreeIR) xgbFlatTree {
@@ -240,8 +240,7 @@ func treeIRToXGBFlat(t *tree.TreeIR) xgbFlatTree {
 		return lc, sh
 	}
 
-	var addLeaf func(val float64) int32
-	addLeaf = func(val float64) int32 {
+	addLeaf := func(val float64) int32 {
 		idx := int32(len(left))
 		left = append(left, -1)
 		right = append(right, -1)

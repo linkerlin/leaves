@@ -12,9 +12,9 @@ var _ predict.Engine = (*NativeEngine)(nil)
 
 // NativeEngine 纯 Go 线性模型推理引擎。
 type NativeEngine struct {
-	linear      *LinearIR
-	transform   tree.TransformFn
-	outputType  tree.TransformType
+	linear        *LinearIR
+	transform     tree.TransformFn
+	outputType    tree.TransformType
 	nOutputGroups int
 }
 
@@ -30,8 +30,6 @@ func NewNativeEngine(lin *LinearIR, transform tree.TransformFn, outputType tree.
 		nOutputGroups: nOutputGroups,
 	}
 }
-
-func (e *NativeEngine) adjNEst(n int) int { return 1 }
 
 func (e *NativeEngine) predictRaw(fvals []float64, predictions []float64, startIndex int) {
 	lin := e.linear
@@ -59,7 +57,7 @@ func (e *NativeEngine) applyTransform(predictions []float64, startIndex int) {
 		return
 	}
 	raw := predictions[startIndex : startIndex+e.linear.NumOutputGroups]
-	e.transform(raw, predictions, startIndex)
+	_ = e.transform(raw, predictions, startIndex)
 }
 
 func (e *NativeEngine) PredictSingle(fvals []float64, nEstimators int) float64 {
@@ -193,7 +191,7 @@ func (e *NativeEngine) PredictLeafIndicesCSR(
 	return fmt.Errorf("gblinear does not support leaf index prediction")
 }
 
-func (e *NativeEngine) NOutputGroups() int   { return e.nOutputGroups }
+func (e *NativeEngine) NOutputGroups() int    { return e.nOutputGroups }
 func (e *NativeEngine) NRawOutputGroups() int { return e.linear.NumOutputGroups }
 func (e *NativeEngine) NFeatures() int        { return e.linear.NumFeatures }
 func (e *NativeEngine) NEstimators() int      { return 1 }

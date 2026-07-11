@@ -1,15 +1,15 @@
 package objective
 
-// RankOptionsFromTrain 由训练配置构造 RankOptions（避免 objective→train 循环依赖）。
+// RankTrainConfig 排序训练配置（NDCG-K、lambda 归一化等；供 objective 构造 RankOptions，避免 objective→train 循环依赖）。
 type RankTrainConfig struct {
-	NDCGK                  int
-	LambdaNorm             bool
-	MaxPosition            int
-	PairMethod             RankPairMethod
-	NumPairPerSample       int
-	PairSeed               int64
-	LambdaNormalization    bool
-	ScoreNormalization     bool
+	NDCGK               int
+	LambdaNorm          bool
+	MaxPosition         int
+	PairMethod          RankPairMethod
+	NumPairPerSample    int
+	PairSeed            int64
+	LambdaNormalization bool
+	ScoreNormalization  bool
 }
 
 func rankOptsFromTrain(cfg RankTrainConfig) RankOptions {

@@ -1,0 +1,45 @@
+# golangci-lint v2 配置
+#
+# 门禁集（blocking）：
+#   - govet        关闭 composites 分析器（根包兼容层存在合法的位置式结构体字面量）
+#   - ineffassign  捕获无效赋值（真实 bug 类）
+#   - unused       死代码（LINT-2 已清零）
+#   - staticcheck  关闭 QF1003/ST1000/ST1003（tagged-switch 风格 / 包注释 / 命名风格）
+#   - errcheck     未检查的 error；用 std-error-handling 预设排除惯例忽略项
+#                  （Close / Flush / stdout.Write / Remove / Fprint*），真实项用 `_ =` 显式处理。
+#   - gofmt        formatter（LINT-4 全仓归一后锁定；CI 经 action 自动应用）。
+version: "2"
+
+linters:
+  default: none
+  enable:
+    - govet
+    - ineffassign
+    - unused
+    - staticcheck
+    - errcheck
+  settings:
+    govet:
+      disable:
+        - composites
+    staticcheck:
+      checks:
+        - all
+        - -QF1003
+        - -ST1000
+        - -ST1003
+  exclusions:
+    presets:
+      - std-error-handling
+    rules:
+      # 测试通过值断言（PredictCSR 等）而非 error；测试 error 忽略不进门禁。
+      - path: '(.+)_test\.go'
+        linters:
+          - errcheck
+
+formatters:
+  enable:
+    - gofmt
+
+issues:
+  max-same-issues: 0

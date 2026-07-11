@@ -146,17 +146,3 @@ func wrapLoadError(path string, format Format, err error) error {
 		cause:  err,
 	}
 }
-
-// newPlaceholderError 占位格式（如 ONNX）的标准错误。
-func newPlaceholderError(path string, f Format) error {
-	sup := SupportOf(f)
-	return &LoadError{
-		Path:   path,
-		Format: f,
-		Level:  SupportPlaceholder,
-		Op:     "load",
-		Msg:    fmt.Sprintf("%s import not implemented", sup.Name),
-		Hint:   sup.Hint,
-		cause:  ErrONNXNotImplemented,
-	}
-}

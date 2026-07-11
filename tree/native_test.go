@@ -6,11 +6,13 @@ import (
 )
 
 // 构造一棵简单的数值树用于测试
-//        [0] feature=0, threshold=0.5
-//        /            \
-//    Leaf(0.1)    [1] feature=1, threshold=1.5
-//                  /            \
-//              Leaf(0.2)     Leaf(0.3)
+//
+//	    [0] feature=0, threshold=0.5
+//	    /            \
+//	Leaf(0.1)    [1] feature=1, threshold=1.5
+//	              /            \
+//	          Leaf(0.2)     Leaf(0.3)
+//
 // 注：lgTree 使用显式子节点索引存储（Left/Right 直接指向 nodes 数组下标或叶子值表下标）
 func makeSimpleTree() *TreeIR {
 	nodes := []LgNodeData{
@@ -25,15 +27,6 @@ func makeSimpleTree() *TreeIR {
 func makeConstantTree() *TreeIR {
 	leafValues := []float64{0.42}
 	return BuildTreeIR(nil, leafValues, nil, nil, 0)
-}
-
-// 构造分类特征树
-func makeCategoricalTree() *TreeIR {
-	nodes := []LgNodeData{
-		{Feature: 0, Threshold: 5.0, Flags: flagCategorical | flagLeftLeaf | flagCatOneHot, Left: 0, Right: 1},
-	}
-	leafValues := []float64{1.0, -1.0}
-	return BuildTreeIR(nodes, leafValues, nil, nil, 1)
 }
 
 func makeNonCatTree() *TreeIR {

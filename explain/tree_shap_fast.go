@@ -14,24 +14,6 @@ type pathElement struct {
 	pweight      float64
 }
 
-// treeShapFast 使用 O(T·D²) Tree SHAP（tree_path_dependent，SumHess 作覆盖权重）。
-func treeShapFast(t *tree.TreeIR, x []float64, phi []float64) {
-	if t == nil || t.NumNodes == 0 {
-		return
-	}
-	maxd := t.MaxDepth + 2
-	if maxd < 4 {
-		maxd = 4
-	}
-	pathBuf := make([]pathElement, (maxd*(maxd+1))/2)
-	nodeW := computeNodeWeightsArr(t)
-	xMissing := make([]bool, len(x))
-	for i, v := range x {
-		xMissing[i] = math.IsNaN(v)
-	}
-	treeShapRecursive(t, x, xMissing, nodeW, phi, 0, 0, pathBuf, 1, 1, -1, 0, 0, 1)
-}
-
 // treeShapFastReuse LIB-22：复用 missing 掩码、节点权重与 path 缓冲（batch/多样本）。
 func treeShapFastReuse(t *tree.TreeIR, x []float64, xMissing []bool, nodeW []float64, pathBuf []pathElement, phi []float64) {
 	if t == nil || t.NumNodes == 0 {
@@ -61,18 +43,6 @@ func pathBufLen(t *tree.TreeIR) int {
 		maxd = 4
 	}
 	return (maxd * (maxd + 1)) / 2
-}
-
-// computeNodeWeights 保留 map 版兼容内部旧调用；新路径用 computeNodeWeightsArr。
-func computeNodeWeights(t *tree.TreeIR) map[int32]float64 {
-	arr := computeNodeWeightsArr(t)
-	w := make(map[int32]float64, len(arr)+8)
-	for i, v := range arr {
-		if v > 0 {
-			w[int32(i)] = v
-		}
-	}
-	return w
 }
 
 func extendPath(path []pathElement, uniqueDepth int, zeroFraction, oneFraction float64, featureIndex int) {

@@ -18,7 +18,7 @@
 - 推理：`leaves.LoadFromFile`（默认开启 `AutoTransform`），或者沿用旧的 `leaves.LGEnsembleFromFile` / `leaves.XGEnsembleFromFile`。
 - 训练：`leaves.NewLearner` / `train.NewLearner`、`leaves.LoadDataAuto` / `data.FromFileAuto`（带内容嗅探），以及便利函数 `leaves.NewLearnerFromModelAndData` —— 它能从参考模型里反推出 objective。
 
-回归矩阵见 [docs/testdata-matrix.md](docs/testdata-matrix.md)；路线图 [演进计划.md](演进计划.md)（v5.1）；Agent 契约 [演进方案.md](演进方案.md)；扩展 objective/metric 见 [docs/extension-points.md](docs/extension-points.md)；backlog [TODO.md](TODO.md)。
+回归矩阵见 [docs/testdata-matrix.md](docs/testdata-matrix.md)；路线图 [演进计划.md](演进计划.md)（v5.4）；Agent 契约 [演进方案.md](演进方案.md)（v1.5）；扩展 objective/metric 见 [docs/extension-points.md](docs/extension-points.md)；backlog [TODO.md](TODO.md)。
 
 ## 特性
 
@@ -430,8 +430,8 @@ model.NewEnsemble(eng) // 替换线上 Ensemble 引擎
 
 ## Agent 自动化（SKILL 驱动，无 MCP）
 
-> **Agentic 契约已达成**（见 [`演进方案.md`](演进方案.md) v1.3 DoD）。  
-> 库整体 12 个月路线图见 [`演进计划.md`](演进计划.md) v5.0 — 二者互补，不互相替代。
+> **Agentic 契约已达成**（见 [`演进方案.md`](演进方案.md) v1.5 DoD）。  
+> 库整体 12 个月路线图见 [`演进计划.md`](演进计划.md) v5.4 — 二者互补，不互相替代。
 
 Agent 通过 **SKILL + `leaves` CLI + metrics.json** 完成「训练→调参→发布」；**Agent 即优化器**（搜索逻辑在 SKILL，库不内置 HPO）。
 
@@ -520,7 +520,7 @@ Born 后端的微基准（Windows / WebGPU）见 [docs/benchmark-baseline.md](do
 
 ## 项目演进
 
-路线图现已转为“当前代码库审计 + 下一年演进计划”的写法。见 [演进计划.md](演进计划.md) 的 **v5.0**，以及作为历史已完成清单的 [TODO.md](TODO.md)。
+路线图现已转为“当前代码库审计 + 下一年演进计划”的写法。见 [演进计划.md](演进计划.md) 的 **v5.4**，以及作为历史已完成清单的 [TODO.md](TODO.md)。
 
 ## 联系方式
 

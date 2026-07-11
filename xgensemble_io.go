@@ -51,7 +51,6 @@ func xgTreeFromTreeModel(origTree *xgbin.TreeModel, numFeatures uint32) (lgTree,
 	}
 
 	createNode := func(origNode *xgbin.Node) (lgNode, error) {
-		node := lgNode{}
 		// count nan as missing value
 		// NOTE: this differs with XGBosst realization: could be a problem
 		missingType := uint8(missingNan)
@@ -60,7 +59,7 @@ func xgTreeFromTreeModel(origTree *xgbin.TreeModel, numFeatures uint32) (lgTree,
 		if xgDefaultLeft(origNode) {
 			defaultType = defaultLeft
 		}
-		node = numericalNode(xgSplitIndex(origNode), missingType, float64(origNode.Info), defaultType)
+		node := numericalNode(xgSplitIndex(origNode), missingType, float64(origNode.Info), defaultType)
 
 		if origNode.CLeft < 0 {
 			return node, fmt.Errorf("logic error: got origNode.CLeft < 0")

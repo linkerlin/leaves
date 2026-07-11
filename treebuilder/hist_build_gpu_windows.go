@@ -95,26 +95,6 @@ func batchAccumulateHistWebGPU(
 	return out
 }
 
-func accumulateHistWebGPU(
-	feat int,
-	idx []int,
-	grad, hess []float64,
-	numBins int,
-	sumG, sumH, lambda float64,
-	cfg Config,
-) (histG, histH []float64, ok bool) {
-	_ = numBins
-	batch := batchAccumulateHistWebGPU([]int{feat}, idx, grad, hess, sumG, sumH, lambda, cfg)
-	if batch == nil {
-		return nil, nil, false
-	}
-	r, found := batch[feat]
-	if !found || !r.ok {
-		return nil, nil, false
-	}
-	return r.histG, r.histH, true
-}
-
 func accumulateOneHistWebGPU(
 	gpu *bornwebgpu.Backend,
 	feat int,

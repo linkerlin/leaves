@@ -23,7 +23,7 @@ func TestBatchGainScanMatchesCPU(t *testing.T) {
 	feats := []int{0, 1, 2, 3, 4, 5}
 	sumG, sumH := sumGradHess(idx, grad, hess)
 	batch := batchAccumulateHistWebGPU(feats, idx, grad, hess, sumG, sumH, cfg.Lambda, cfg)
-	if batch == nil || len(batch) == 0 {
+	if len(batch) == 0 {
 		t.Skip("webgpu batch unavailable")
 	}
 	for _, f := range feats {

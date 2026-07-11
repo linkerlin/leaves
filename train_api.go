@@ -44,12 +44,7 @@ const (
 	TrainTreeMethodAuto  = train.TreeMethodAuto
 )
 
-// NewTrainLearner 创建训练器。
-func NewTrainLearner(cfg TrainConfig) (*TrainLearner, error) {
-	return train.NewLearner(cfg)
-}
-
-// NewLearner 同 NewTrainLearner。
+// NewLearner 创建训练器。
 func NewLearner(cfg TrainConfig) (*Learner, error) {
 	return train.NewLearner(cfg)
 }
@@ -72,22 +67,6 @@ func FitExternal(cfg TrainConfig, em data.ExternalMemoryMatrix) (*Learner, error
 // NewEarlyStopping 创建早停。
 func NewEarlyStopping(rounds int, maximize bool) *EarlyStopping {
 	return train.NewEarlyStopping(rounds, maximize)
-}
-
-// TrainDense 在 Dense 数据上训练并返回 Learner。
-func TrainDense(vals []float64, rows, cols int, labels []float64, cfg TrainConfig) (*TrainLearner, error) {
-	dm, err := data.NewDense(vals, rows, cols, labels, nil)
-	if err != nil {
-		return nil, err
-	}
-	learner, err := train.NewLearner(cfg)
-	if err != nil {
-		return nil, err
-	}
-	if err := learner.Fit(dm); err != nil {
-		return nil, err
-	}
-	return learner, nil
 }
 
 // FileLoadOptions 训练数据文件加载选项（含自动嗅探）。

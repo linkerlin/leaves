@@ -217,7 +217,13 @@ func TestLGPredLeaf(t *testing.T) {
 	model = model.EnsembleWithLeafPredictions()
 
 	test, err := mat.DenseMatFromCsvFile(testPath, 0, false, " ", 0.0)
+	if err != nil {
+		t.Fatal(err)
+	}
 	predLeavesTruth, err := mat.DenseMatFromCsvFile(predLeavesTruthPath, 0, false, " ", 0.0)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Test Single
 	fvals := test.Values[:test.Cols]

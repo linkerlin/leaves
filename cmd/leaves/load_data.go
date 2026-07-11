@@ -58,5 +58,3 @@ func loadMatrixOpts(path, naPolicy string, numTarget int) (data.Matrix, error) {
 	}
 	return dm, nil
 }
-
-
