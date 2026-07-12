@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+---
+
+## [2.3.0] - 2026-07-11
+
+> **主题**：完整 ONNX Graph 导入（复用 born 运行时，原列「明确不做」）  
+> **Release 正文**：[`docs/release-notes-v2.3.0.md`](docs/release-notes-v2.3.0.md)
+
 ### Added
 
 - **完整 ONNX Graph 导入**（`io.LoadOnnxGraph`，原列「明确不做」，现落地）：
