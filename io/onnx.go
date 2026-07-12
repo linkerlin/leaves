@@ -1,12 +1,12 @@
-// Package io — ONNX TreeEnsemble 极小子集导入（LIB-10）。
+// Package io — ONNX 模型导入。
 //
-// 支持范围（experimental）：
-//   - 算子：ai.onnx.ml TreeEnsembleRegressor
-//   - 分裂：BRANCH_LEQ + LEAF；聚合 SUM；post_transform NONE
-//   - 连续特征；标量叶（每树一个输出组）
+// 两条路径：
+//   - LoadONNX：ai.onnx.ml TreeEnsembleRegressor 子集（LIB-10，BRANCH_LEQ/LEAF/SUM/NONE），
+//     转 ForestIR 走 Native/Born 树引擎；wasm 可用。
+//   - LoadOnnxGraph：完整 ONNX 计算图（任意算子，30+，opset 1–21）via born 运行时；
+//     通用 NN/图推理；返回 OnnxModel；仅非 wasm。
 //
-// 不支持：完整 Graph 任意算子、分类器后处理、CATEGORY 分裂、向量叶多目标单树等。
-// 更复杂模型请外部转为 XGBoost JSON / leaves.json。
+// 仍不支持：TreeEnsembleClassifier 后处理、CATEGORY 分裂、向量叶多目标单树（TreeEnsemble 子集内）。
 package io
 
 import (

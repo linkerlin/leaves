@@ -24,14 +24,16 @@
 | **LightGBM text** | 稳定 | `tree=` / `version=` | text model | 勿把数值 TSV 当模型 | `lg_breast_cancer.txt` |
 | **LightGBM JSON** | 稳定 | `tree_info` | LGB JSON | 与 text 同源导出 | `lg_dart_*.json` |
 | **scikit-learn** | **实验** | `.pkl` / `.joblib` / pickle 魔数 | 窄协议 GB 历史 pickle | **优先转 XGB JSON / leaves.json** | `sk_*.model`（实验） |
-| **ONNX** | **实验** | `.onnx` | **TreeEnsembleRegressor 子集**（BRANCH_LEQ/SUM/NONE） | 完整 Graph 仍请转 JSON/leaves | `io/onnx_test.go` |
+| **ONNX** | **实验**（子集）/**可用**（Graph） | `.onnx` | `LoadONNX`：TreeEnsembleRegressor 子集（BRANCH_LEQ/SUM/NONE）；`LoadOnnxGraph`：完整 Graph（born 运行时，30+ 算子，非 wasm） | TreeEnsembleClassifier / 类别分裂仍不支持 | `io/onnx_test.go`, `io/onnx_graph_native_test.go` |
 
-## ONNX 策略（LIB-10 子集）
+## ONNX 策略
 
-1. **实验性导入**：仅 `ai.onnx.ml` **TreeEnsembleRegressor**；`BRANCH_LEQ` + `LEAF`；`aggregate=SUM`；`post_transform=NONE`。  
-2. **不做**：任意 Graph 算子链、Classifier 后处理、类别分裂、向量叶多目标单树、外部 initializer 依赖。  
-3. 失败时 `*LoadError` level=`experimental`，hint 指向转 XGB JSON / leaves.json。  
-4. 完整 Graph 仍 **明确不做**（见 TODO 非目标）。
+两条路径：
+
+1. **TreeEnsemble 子集**（`LoadONNX`，LIB-10，wasm 可用）：仅 `ai.onnx.ml` **TreeEnsembleRegressor**；`BRANCH_LEQ` + `LEAF`；`aggregate=SUM`；`post_transform=NONE`。转 ForestIR 走 Native/Born 树引擎。
+2. **完整 Graph**（`LoadOnnxGraph`，born 运行时，**非 wasm**）：任意算子（30+，opset 1–21），通用 NN/图推理；返回 `OnnxModel.Predict`。复用 `github.com/born-ml/born/onnx` 运行时，不在 leaves 内重实现算子。
+
+仍不支持：TreeEnsembleClassifier 后处理、类别分裂、向量叶多目标单树（子集内）。失败时 `*LoadError`（子集，level=`experimental`）或 `LoadOnnxGraph` 错误带可操作 hint。
 
 ## scikit-learn 策略（LIB-11 收窄）
 

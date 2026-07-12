@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+### Added
+
+- **完整 ONNX Graph 导入**（`io.LoadOnnxGraph`，原列「明确不做」，现落地）：
+  - 复用 `github.com/born-ml/born/onnx` 运行时（30+ 算子，opset 1–21），不在 leaves 重实现算子。
+  - `LoadOnnxGraph(data []byte) (OnnxModel, error)`：返回 `OnnxModel`，`Predict([]float32) ([]float32, error)` 单样本前向；暴露 InputNames/OutputNames/OpsetVersion。
+  - 与既有 `LoadONNX`（TreeEnsembleRegressor 子集，wasm 可用）互补：通用 NN / 图推理走 born，仅非 wasm（wasm stub 返回可操作错误）。
+  - 关键：born 公共 `onnx.Model` 接口的方法引用 `internal/tensor.RawTensor`，但 `born/tensor` 公共包以 `type RawTensor = tensor.RawTensor` 别名重导出，使 leaves 可构造张量并调用 Forward。
+
 ---
 
 ## [2.2.0] - 2026-07-11
