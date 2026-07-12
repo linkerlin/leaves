@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+---
+
+## [2.4.0] - 2026-07-11
+
+> **主题**：BackendAuto 第二轮 — opt-in profiling 探测  
+> **Release 正文**：[`docs/release-notes-v2.4.0.md`](docs/release-notes-v2.4.0.md)
+
 ### Added
 
 - **BackendAuto 第二轮：opt-in profiling**（`tree.ProfileBackend`）：
