@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### Added
+
+- **BackendAuto 第二轮：opt-in profiling**（`tree.ProfileBackend`）：
+  - `ProfileBackend(caps, vals, nrows, ncols, iters) ProfileResult`：warm-up + 计时 Native / BornCPU / BornGPU，返回各后端实测 ns/op 与最快推荐（`Pick/Rule/Reason`，Rule 码 `profile_*`）。
+  - **不改 2.0 默认决策表**（`SelectBackendExplained` 行为不变）；opt-in：调用方传代表性批量样本得到测量证据后再决定 Backend。
+  - 不支持的后端（cat-small 森林 / 无 WebGPU）`Ok=false` 不参与推荐；Native 始终计时。
+
 ---
 
 ## [2.3.0] - 2026-07-11

@@ -58,18 +58,32 @@ type WorkloadHint struct {
 
 `metrics.json` 在单次 `leaves train` Fit 后可含 **`train_accel`**（实际训练加速模式）；**不含**推理 BackendAuto 字段。调试性能时分别设置 `LEAVES_TRAIN_ACCEL` / 显式 `tree.Backend`，不要用训练环境变量期望改变推理选型。
 
-## 第二轮候选（LIB-01，默认不进主线）
+## 第二轮：opt-in profiling（`tree.ProfileBackend`）
 
-当前 2.0 决策表已用固定阈值 + 单测锁定。**仅在有明确 workload 证据时**再考虑：
+**已交付**（v2.3.0 之后）——数据驱动选型，**不破坏 2.0 默认决策表**：
 
-| 候选 | 动机 | 风险 |
-|------|------|------|
-| 短 profiling 探测（warm-up 几次选更快后端） | 跨机差异大 | 延迟抖动、破坏可解释 Rule |
-| 更细 batch 分段（如 16/32） | 中等 batch 灰色区 | 阈值爆炸、文档漂移 |
-| 设备能力细探测（VRAM、DX 版本） | BornGPU 误选 | 平台分支增多 |
-| 训练 hist 与推理 Auto 的统一环境变量 | 用户混淆 | 已明确分离（§训练 vs 推理） |
+`ProfileBackend(caps, vals, nrows, ncols, iters) ProfileResult` 对实际 workload warm-up + 计时 Native / BornCPU / BornGPU，返回各后端 ns/op 与最快推荐。
 
-原则不变：**任何自动选择必须能被 Rule 码解释**；第二轮须先改 `docs/backend-auto.md` + `TestBackendAutoDecisionTable`，再改代码。
+- **opt-in**：默认 `SelectBackendExplained`（2.0 决策表）行为不变；需要测量证据时显式调用 `ProfileBackend`。
+- **可解释**：`ProfileResult.Pick / Rule / Reason`；Rule 码 `profile_native | profile_born_cpu | profile_born_gpu | profile_none_ok | profile_invalid`，Reason 含各后端实测 ns/op。
+- **不破坏 golden**：Native 始终参与计时；不支持的后端（cat-small 森林 / 无 WebGPU）`Ok=false` 不参与推荐。
+- **公平**：各后端 nEstimators=0（全量树）、同输入、同 warm-up。
+
+```go
+res := tree.ProfileBackend(caps, sampleVals, nrows, ncols, 20) // iters 建议 ≥10
+opts.Backend = res.Pick                    // 用测量结果替代启发式
+// res.Native.NsPerOp / res.BornCPU.NsPerOp / res.BornGPU.NsPerOp / res.Reason
+```
+
+### 仍默认不做（需产品信号）
+
+| 候选 | 风险 |
+|------|------|
+| 更细 batch 分段（16/32） | 阈值爆炸、文档漂移 |
+| 设备能力细探测（VRAM、DX 版本） | 平台分支增多 |
+| ProfileBackend 自动接入 SelectBackend（Auto 自动跑 profiling） | 首调用延迟、代表性样本来源不明 |
+
+原则不变：**任何自动选择必须能被 Rule 码解释**；改决策表须先改本文档 + `TestBackendAutoDecisionTable`。
 
 ## 部署建议（写实）
 
