@@ -11,7 +11,7 @@
 
 ## 简介
 
-`leaves` 是一个**纯 Go** 写的 GBRT（梯度提升回归树）**训练与推理**库。能直接加载 XGBoost / LightGBM / scikit-learn 模型，也能自训练（hist / exact、排序、生存、tweedie 等），全程不需要任何 C 绑定。
+`leaves` 是一个**纯 Go** 写的推荐系统用排序模型**训练与推理**库。能直接加载 XGBoost / LightGBM / scikit-learn 模型，也能自训练（hist / exact、排序、生存、tweedie 等），全程不需要任何 C 绑定。
 
 **推荐入口**
 

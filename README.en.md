@@ -11,10 +11,10 @@
 
 ## Introduction
 
-`leaves` is a **pure Go** library for **inference and training of GBRT**
-(Gradient Boosted Regression Trees) models. It loads XGBoost, LightGBM, and
-scikit-learn models out of the box, and ships a complete in-Go training loop
-(hist / exact, ranking, survival, tweedie, …) — no C bindings required.
+`leaves` is a **pure Go** library for **training and inference of ranking
+models for recommender systems**. It loads XGBoost, LightGBM, and scikit-learn
+models out of the box, and ships a complete in-Go training loop (hist / exact,
+ranking, survival, tweedie, …) — no C bindings required.
 
 **Recommended entry points**
 
