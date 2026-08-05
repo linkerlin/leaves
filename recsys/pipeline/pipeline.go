@@ -3,14 +3,14 @@ package pipeline
 import (
 	"fmt"
 
-	"github.com/linkerlin/leaves/recsys"
-	"github.com/linkerlin/leaves/recsys/deal"
-	"github.com/linkerlin/leaves/recsys/prep"
-	"github.com/linkerlin/leaves/recsys/rankconv"
-	"github.com/linkerlin/leaves/recsys/recall"
-	"github.com/linkerlin/leaves/recsys/synth"
-	"github.com/linkerlin/leaves/recsys/trainrank"
-	"github.com/linkerlin/leaves/recsys/tsvio"
+	"github.com/linkerlin/leaves/v2/recsys"
+	"github.com/linkerlin/leaves/v2/recsys/deal"
+	"github.com/linkerlin/leaves/v2/recsys/prep"
+	"github.com/linkerlin/leaves/v2/recsys/rankconv"
+	"github.com/linkerlin/leaves/v2/recsys/recall"
+	"github.com/linkerlin/leaves/v2/recsys/synth"
+	"github.com/linkerlin/leaves/v2/recsys/trainrank"
+	"github.com/linkerlin/leaves/v2/recsys/tsvio"
 )
 
 // Result 流水线各阶段摘要。

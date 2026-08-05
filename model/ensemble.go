@@ -9,7 +9,7 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/linkerlin/leaves/predict"
+	"github.com/linkerlin/leaves/v2/predict"
 )
 
 // BatchSize 并行批预测的批次大小。

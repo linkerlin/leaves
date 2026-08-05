@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	leavesio "github.com/linkerlin/leaves/io"
+	leavesio "github.com/linkerlin/leaves/v2/io"
 )
 
 // Checkpoint 训练检查点。

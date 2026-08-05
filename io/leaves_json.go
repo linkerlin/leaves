@@ -6,9 +6,9 @@ import (
 	"io"
 	"os"
 
-	"github.com/linkerlin/leaves/linear"
-	"github.com/linkerlin/leaves/model"
-	"github.com/linkerlin/leaves/tree"
+	"github.com/linkerlin/leaves/v2/linear"
+	"github.com/linkerlin/leaves/v2/model"
+	"github.com/linkerlin/leaves/v2/tree"
 )
 
 const leavesFormatVersion = 1

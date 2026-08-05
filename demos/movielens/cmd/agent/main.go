@@ -14,7 +14,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/linkerlin/leaves/demos/movielens/agentops"
+	"github.com/linkerlin/leaves/v2/demos/movielens/agentops"
 )
 
 func main() {

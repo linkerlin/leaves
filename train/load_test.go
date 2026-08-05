@@ -6,10 +6,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	_ "github.com/linkerlin/leaves"
-	"github.com/linkerlin/leaves/data"
-	leavesio "github.com/linkerlin/leaves/io"
-	"github.com/linkerlin/leaves/train"
+	_ "github.com/linkerlin/leaves/v2"
+	"github.com/linkerlin/leaves/v2/data"
+	leavesio "github.com/linkerlin/leaves/v2/io"
+	"github.com/linkerlin/leaves/v2/train"
 )
 
 func TestInferObjectiveFromModel(t *testing.T) {

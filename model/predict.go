@@ -3,7 +3,7 @@ package model
 import (
 	"fmt"
 
-	"github.com/linkerlin/leaves/predict"
+	"github.com/linkerlin/leaves/v2/predict"
 )
 
 // marginEngine 支持 raw margin 预测的后端（跳过 objective transform）。

@@ -7,12 +7,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	_ "github.com/linkerlin/leaves"
-	"github.com/linkerlin/leaves/data"
-	"github.com/linkerlin/leaves/io"
-	"github.com/linkerlin/leaves/metrics"
-	"github.com/linkerlin/leaves/model"
-	"github.com/linkerlin/leaves/train"
+	_ "github.com/linkerlin/leaves/v2"
+	"github.com/linkerlin/leaves/v2/data"
+	"github.com/linkerlin/leaves/v2/io"
+	"github.com/linkerlin/leaves/v2/metrics"
+	"github.com/linkerlin/leaves/v2/model"
+	"github.com/linkerlin/leaves/v2/train"
 )
 
 func TestT1BreastCancerE2E(t *testing.T) {

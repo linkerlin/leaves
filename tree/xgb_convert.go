@@ -3,7 +3,7 @@ package tree
 import (
 	"fmt"
 
-	"github.com/linkerlin/leaves/internal/xgbin"
+	"github.com/linkerlin/leaves/v2/internal/xgbin"
 )
 
 // TreeIRFromXGBModel 将 XGBoost 树模型（二进制或 JSON 解析结果）转为 TreeIR。

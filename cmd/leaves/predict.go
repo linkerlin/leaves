@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
-	leavesio "github.com/linkerlin/leaves/io"
+	leavesio "github.com/linkerlin/leaves/v2/io"
 )
 
 func cmdPredict(args []string) error {

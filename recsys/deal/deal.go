@@ -6,7 +6,7 @@ import (
 	"os"
 	"sort"
 
-	"github.com/linkerlin/leaves/recsys"
+	"github.com/linkerlin/leaves/v2/recsys"
 )
 
 // Config 发牌策略。

@@ -3,8 +3,8 @@ package train_test
 import (
 	"testing"
 
-	"github.com/linkerlin/leaves/train"
-	"github.com/linkerlin/leaves/treebuilder"
+	"github.com/linkerlin/leaves/v2/train"
+	"github.com/linkerlin/leaves/v2/treebuilder"
 )
 
 func TestResolveTrainTreeMethodWithAccel(t *testing.T) {

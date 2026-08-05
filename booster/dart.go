@@ -3,7 +3,7 @@ package booster
 import (
 	"math/rand"
 
-	"github.com/linkerlin/leaves/tree"
+	"github.com/linkerlin/leaves/v2/tree"
 )
 
 // DARTConfig DART 训练参数。

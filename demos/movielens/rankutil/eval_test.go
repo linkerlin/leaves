@@ -4,9 +4,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/linkerlin/leaves/data"
-	"github.com/linkerlin/leaves/demos/movielens/rankutil"
-	"github.com/linkerlin/leaves/train"
+	"github.com/linkerlin/leaves/v2/data"
+	"github.com/linkerlin/leaves/v2/demos/movielens/rankutil"
+	"github.com/linkerlin/leaves/v2/train"
 )
 
 func TestNDCGAtKSmoke(t *testing.T) {

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/linkerlin/leaves/data"
+	"github.com/linkerlin/leaves/v2/data"
 )
 
 // loadMatrix 按 NA 策略加载训练/评估数据（WP-20）。

@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"os"
 
-	_ "github.com/linkerlin/leaves" // 注册 io 加载器（leaves.json/XGB/LGB）
+	_ "github.com/linkerlin/leaves/v2" // 注册 io 加载器（leaves.json/XGB/LGB）
 )
 
 const usage = `leaves — Agent 友好的训练/评估/预测/发布 CLI（SKILL 驱动，无 MCP）

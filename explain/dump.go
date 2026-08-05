@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/linkerlin/leaves/tree"
+	"github.com/linkerlin/leaves/v2/tree"
 )
 
 // DumpText 以类 XGBoost 文本格式 dump 森林（简化版）。

@@ -3,7 +3,7 @@ package io_test
 import (
 	"testing"
 
-	"github.com/linkerlin/leaves/io"
+	"github.com/linkerlin/leaves/v2/io"
 )
 
 func TestDefaultLoadOptionsAutoTransform(t *testing.T) {

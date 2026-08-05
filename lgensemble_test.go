@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/linkerlin/leaves/mat"
-	"github.com/linkerlin/leaves/util"
+	"github.com/linkerlin/leaves/v2/mat"
+	"github.com/linkerlin/leaves/v2/util"
 )
 
 func TestReadLGTree(t *testing.T) {

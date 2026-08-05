@@ -3,7 +3,7 @@ package leaves
 import (
 	"math"
 
-	"github.com/linkerlin/leaves/util"
+	"github.com/linkerlin/leaves/v2/util"
 )
 
 // xgEnsemble is XGBoost model (ensemble of trees)

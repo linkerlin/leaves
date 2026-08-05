@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/linkerlin/leaves/io"
+	"github.com/linkerlin/leaves/v2/io"
 )
 
 func TestSupportTableComplete(t *testing.T) {

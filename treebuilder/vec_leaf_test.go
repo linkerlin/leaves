@@ -4,7 +4,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/linkerlin/leaves/data"
+	"github.com/linkerlin/leaves/v2/data"
 )
 
 // TestBuildVectorLeaf 验证向量叶（multi_output_tree）建树的数学正确性。

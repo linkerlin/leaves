@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/linkerlin/leaves/recsys"
+	"github.com/linkerlin/leaves/v2/recsys"
 )
 
 func writeLines(path string, lines []string) error {

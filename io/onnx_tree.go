@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/linkerlin/leaves/tree"
+	"github.com/linkerlin/leaves/v2/tree"
 )
 
 // treeEnsembleAttrs 从 ONNX ai.onnx.ml TreeEnsembleRegressor 抽取的字段。

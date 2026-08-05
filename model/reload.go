@@ -19,7 +19,7 @@ func (e *Ensemble) Reload(path string, opts any) error {
 		return fmt.Errorf("model: nil ensemble")
 	}
 	if registeredReloadLoader == nil {
-		return fmt.Errorf("model: reload loader not registered: import github.com/linkerlin/leaves")
+		return fmt.Errorf("model: reload loader not registered: import github.com/linkerlin/leaves/v2")
 	}
 	next, err := registeredReloadLoader(path, opts)
 	if err != nil {

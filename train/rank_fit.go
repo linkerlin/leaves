@@ -3,8 +3,8 @@ package train
 import (
 	"fmt"
 
-	"github.com/linkerlin/leaves/data"
-	"github.com/linkerlin/leaves/objective"
+	"github.com/linkerlin/leaves/v2/data"
+	"github.com/linkerlin/leaves/v2/objective"
 )
 
 func isRankObjective(name string) bool {

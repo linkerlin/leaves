@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/linkerlin/leaves/data"
+	"github.com/linkerlin/leaves/v2/data"
 )
 
 // AFTNormal survival:aft（指数 AFT，μ=exp(pred)）。

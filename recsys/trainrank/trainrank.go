@@ -3,12 +3,12 @@ package trainrank
 import (
 	"fmt"
 
-	"github.com/linkerlin/leaves/data"
-	"github.com/linkerlin/leaves/demos/movielens/rankutil"
-	"github.com/linkerlin/leaves/io"
-	"github.com/linkerlin/leaves/recsys"
-	"github.com/linkerlin/leaves/recsys/tsvio"
-	"github.com/linkerlin/leaves/train"
+	"github.com/linkerlin/leaves/v2/data"
+	"github.com/linkerlin/leaves/v2/demos/movielens/rankutil"
+	"github.com/linkerlin/leaves/v2/io"
+	"github.com/linkerlin/leaves/v2/recsys"
+	"github.com/linkerlin/leaves/v2/recsys/tsvio"
+	"github.com/linkerlin/leaves/v2/train"
 )
 
 // EvalResult 训练评估结果。

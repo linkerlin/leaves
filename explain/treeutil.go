@@ -3,7 +3,7 @@ package explain
 import (
 	"math"
 
-	"github.com/linkerlin/leaves/tree"
+	"github.com/linkerlin/leaves/v2/tree"
 )
 
 // treeDecision 与 NativeEngine 一致的节点路由（数值 + 分类 + 缺失值）。

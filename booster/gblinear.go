@@ -1,8 +1,8 @@
 package booster
 
 import (
-	"github.com/linkerlin/leaves/data"
-	"github.com/linkerlin/leaves/linear"
+	"github.com/linkerlin/leaves/v2/data"
+	"github.com/linkerlin/leaves/v2/linear"
 )
 
 // GBLinearConfig 线性 booster 超参。

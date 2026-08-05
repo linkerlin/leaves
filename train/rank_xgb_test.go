@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/linkerlin/leaves/data"
-	"github.com/linkerlin/leaves/metrics"
-	"github.com/linkerlin/leaves/train"
+	"github.com/linkerlin/leaves/v2/data"
+	"github.com/linkerlin/leaves/v2/metrics"
+	"github.com/linkerlin/leaves/v2/train"
 )
 
 type rankXGBBaseline struct {

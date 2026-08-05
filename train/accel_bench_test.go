@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/linkerlin/leaves/data"
-	"github.com/linkerlin/leaves/train"
-	"github.com/linkerlin/leaves/tree"
-	"github.com/linkerlin/leaves/treebuilder"
+	"github.com/linkerlin/leaves/v2/data"
+	"github.com/linkerlin/leaves/v2/train"
+	"github.com/linkerlin/leaves/v2/tree"
+	"github.com/linkerlin/leaves/v2/treebuilder"
 )
 
 type accelBenchCase struct {

@@ -4,8 +4,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/linkerlin/leaves/explain"
-	"github.com/linkerlin/leaves/io"
+	"github.com/linkerlin/leaves/v2/explain"
+	"github.com/linkerlin/leaves/v2/io"
 )
 
 // BenchmarkTreeSHAPSingle 单样本 Tree SHAP（LIB-22 缓存路径）。

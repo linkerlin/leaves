@@ -1,6 +1,6 @@
 package train
 
-import "github.com/linkerlin/leaves/treebuilder"
+import "github.com/linkerlin/leaves/v2/treebuilder"
 
 // Booster 类型。
 const (

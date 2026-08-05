@@ -12,10 +12,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/linkerlin/leaves/data"
-	"github.com/linkerlin/leaves/metrics"
-	"github.com/linkerlin/leaves/objective"
-	"github.com/linkerlin/leaves/train"
+	"github.com/linkerlin/leaves/v2/data"
+	"github.com/linkerlin/leaves/v2/metrics"
+	"github.com/linkerlin/leaves/v2/objective"
+	"github.com/linkerlin/leaves/v2/train"
 )
 
 func init() {

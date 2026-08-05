@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/linkerlin/leaves/data"
+	"github.com/linkerlin/leaves/v2/data"
 )
 
 // RankedItem 单条候选（组内一行）。

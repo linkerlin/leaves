@@ -2,8 +2,8 @@
 package model
 
 import (
-	"github.com/linkerlin/leaves/linear"
-	"github.com/linkerlin/leaves/tree"
+	"github.com/linkerlin/leaves/v2/linear"
+	"github.com/linkerlin/leaves/v2/tree"
 )
 
 // ModelKind 模型种类。

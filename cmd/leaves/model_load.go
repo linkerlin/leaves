@@ -5,10 +5,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	leavesio "github.com/linkerlin/leaves/io"
-	"github.com/linkerlin/leaves/model"
-	"github.com/linkerlin/leaves/quantize"
-	"github.com/linkerlin/leaves/tree"
+	leavesio "github.com/linkerlin/leaves/v2/io"
+	"github.com/linkerlin/leaves/v2/model"
+	"github.com/linkerlin/leaves/v2/quantize"
+	"github.com/linkerlin/leaves/v2/tree"
 )
 
 // loadEnsemble 加载模型：.quant.json 走量化侧车（base+overlay），其余走标准 io。

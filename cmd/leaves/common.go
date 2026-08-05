@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/linkerlin/leaves/data"
-	"github.com/linkerlin/leaves/metrics"
+	"github.com/linkerlin/leaves/v2/data"
+	"github.com/linkerlin/leaves/v2/metrics"
 )
 
 // paramsRecord 记录当次 train 全部 CLI 旋钮，供 Agent 从 runs.jsonl 完整复现。

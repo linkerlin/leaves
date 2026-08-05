@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/linkerlin/leaves"
-	"github.com/linkerlin/leaves/model"
+	"github.com/linkerlin/leaves/v2"
+	"github.com/linkerlin/leaves/v2/model"
 )
 
 // Host 线程安全的模型持有者；支持热替换（Reload）。

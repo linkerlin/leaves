@@ -5,7 +5,7 @@ import (
 	"math"
 	"sort"
 
-	"github.com/linkerlin/leaves/recsys"
+	"github.com/linkerlin/leaves/v2/recsys"
 )
 
 // Config 召回参数。

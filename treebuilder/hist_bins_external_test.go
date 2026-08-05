@@ -3,7 +3,7 @@ package treebuilder
 import (
 	"testing"
 
-	"github.com/linkerlin/leaves/data"
+	"github.com/linkerlin/leaves/v2/data"
 )
 
 func TestBuildGlobalHistBinsExternalMatchesDense(t *testing.T) {

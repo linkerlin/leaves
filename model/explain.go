@@ -1,8 +1,8 @@
 package model
 
 import (
-	"github.com/linkerlin/leaves/explain"
-	"github.com/linkerlin/leaves/tree"
+	"github.com/linkerlin/leaves/v2/explain"
+	"github.com/linkerlin/leaves/v2/tree"
 )
 
 // Explainer 模型可解释性 API。

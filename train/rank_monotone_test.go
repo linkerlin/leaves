@@ -3,8 +3,8 @@ package train_test
 import (
 	"testing"
 
-	"github.com/linkerlin/leaves/data"
-	"github.com/linkerlin/leaves/train"
+	"github.com/linkerlin/leaves/v2/data"
+	"github.com/linkerlin/leaves/v2/train"
 )
 
 // monotoneRankingMatrix 合成排序数据：feat0 与 label 正相关，便于 feat0 递增单调约束。

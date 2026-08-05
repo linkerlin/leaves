@@ -3,9 +3,9 @@ package train
 import (
 	"fmt"
 
-	"github.com/linkerlin/leaves/booster"
-	"github.com/linkerlin/leaves/data"
-	"github.com/linkerlin/leaves/metrics"
+	"github.com/linkerlin/leaves/v2/booster"
+	"github.com/linkerlin/leaves/v2/data"
+	"github.com/linkerlin/leaves/v2/metrics"
 )
 
 // EarlyStopping 早停配置。

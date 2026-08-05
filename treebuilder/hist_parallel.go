@@ -4,7 +4,7 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/linkerlin/leaves/data"
+	"github.com/linkerlin/leaves/v2/data"
 )
 
 func effectiveThreads(n int) int {

@@ -4,9 +4,9 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/linkerlin/leaves/data"
-	leavesio "github.com/linkerlin/leaves/io"
-	"github.com/linkerlin/leaves/metrics"
+	"github.com/linkerlin/leaves/v2/data"
+	leavesio "github.com/linkerlin/leaves/v2/io"
+	"github.com/linkerlin/leaves/v2/metrics"
 )
 
 func cmdEval(args []string) error {

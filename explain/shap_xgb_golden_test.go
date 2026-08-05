@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/linkerlin/leaves/io"
+	"github.com/linkerlin/leaves/v2/io"
 )
 
 func TestXGBoostPredContribsSemantic(t *testing.T) {

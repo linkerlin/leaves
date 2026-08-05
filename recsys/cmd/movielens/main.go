@@ -10,9 +10,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/linkerlin/leaves/recsys"
-	"github.com/linkerlin/leaves/recsys/movielens"
-	"github.com/linkerlin/leaves/recsys/pipeline"
+	"github.com/linkerlin/leaves/v2/recsys"
+	"github.com/linkerlin/leaves/v2/recsys/movielens"
+	"github.com/linkerlin/leaves/v2/recsys/pipeline"
 )
 
 func main() {

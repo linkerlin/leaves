@@ -4,10 +4,10 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/linkerlin/leaves/data"
-	"github.com/linkerlin/leaves/explain"
-	leavesio "github.com/linkerlin/leaves/io"
-	"github.com/linkerlin/leaves/model"
+	"github.com/linkerlin/leaves/v2/data"
+	"github.com/linkerlin/leaves/v2/explain"
+	leavesio "github.com/linkerlin/leaves/v2/io"
+	"github.com/linkerlin/leaves/v2/model"
 )
 
 func cmdExplain(args []string) error {

@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/linkerlin/leaves/io"
+	"github.com/linkerlin/leaves/v2/io"
 )
 
 func TestDetectLightGBMMulticlassModel(t *testing.T) {

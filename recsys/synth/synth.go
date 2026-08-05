@@ -6,7 +6,7 @@ import (
 	"math/rand"
 	"sort"
 
-	"github.com/linkerlin/leaves/recsys"
+	"github.com/linkerlin/leaves/v2/recsys"
 )
 
 var defaultTags = []string{"drama", "comedy", "action", "doc"}

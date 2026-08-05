@@ -9,10 +9,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/linkerlin/leaves/internal/xgbin"
-	"github.com/linkerlin/leaves/linear"
-	"github.com/linkerlin/leaves/model"
-	"github.com/linkerlin/leaves/tree"
+	"github.com/linkerlin/leaves/v2/internal/xgbin"
+	"github.com/linkerlin/leaves/v2/linear"
+	"github.com/linkerlin/leaves/v2/model"
+	"github.com/linkerlin/leaves/v2/tree"
 )
 
 // XGBoostLoadResult JSON 加载结果。

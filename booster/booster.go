@@ -1,6 +1,6 @@
 package booster
 
-import "github.com/linkerlin/leaves/data"
+import "github.com/linkerlin/leaves/v2/data"
 
 // Booster 训练期 booster 接口。
 type Booster interface {

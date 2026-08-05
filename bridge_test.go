@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/linkerlin/leaves/mat"
+	"github.com/linkerlin/leaves/v2/mat"
 )
 
 // TestBridgeLightGBM 用真实 LightGBM 模型验证新旧引擎输出一致。

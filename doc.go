@@ -57,9 +57,9 @@ predict_breast_cancer_model.go:
 	import (
 		"fmt"
 
-		"github.com/linkerlin/leaves"
-		"github.com/linkerlin/leaves/mat"
-		"github.com/linkerlin/leaves/util"
+		"github.com/linkerlin/leaves/v2"
+		"github.com/linkerlin/leaves/v2/mat"
+		"github.com/linkerlin/leaves/v2/util"
 	)
 
 	func main() {
@@ -155,9 +155,9 @@ predict_iris_model.go:
 	import (
 		"fmt"
 
-		"github.com/linkerlin/leaves"
-		"github.com/linkerlin/leaves/mat"
-		"github.com/linkerlin/leaves/util"
+		"github.com/linkerlin/leaves/v2"
+		"github.com/linkerlin/leaves/v2/mat"
+		"github.com/linkerlin/leaves/v2/util"
 	)
 
 	func main() {

@@ -14,8 +14,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/linkerlin/leaves/model"
-	"github.com/linkerlin/leaves/tree"
+	"github.com/linkerlin/leaves/v2/model"
+	"github.com/linkerlin/leaves/v2/tree"
 )
 
 // ErrONNXNotImplemented 保留：完全无法解析或不在子集内时仍可 errors.Is。

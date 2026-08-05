@@ -7,11 +7,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/linkerlin/leaves/booster"
-	"github.com/linkerlin/leaves/data"
-	"github.com/linkerlin/leaves/io"
-	"github.com/linkerlin/leaves/metrics"
-	"github.com/linkerlin/leaves/train"
+	"github.com/linkerlin/leaves/v2/booster"
+	"github.com/linkerlin/leaves/v2/data"
+	"github.com/linkerlin/leaves/v2/io"
+	"github.com/linkerlin/leaves/v2/metrics"
+	"github.com/linkerlin/leaves/v2/train"
 )
 
 func TestCrossValidateRegression(t *testing.T) {

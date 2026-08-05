@@ -5,10 +5,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	_ "github.com/linkerlin/leaves"
-	"github.com/linkerlin/leaves/explain"
-	"github.com/linkerlin/leaves/io"
-	leafmodel "github.com/linkerlin/leaves/model"
+	_ "github.com/linkerlin/leaves/v2"
+	"github.com/linkerlin/leaves/v2/explain"
+	"github.com/linkerlin/leaves/v2/io"
+	leafmodel "github.com/linkerlin/leaves/v2/model"
 )
 
 func TestTreeSHAPAdditivity(t *testing.T) {

@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/linkerlin/leaves/mat"
-	"github.com/linkerlin/leaves/tree"
+	"github.com/linkerlin/leaves/v2/mat"
+	"github.com/linkerlin/leaves/v2/tree"
 )
 
 // TestEnsembleDelegatesToModel 根包 Predict* 经 model.Ensemble 代理后与旧实现一致。

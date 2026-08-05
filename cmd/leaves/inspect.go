@@ -4,8 +4,8 @@ import (
 	"flag"
 	"fmt"
 
-	leavesio "github.com/linkerlin/leaves/io"
-	"github.com/linkerlin/leaves/model"
+	leavesio "github.com/linkerlin/leaves/v2/io"
+	"github.com/linkerlin/leaves/v2/model"
 )
 
 func cmdInspect(args []string) error {

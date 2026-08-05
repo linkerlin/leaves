@@ -4,9 +4,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/linkerlin/leaves/data"
-	leavesio "github.com/linkerlin/leaves/io"
-	"github.com/linkerlin/leaves/train"
+	"github.com/linkerlin/leaves/v2/data"
+	leavesio "github.com/linkerlin/leaves/v2/io"
+	"github.com/linkerlin/leaves/v2/train"
 )
 
 // TestMultiOutputTreeTrains 向量叶 multi_output_tree 端到端：

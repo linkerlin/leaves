@@ -16,8 +16,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/linkerlin/leaves/recsys"
-	"github.com/linkerlin/leaves/recsys/synth"
+	"github.com/linkerlin/leaves/v2/recsys"
+	"github.com/linkerlin/leaves/v2/recsys/synth"
 )
 
 const (

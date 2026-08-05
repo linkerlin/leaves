@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/linkerlin/leaves/internal/xgbin"
-	"github.com/linkerlin/leaves/model"
+	"github.com/linkerlin/leaves/v2/internal/xgbin"
+	"github.com/linkerlin/leaves/v2/model"
 )
 
 // LoaderFunc 由根包注册的遗留模型加载函数。

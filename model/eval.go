@@ -1,7 +1,7 @@
 package model
 
 import (
-	"github.com/linkerlin/leaves/metrics"
+	"github.com/linkerlin/leaves/v2/metrics"
 )
 
 // Evaluate 用指定指标评估预测结果。

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/linkerlin/leaves/internal/xgbin"
-	"github.com/linkerlin/leaves/transformation"
+	"github.com/linkerlin/leaves/v2/internal/xgbin"
+	"github.com/linkerlin/leaves/v2/transformation"
 )
 
 func xgSplitIndex(origNode *xgbin.Node) uint32 {

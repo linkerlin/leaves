@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/linkerlin/leaves/explain"
-	"github.com/linkerlin/leaves/predict"
+	"github.com/linkerlin/leaves/v2/explain"
+	"github.com/linkerlin/leaves/v2/predict"
 )
 
 func isContribOutput(o predict.OutputKind) bool {

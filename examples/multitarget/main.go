@@ -10,9 +10,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/linkerlin/leaves/data"
-	"github.com/linkerlin/leaves/train"
-	"github.com/linkerlin/leaves/tree"
+	"github.com/linkerlin/leaves/v2/data"
+	"github.com/linkerlin/leaves/v2/train"
+	"github.com/linkerlin/leaves/v2/tree"
 )
 
 func main() {

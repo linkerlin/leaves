@@ -1,6 +1,6 @@
 package io
 
-import "github.com/linkerlin/leaves/model"
+import "github.com/linkerlin/leaves/v2/model"
 
 // SaveTrainModel 保存训练产出（leaves.json），与 LoadFromFile 对称。
 func SaveTrainModel(path string, ir *model.ModelIR, objective string) error {

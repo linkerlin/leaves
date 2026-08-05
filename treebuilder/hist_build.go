@@ -1,6 +1,6 @@
 package treebuilder
 
-import "github.com/linkerlin/leaves/data"
+import "github.com/linkerlin/leaves/v2/data"
 
 func accumulateHistCPU(
 	feat int,

@@ -1,6 +1,6 @@
 package explain
 
-import "github.com/linkerlin/leaves/tree"
+import "github.com/linkerlin/leaves/v2/tree"
 
 // computeNodeWeightsArr 返回每个非叶节点的覆盖权重（叶子恒为 1）。
 // 优先使用 SumHess；缺失时用子树权重和。LIB-22：替代 map[int32]float64 以降低分配。

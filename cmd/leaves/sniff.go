@@ -6,7 +6,7 @@ import (
 	"math"
 	"strconv"
 
-	"github.com/linkerlin/leaves/data"
+	"github.com/linkerlin/leaves/v2/data"
 )
 
 // sniffMaxScan 数据质量扫描行数上限，避免大文件 OOM/超时。

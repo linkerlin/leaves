@@ -3,7 +3,7 @@ package transformation
 import (
 	"fmt"
 
-	"github.com/linkerlin/leaves/util"
+	"github.com/linkerlin/leaves/v2/util"
 )
 
 type TransformLogistic struct{}

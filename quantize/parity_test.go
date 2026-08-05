@@ -9,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	_ "github.com/linkerlin/leaves"
-	"github.com/linkerlin/leaves/io"
-	"github.com/linkerlin/leaves/quantize"
+	_ "github.com/linkerlin/leaves/v2"
+	"github.com/linkerlin/leaves/v2/io"
+	"github.com/linkerlin/leaves/v2/quantize"
 )
 
 func TestParityXGBoostSmokeGate(t *testing.T) {

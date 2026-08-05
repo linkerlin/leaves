@@ -6,8 +6,8 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/linkerlin/leaves/model"
-	"github.com/linkerlin/leaves/transformation"
+	"github.com/linkerlin/leaves/v2/model"
+	"github.com/linkerlin/leaves/v2/transformation"
 )
 
 // BatchSize for parallel task

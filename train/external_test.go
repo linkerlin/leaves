@@ -3,7 +3,7 @@ package train
 import (
 	"testing"
 
-	"github.com/linkerlin/leaves/data"
+	"github.com/linkerlin/leaves/v2/data"
 )
 
 func TestFitExternalBatchedHist(t *testing.T) {

@@ -5,12 +5,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/linkerlin/leaves/data"
-	"github.com/linkerlin/leaves/recsys"
-	"github.com/linkerlin/leaves/recsys/movielens"
-	"github.com/linkerlin/leaves/recsys/pipeline"
-	"github.com/linkerlin/leaves/recsys/recall"
-	"github.com/linkerlin/leaves/recsys/tsvio"
+	"github.com/linkerlin/leaves/v2/data"
+	"github.com/linkerlin/leaves/v2/recsys"
+	"github.com/linkerlin/leaves/v2/recsys/movielens"
+	"github.com/linkerlin/leaves/v2/recsys/pipeline"
+	"github.com/linkerlin/leaves/v2/recsys/recall"
+	"github.com/linkerlin/leaves/v2/recsys/tsvio"
 )
 
 func TestMovieLensFourStage(t *testing.T) {

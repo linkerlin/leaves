@@ -1,7 +1,7 @@
 package treebuilder
 
 import (
-	"github.com/linkerlin/leaves/data"
+	"github.com/linkerlin/leaves/v2/data"
 )
 
 const gpuHistBatchMaxFeats = 64

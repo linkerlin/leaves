@@ -4,7 +4,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/linkerlin/leaves/tree"
+	"github.com/linkerlin/leaves/v2/tree"
 )
 
 // 与 tree/convert.go 中 flag 位一致（仅测试用）。

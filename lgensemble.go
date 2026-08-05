@@ -1,7 +1,7 @@
 package leaves
 
 import (
-	"github.com/linkerlin/leaves/util"
+	"github.com/linkerlin/leaves/v2/util"
 )
 
 // lgEnsemble is LightGBM model (ensemble of trees)

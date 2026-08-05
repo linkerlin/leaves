@@ -3,8 +3,8 @@ package model
 import (
 	"time"
 
-	"github.com/linkerlin/leaves/predict"
-	"github.com/linkerlin/leaves/tree"
+	"github.com/linkerlin/leaves/v2/predict"
+	"github.com/linkerlin/leaves/v2/tree"
 )
 
 // PredictProfile PredictWithRequest 耗时统计。

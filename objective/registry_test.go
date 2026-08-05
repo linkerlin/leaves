@@ -3,7 +3,7 @@ package objective_test
 import (
 	"testing"
 
-	"github.com/linkerlin/leaves/objective"
+	"github.com/linkerlin/leaves/v2/objective"
 )
 
 func TestRankObjectives(t *testing.T) {

@@ -1,11 +1,11 @@
 package leaves
 
 import (
-	"github.com/linkerlin/leaves/linear"
-	"github.com/linkerlin/leaves/model"
-	"github.com/linkerlin/leaves/predict"
-	"github.com/linkerlin/leaves/transformation"
-	"github.com/linkerlin/leaves/tree"
+	"github.com/linkerlin/leaves/v2/linear"
+	"github.com/linkerlin/leaves/v2/model"
+	"github.com/linkerlin/leaves/v2/predict"
+	"github.com/linkerlin/leaves/v2/transformation"
+	"github.com/linkerlin/leaves/v2/tree"
 )
 
 // ---- 类型别名：向后兼容 ----

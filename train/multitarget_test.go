@@ -5,10 +5,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/linkerlin/leaves/data"
-	leavesio "github.com/linkerlin/leaves/io"
-	"github.com/linkerlin/leaves/train"
-	"github.com/linkerlin/leaves/tree"
+	"github.com/linkerlin/leaves/v2/data"
+	leavesio "github.com/linkerlin/leaves/v2/io"
+	"github.com/linkerlin/leaves/v2/train"
+	"github.com/linkerlin/leaves/v2/tree"
 )
 
 // TestMultiTargetOneOutputPerTree 锁定 LIB-21：多目标回归 one_output_per_tree。

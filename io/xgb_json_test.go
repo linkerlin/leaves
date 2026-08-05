@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	_ "github.com/linkerlin/leaves"
-	"github.com/linkerlin/leaves/io"
-	"github.com/linkerlin/leaves/predict"
+	_ "github.com/linkerlin/leaves/v2"
+	"github.com/linkerlin/leaves/v2/io"
+	"github.com/linkerlin/leaves/v2/predict"
 )
 
 func TestParseXGBoostJSONSmoke(t *testing.T) {

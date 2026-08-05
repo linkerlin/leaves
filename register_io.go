@@ -4,9 +4,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/linkerlin/leaves/io"
-	"github.com/linkerlin/leaves/model"
-	"github.com/linkerlin/leaves/tree"
+	"github.com/linkerlin/leaves/v2/io"
+	"github.com/linkerlin/leaves/v2/model"
+	"github.com/linkerlin/leaves/v2/tree"
 )
 
 func init() {

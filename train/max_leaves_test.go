@@ -3,8 +3,8 @@ package train_test
 import (
 	"testing"
 
-	"github.com/linkerlin/leaves/data"
-	"github.com/linkerlin/leaves/train"
+	"github.com/linkerlin/leaves/v2/data"
+	"github.com/linkerlin/leaves/v2/train"
 )
 
 func TestMaxLeavesLimit(t *testing.T) {

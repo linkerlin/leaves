@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/linkerlin/leaves/tree"
+	"github.com/linkerlin/leaves/v2/tree"
 )
 
 func constantForest(base float64, leaf float64) *tree.ForestIR {

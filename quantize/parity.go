@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/linkerlin/leaves/tree"
+	"github.com/linkerlin/leaves/v2/tree"
 )
 
 // Gate parity 门禁阈值。

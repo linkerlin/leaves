@@ -4,8 +4,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/linkerlin/leaves"
-	"github.com/linkerlin/leaves/io"
+	"github.com/linkerlin/leaves/v2"
+	"github.com/linkerlin/leaves/v2/io"
 )
 
 func TestEnsembleReload(t *testing.T) {

@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/linkerlin/leaves/mat"
-	"github.com/linkerlin/leaves/transformation"
-	"github.com/linkerlin/leaves/util"
+	"github.com/linkerlin/leaves/v2/mat"
+	"github.com/linkerlin/leaves/v2/transformation"
+	"github.com/linkerlin/leaves/v2/util"
 )
 
 func isFileExists(filename string) bool {

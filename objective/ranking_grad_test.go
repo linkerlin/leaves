@@ -4,7 +4,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/linkerlin/leaves/objective"
+	"github.com/linkerlin/leaves/v2/objective"
 )
 
 type rankDM struct {

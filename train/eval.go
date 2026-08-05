@@ -3,7 +3,7 @@ package train
 import (
 	"fmt"
 
-	"github.com/linkerlin/leaves/data"
+	"github.com/linkerlin/leaves/v2/data"
 )
 
 // Eval 在 Matrix 上计算配置的 EvalMetric（需已 Fit）。

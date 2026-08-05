@@ -3,8 +3,8 @@ package linear
 import (
 	"fmt"
 
-	"github.com/linkerlin/leaves/predict"
-	"github.com/linkerlin/leaves/tree"
+	"github.com/linkerlin/leaves/v2/predict"
+	"github.com/linkerlin/leaves/v2/tree"
 )
 
 // 编译期检查：NativeEngine 实现 predict.Engine。

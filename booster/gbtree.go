@@ -3,9 +3,9 @@ package booster
 import (
 	"math/rand"
 
-	"github.com/linkerlin/leaves/data"
-	"github.com/linkerlin/leaves/tree"
-	"github.com/linkerlin/leaves/treebuilder"
+	"github.com/linkerlin/leaves/v2/data"
+	"github.com/linkerlin/leaves/v2/tree"
+	"github.com/linkerlin/leaves/v2/treebuilder"
 )
 
 // TrainParams 每轮训练采样参数。

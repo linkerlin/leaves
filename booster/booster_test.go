@@ -3,8 +3,8 @@ package booster
 import (
 	"testing"
 
-	"github.com/linkerlin/leaves/data"
-	"github.com/linkerlin/leaves/treebuilder"
+	"github.com/linkerlin/leaves/v2/data"
+	"github.com/linkerlin/leaves/v2/treebuilder"
 )
 
 func TestNewGBTreeDefaults(t *testing.T) {

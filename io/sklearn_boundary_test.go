@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	_ "github.com/linkerlin/leaves"
-	"github.com/linkerlin/leaves/io"
+	_ "github.com/linkerlin/leaves/v2"
+	"github.com/linkerlin/leaves/v2/io"
 )
 
 // TestSklearnSupportLevel 锁定 LIB-11：SK 为 experimental。

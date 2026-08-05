@@ -5,13 +5,13 @@ import (
 	"path/filepath"
 	"testing"
 
-	_ "github.com/linkerlin/leaves"
-	"github.com/linkerlin/leaves/data"
-	"github.com/linkerlin/leaves/io"
-	"github.com/linkerlin/leaves/metrics"
-	"github.com/linkerlin/leaves/model"
-	"github.com/linkerlin/leaves/train"
-	"github.com/linkerlin/leaves/tree"
+	_ "github.com/linkerlin/leaves/v2"
+	"github.com/linkerlin/leaves/v2/data"
+	"github.com/linkerlin/leaves/v2/io"
+	"github.com/linkerlin/leaves/v2/metrics"
+	"github.com/linkerlin/leaves/v2/model"
+	"github.com/linkerlin/leaves/v2/train"
+	"github.com/linkerlin/leaves/v2/tree"
 )
 
 func syntheticRankingMatrix(t *testing.T) *data.DenseWithGroups {

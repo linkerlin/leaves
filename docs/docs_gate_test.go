@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/linkerlin/leaves/tree"
+	"github.com/linkerlin/leaves/v2/tree"
 )
 
 // TestReleaseDocsPresent 锁定 Phase E：发版文档与关键矩阵文件存在。

@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	leafio "github.com/linkerlin/leaves/io"
-	"github.com/linkerlin/leaves/mat"
-	"github.com/linkerlin/leaves/tree"
+	leafio "github.com/linkerlin/leaves/v2/io"
+	"github.com/linkerlin/leaves/v2/mat"
+	"github.com/linkerlin/leaves/v2/tree"
 )
 
 // formatParityCase 单格式 parity 用例（Native vs BornCPU/GPU）。

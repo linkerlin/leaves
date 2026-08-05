@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/linkerlin/leaves/tree"
+	"github.com/linkerlin/leaves/v2/tree"
 )
 
 // Overlay 是量化参数的可序列化侧车：引用 base 模型的 ForestIR，只存量化叠加层。

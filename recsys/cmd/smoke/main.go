@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/linkerlin/leaves/recsys"
-	"github.com/linkerlin/leaves/recsys/pipeline"
+	"github.com/linkerlin/leaves/v2/recsys"
+	"github.com/linkerlin/leaves/v2/recsys/pipeline"
 )
 
 func main() {

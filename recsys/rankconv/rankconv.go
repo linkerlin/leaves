@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/linkerlin/leaves/recsys"
+	"github.com/linkerlin/leaves/v2/recsys"
 )
 
 // Result 排序 TSV 转换产物。

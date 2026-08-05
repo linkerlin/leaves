@@ -3,7 +3,7 @@ package predict_test
 import (
 	"testing"
 
-	"github.com/linkerlin/leaves/predict"
+	"github.com/linkerlin/leaves/v2/predict"
 )
 
 func TestAllIterations(t *testing.T) {

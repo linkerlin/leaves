@@ -7,8 +7,8 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/linkerlin/leaves/model"
-	"github.com/linkerlin/leaves/tree"
+	"github.com/linkerlin/leaves/v2/model"
+	"github.com/linkerlin/leaves/v2/tree"
 )
 
 // ExportXGBoostJSON 将 ModelIR 导出为 XGBoost 3.x JSON 格式。

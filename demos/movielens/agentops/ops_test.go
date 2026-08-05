@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/linkerlin/leaves/demos/movielens/agentops"
+	"github.com/linkerlin/leaves/v2/demos/movielens/agentops"
 )
 
 func TestStatusWhenDataPresent(t *testing.T) {

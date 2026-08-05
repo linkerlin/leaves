@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/linkerlin/leaves/io"
-	"github.com/linkerlin/leaves/tree"
+	"github.com/linkerlin/leaves/v2/io"
+	"github.com/linkerlin/leaves/v2/tree"
 )
 
 func TestLoadONNXMissingFile(t *testing.T) {

@@ -6,10 +6,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/linkerlin/leaves/mat"
-	leafmodel "github.com/linkerlin/leaves/model"
-	"github.com/linkerlin/leaves/tree"
-	"github.com/linkerlin/leaves/util"
+	"github.com/linkerlin/leaves/v2/mat"
+	leafmodel "github.com/linkerlin/leaves/v2/model"
+	"github.com/linkerlin/leaves/v2/tree"
+	"github.com/linkerlin/leaves/v2/util"
 )
 
 const bornParityTol = 1e-5

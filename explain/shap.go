@@ -3,7 +3,7 @@ package explain
 import (
 	"fmt"
 
-	"github.com/linkerlin/leaves/tree"
+	"github.com/linkerlin/leaves/v2/tree"
 )
 
 // TreeExplainer 基于 Tree SHAP 的可解释器（CPU，margin 空间）。
