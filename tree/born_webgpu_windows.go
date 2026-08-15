@@ -2,10 +2,20 @@
 
 package tree
 
-import bornwebgpu "github.com/born-ml/born/backend/webgpu"
+import (
+	"os"
+	"strings"
+
+	bornwebgpu "github.com/born-ml/born/backend/webgpu"
+)
 
 // BornWebGPUAvailable 当前环境是否可用 Born WebGPU（Windows DX12）。
+// LEAVES_BORN_GPU=0|off|false 可强制关闭（如 CI 的 WARP 设备会运行时 DEVICE_REMOVED）。
 func BornWebGPUAvailable() bool {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("LEAVES_BORN_GPU"))) {
+	case "0", "off", "false":
+		return false
+	}
 	return bornwebgpu.IsAvailable()
 }
 

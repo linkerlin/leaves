@@ -22,7 +22,7 @@
 
 **对照结论**：可执行 backlog **已清空**；Unreleased 已落盘。默认 **维护 + 按需开新项**；新需求先写进本文件再实现。发版走 [`docs/release-checklist.md`](docs/release-checklist.md)。
 
-**最新 tag**：https://github.com/linkerlin/leaves/releases/tag/v2.5.0
+**最新 tag**：https://github.com/linkerlin/leaves/releases/tag/v2.5.1
 
 ---
 
@@ -145,6 +145,19 @@ go test ./docs -count=1   # 镜像 + 文档版本引用门禁
 - [x] **DOC-02** NOTES.md §4 重写（模块已迁 `/v2`，旧 `go get` 建议已失效）+ 新增 §6「信号字段只增不删」契约兼容说明（演进方案 §9.6 流程）  
 - [x] **DOC-03** CHANGELOG Unreleased 补 EVO 账本信号 / SKILL §4.5 / 安装修复  
 - [x] **DOC-04** `testscripts/compatibility_*.py`：require/replace 与 Go import 已按 `/v2` 修正（`py_compile` 过；`require /v2 + replace => 本地路径` 模式与 cases 实际 API 已用临时模块 `go build` 实证）。注意：harness 本身 POSIX-only（venv `bin/python`、`./executable`），Windows 仅能做语法/模式验证，全量跑需 Linux/macOS  
+
+---
+
+### CIFIX — CI 慢性红灯收口（v2.5.1，2026-08-16）
+
+> 自 v2.2.0 起 CI 恒红（lint action 版本、wasm GOOS、CI Windows WARP GPU panic、CRLF 解析）。与 v2.5.0 同日修复发版。
+
+- [x] **CIFIX-01** CI wasm job：构建步骤补 `GOOS=js GOARCH=wasm`（`examples/wasm` 带 `//go:build js`）  
+- [x] **CIFIX-02** CI lint job：golangci-lint-action v6 → v7（v6 不支持 golangci-lint v2）  
+- [x] **CIFIX-03** 新增 `LEAVES_BORN_GPU=0|off|false`（Windows）：`tree.BornWebGPUAvailable()` 强制 false，训练+推理 WebGPU 全回落 CPU；CI test job 设置该变量（WARP 探测通过但运行时 `DXGI_ERROR_DEVICE_REMOVED`）；`docs/backend-auto.md` 已文档化  
+- [x] **CIFIX-04** `model/predict_contrib_p0_test.go`：TSV 解析前 TrimSpace（CI Windows autocrlf 下 `"-0.670\r"` 失败）  
+
+**验收**：本地 `LEAVES_BORN_GPU=0 go test ./tree ./model` 绿；wasm 交叉编译过；CI 全 job 绿（v2.5.1 起）。
 
 ---
 

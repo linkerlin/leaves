@@ -7,6 +7,20 @@
 
 ---
 
+## [2.5.1] - 2026-08-16
+
+> **主题**：CI 修复（自 v2.2.0 起慢性红灯收口）  
+> **Release 正文**：[`docs/release-notes-v2.5.1.md`](docs/release-notes-v2.5.1.md)
+
+### Fixed
+
+- **CI wasm 构建**：`examples/wasm` 带 `//go:build js`，构建步骤缺 `GOOS=js GOARCH=wasm` → "build constraints exclude all Go files"。
+- **CI lint job**：golangci-lint-action v6 不支持 golangci-lint v2 → 升 v7（自 v2.1.6 启用 golangci-lint v2 起即挂）。
+- **CI Windows GPU panic**：runner 只有 WARP 软件设备，`IsAvailable()` 探测通过但运行时 `DXGI_ERROR_DEVICE_REMOVED`。新增环境变量 **`LEAVES_BORN_GPU=0|off|false`**（Windows）强制关闭 WebGPU 路径（训练与推理全部回落 CPU）；CI test job 已设置。
+- **CRLF 测试解析**：`model` 测试在 CI Windows（autocrlf）下解析 testdata 尾部 `\r` 失败（`"-0.670\r"`）→ 解析前 TrimSpace。
+
+---
+
 ## [2.5.0] - 2026-08-16
 
 > **主题**：Agent 演化搜索（GEPA 对标）+ 用户侧 Agent 入口 + `/v2` 文档对齐  

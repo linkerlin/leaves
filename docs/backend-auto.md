@@ -58,6 +58,8 @@ type WorkloadHint struct {
 
 `metrics.json` 在单次 `leaves train` Fit 后可含 **`train_accel`**（实际训练加速模式）；**不含**推理 BackendAuto 字段。调试性能时分别设置 `LEAVES_TRAIN_ACCEL` / 显式 `tree.Backend`，不要用训练环境变量期望改变推理选型。
 
+**`LEAVES_BORN_GPU=0|off|false`**（Windows）：强制 `BornWebGPUAvailable()` 返回 false，训练与推理的 WebGPU 路径全部回落 CPU。适用于无真实 GPU 的环境（CI 的 WARP 软件设备会探测通过但运行时 `DXGI_ERROR_DEVICE_REMOVED`）。
+
 ## 第二轮：opt-in profiling（`tree.ProfileBackend`）
 
 **已交付**（v2.3.0 之后）——数据驱动选型，**不破坏 2.0 默认决策表**：

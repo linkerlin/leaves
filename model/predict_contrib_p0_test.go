@@ -302,7 +302,7 @@ func loadMulticlassTestRow(t *testing.T, path string, row int) []float64 {
 	if row >= len(lines) {
 		t.Fatalf("row %d out of range", row)
 	}
-	parts := strings.Split(lines[row], "\t")
+	parts := strings.Split(strings.TrimSpace(lines[row]), "\t")
 	if len(parts) < 2 {
 		t.Fatal("bad tsv row")
 	}
