@@ -21,9 +21,9 @@ description: >-
 
 ```go
 import (
-    "github.com/linkerlin/leaves/data"
-    "github.com/linkerlin/leaves/train"
-    "github.com/linkerlin/leaves/io"
+    "github.com/linkerlin/leaves/v2/data"
+    "github.com/linkerlin/leaves/v2/train"
+    "github.com/linkerlin/leaves/v2/io"
 )
 
 trainDM, _ := data.LoadRankingTSV("recsys/rank/rank_train.tsv", "\t")
@@ -64,7 +64,7 @@ _ = learner.Fit(trainDM)
 ### 2.3 评估
 
 ```go
-import "github.com/linkerlin/leaves/demos/movielens/rankutil"
+import "github.com/linkerlin/leaves/v2/demos/movielens/rankutil"
 
 trainPred, _ := rankutil.PredictMargins(learner, trainDM)
 testPred,  _ := rankutil.PredictMargins(learner, testDM)

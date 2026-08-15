@@ -37,7 +37,7 @@ Agent 通过 **SKILL 指导 + shell CLI + metrics.json** 完成全自动「训�
 ## 文档
 
 - 战略路线图：[`演进计划.md`](演进计划.md) v5.4（Phase A–E 第一轮已落地）
-- **Agentic 收口方案**：[`演进方案.md`](演进方案.md) v1.5+（Phase 0–5 已达成 + POST 加固）
+- **Agentic 收口方案**：[`演进方案.md`](演进方案.md) v2.0+（Phase 0–5 已达成 + POST 加固 + §十六 EVO 演化搜索）
 - API 分层 / 发版：[`docs/api-surface.md`](docs/api-surface.md)、[`docs/release-checklist.md`](docs/release-checklist.md)、[`docs/versioning.md`](docs/versioning.md)、[`CHANGELOG.md`](CHANGELOG.md)
 - 扩展点：[`docs/extension-points.md`](docs/extension-points.md)
 - BackendAuto：[`docs/backend-auto.md`](docs/backend-auto.md)

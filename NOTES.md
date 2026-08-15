@@ -48,17 +48,14 @@ m, err := leaves.LoadFromFile(path, &leaves.LoadOptions{AutoTransform: false})
 
 ## 4. 模块版本与 `go get`
 
-模块路径为 `github.com/linkerlin/leaves`（**无** `/v2` 后缀）。  
-semver tag 使用 `v2.1.x` 时，部分代理会提示 “module path must match major version”；若遇此错误：
+模块路径为 `github.com/linkerlin/leaves/v2`（**含** `/v2` 后缀；commit cab6a6f 起迁移，早期 `v2.1.x` tag 打在无后缀路径上）。
 
 ```powershell
-# 按 commit / 伪版本拉取
-go get github.com/linkerlin/leaves@v2.1.1
-# 或
-go get github.com/linkerlin/leaves@master
+go get github.com/linkerlin/leaves/v2@latest
+go install github.com/linkerlin/leaves/v2/cmd/leaves@latest
 ```
 
-是否迁移到 `.../leaves/v2` 属破坏性 MAJOR 决策，不在 v2.1 patch 范围。
+迁移前的旧 tag（`v2.1.x` 等）挂在 `github.com/linkerlin/leaves`（无后缀）下；若必须引用历史版本，按伪版本拉对应 commit。新代码一律用 `/v2` 路径。
 
 ---
 
@@ -70,5 +67,12 @@ go get github.com/linkerlin/leaves@master
 | docs/api-surface.md | 推荐 / 兼容 / 实验 API |
 | docs/release-checklist.md | 发版勾选 |
 | docs/versioning.md | v2.x 允许改什么 |
-| 演进方案.md | Agent 闭环契约（已达成） |
+| 演进方案.md | Agent 闭环契约（已达成）+ §十六 演化搜索 |
 | TODO.md | 可执行 backlog 与已完成存档 |
+
+---
+
+## 6. runs.jsonl / metrics.json 字段只增不删（2026-08 起）
+
+- 账本与 metrics 的 Agent 信号字段**只增不删**：旧 Agent 忽略未知键即安全（演进方案 §13.1）。  
+- 2026-08（EVO-02）新增：`n_trees`、`elapsed_ms`（train；未存模型时省略）、runs 行 `fold_metrics`（仅 `--cv`）。均为 omitempty，schema_version 维持 `1`，不构成破坏性变更。

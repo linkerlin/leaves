@@ -7,6 +7,34 @@
 
 ---
 
+## [2.5.0] - 2026-08-16
+
+> **主题**：Agent 演化搜索（GEPA 对标）+ 用户侧 Agent 入口 + `/v2` 文档对齐  
+> **Release 正文**：[`docs/release-notes-v2.5.0.md`](docs/release-notes-v2.5.0.md)
+
+### Added
+
+- **演化搜索账本信号（EVO-02）**：`train` 的 metrics.json 与 runs.jsonl 账本行新增 `n_trees`（模型树数）、`elapsed_ms`（训练耗时毫秒）；`--cv` 时账本行新增 `fold_metrics`（各折指标）。供 Agent 做「指标 vs 模型大小/耗时」权衡、折级 Pareto 选父与筛选晋级（见 `skills/leaves-autotrain/SKILL.md` §4.5 演化搜索协议与 [`演进方案.md`](演进方案.md) §十六）。未存模型的 CV 路径 `n_trees` 省略。
+- **SKILL §4.5 演化搜索协议（EVO-01/04）**：Hall-of-Fame + 折级 Pareto 选父、反射式变异（ASI → 假设 → 定向变异）、交叉重组、`--cv 2` 筛选→`--cv 5` 晋级、预算帽 ≤15、谱系 tag 约定（`p:<父>+<变异>` / `x:<A>|<B>`）。
+- **用户侧 Agent 入口**：README「三步让 Agent 帮你训练」快速上手；`CLAUDE.md` 适配器（Claude Code 自动读 AGENTS.md）；SKILL walkthrough 以实跑数字重写（演示 §4.5 全协议）。
+
+### Fixed
+
+- README/README.en 安装命令：`go install github.com/linkerlin/leaves@latest` → `go install github.com/linkerlin/leaves/v2/cmd/leaves@latest`（原漏 `/v2` 模块路径与 `cmd/leaves`，仓库外无法安装）。
+- 全仓文档模块路径对齐 `/v2`：godoc 徽章/链接、import 示例（README/README.en/api-surface/extension-points/versioning/serving-template/recsys-rank）、NOTES §4 过时的 `go get` 建议、`testscripts/compatibility_*.py` 的 require/replace 与 import 模板。
+
+---
+
+## [2.4.1] - 2026-07-11
+
+> **主题**：模块路径迁移 `github.com/linkerlin/leaves` → `github.com/linkerlin/leaves/v2`
+
+### Changed
+
+- **模块路径迁移**（commit cab6a6f）：`go.mod` 声明 `github.com/linkerlin/leaves/v2`；后续 tag 打在 `/v2` 路径下。迁移前旧 tag 仍挂在无后缀路径。
+
+---
+
 ## [2.4.0] - 2026-07-11
 
 > **主题**：BackendAuto 第二轮 — opt-in profiling 探测  

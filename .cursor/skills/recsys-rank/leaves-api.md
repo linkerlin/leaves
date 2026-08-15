@@ -56,7 +56,7 @@
 ## 便利入口（根包）
 
 ```go
-import "github.com/linkerlin/leaves"
+import "github.com/linkerlin/leaves/v2/v2"
 dm, _ := leaves.LoadDataAuto(path)
 learner, _ := leaves.NewLearner(cfg)
 ```

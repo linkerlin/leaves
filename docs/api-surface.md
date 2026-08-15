@@ -8,8 +8,8 @@
 
 ```go
 import (
-    "github.com/linkerlin/leaves"
-    "github.com/linkerlin/leaves/io"
+    "github.com/linkerlin/leaves/v2/v2"
+    "github.com/linkerlin/leaves/v2/io"
 )
 
 m, err := leaves.LoadFromFile("model.json", leaves.DefaultLoadOptions())

@@ -41,7 +41,7 @@ type Func interface {
 ### 2.2 注册
 
 ```go
-import "github.com/linkerlin/leaves/objective"
+import "github.com/linkerlin/leaves/v2/objective"
 
 func init() {
     objective.Register("custom:huber", func(numClass int) (objective.Func, error) {
@@ -82,7 +82,7 @@ type Metric interface {
 ### 3.2 注册
 
 ```go
-import "github.com/linkerlin/leaves/metrics"
+import "github.com/linkerlin/leaves/v2/metrics"
 
 func init() {
     metrics.Register("custom_score", func(o metrics.Options) (metrics.Metric, error) {

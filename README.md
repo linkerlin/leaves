@@ -2,9 +2,9 @@
 
 [English](README.en.md) | **中文**
 
-[![版本](https://img.shields.io/badge/版本-v2.4.0-blue.svg)](https://github.com/linkerlin/leaves/releases/tag/v2.4.0)
+[![版本](https://img.shields.io/badge/版本-v2.5.0-blue.svg)](https://github.com/linkerlin/leaves/releases/tag/v2.5.0)
 [![CI](https://github.com/linkerlin/leaves/actions/workflows/ci.yml/badge.svg)](https://github.com/linkerlin/leaves/actions/workflows/ci.yml)
-[![Go 文档](https://pkg.go.dev/badge/github.com/linkerlin/leaves.svg)](https://pkg.go.dev/github.com/linkerlin/leaves)
+[![Go 文档](https://pkg.go.dev/badge/github.com/linkerlin/leaves/v2.svg)](https://pkg.go.dev/github.com/linkerlin/leaves/v2)
 [![许可证](https://img.shields.io/badge/许可证-MIT-green.svg)](LICENSE.md)
 
 ![Logo](logo.png)
@@ -18,7 +18,7 @@
 - 推理：`leaves.LoadFromFile`（默认开启 `AutoTransform`），或者沿用旧的 `leaves.LGEnsembleFromFile` / `leaves.XGEnsembleFromFile`。
 - 训练：`leaves.NewLearner` / `train.NewLearner`、`leaves.LoadDataAuto` / `data.FromFileAuto`（带内容嗅探），以及便利函数 `leaves.NewLearnerFromModelAndData` —— 它能从参考模型里反推出 objective。
 
-回归矩阵见 [docs/testdata-matrix.md](docs/testdata-matrix.md)；路线图 [演进计划.md](演进计划.md)（v5.4）；Agent 契约 [演进方案.md](演进方案.md)（v1.5）；扩展 objective/metric 见 [docs/extension-points.md](docs/extension-points.md)；backlog [TODO.md](TODO.md)。
+回归矩阵见 [docs/testdata-matrix.md](docs/testdata-matrix.md)；路线图 [演进计划.md](演进计划.md)（v5.4）；Agent 契约 [演进方案.md](演进方案.md)（v2.0）；扩展 objective/metric 见 [docs/extension-points.md](docs/extension-points.md)；backlog [TODO.md](TODO.md)。
 
 ## 特性
 
@@ -67,10 +67,10 @@
 ## 安装
 
 ```sh
-go install github.com/linkerlin/leaves@latest
+go install github.com/linkerlin/leaves/v2/cmd/leaves@latest
 ```
 
-模块路径：`github.com/linkerlin/leaves`（Go 1.26+）。张量与 GPU 加速由 [github.com/born-ml/born](https://github.com/born-ml/born) 提供。
+模块路径：`github.com/linkerlin/leaves/v2`（Go 1.26+）。张量与 GPU 加速由 [github.com/born-ml/born](https://github.com/born-ml/born) 提供。
 
 ## 快速上手
 
@@ -82,7 +82,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/linkerlin/leaves"
+	"github.com/linkerlin/leaves/v2/v2"
 )
 
 func main() {
@@ -119,7 +119,7 @@ func main() {
 加载失败返回 `*io.LoadError`（含 `hint:` 下一步）。数值表误用 `.txt` 会提示改用 `data.FromFile`。
 
 ```go
-import "github.com/linkerlin/leaves/io"
+import "github.com/linkerlin/leaves/v2/io"
 
 m, err := io.LoadFromFile("model.ubj", io.DefaultLoadOptions()) // AutoTransform = true
 
@@ -274,8 +274,8 @@ parity 门禁 `TestBornParityFormatMatrix` 覆盖 LGB text/JSON、XGB bin/json/u
 
 ```go
 import (
-	"github.com/linkerlin/leaves"
-	"github.com/linkerlin/leaves/explain"
+	"github.com/linkerlin/leaves/v2/v2"
+	"github.com/linkerlin/leaves/v2/explain"
 )
 
 m, _ := leaves.LoadFromFile("model.json", leaves.DefaultLoadOptions())
@@ -294,7 +294,7 @@ dot := m.Explain().DumpDOT(nil)
 统一出口是 [`predict.Request`](predict/request.go)：
 
 ```go
-import "github.com/linkerlin/leaves/predict"
+import "github.com/linkerlin/leaves/v2/predict"
 
 nf := m.NFeatures()
 nRows := 1
@@ -336,7 +336,7 @@ _ = m.PredictWithRequest(predict.Request{
 内置 RMSE / MAE / AUC / LogLoss / MAPE / RMSLE / NDCG@k / MAP，命名与 XGBoost `eval_metric` 对齐：
 
 ```go
-import "github.com/linkerlin/leaves/metrics"
+import "github.com/linkerlin/leaves/v2/metrics"
 
 rmse, _ := metrics.RMSE{}.Evaluate(yTrue, yPred)
 m, _ := metrics.Resolve("ndcg@5", metrics.Options{Groups: []int{10, 10}})
@@ -357,8 +357,8 @@ XGBoost 兼容的 LambdaMART，再加上原生的 listwise 头：
 
 ```go
 import (
-	"github.com/linkerlin/leaves/data"
-	"github.com/linkerlin/leaves/train"
+	"github.com/linkerlin/leaves/v2/data"
+	"github.com/linkerlin/leaves/v2/train"
 )
 
 dm, _ := data.LoadRankingTSV("rank_train.tsv", "\t") // qid label feat1 feat2 ...
@@ -430,10 +430,23 @@ model.NewEnsemble(eng) // 替换线上 Ensemble 引擎
 
 ## Agent 自动化（SKILL 驱动，无 MCP）
 
-> **Agentic 契约已达成**（见 [`演进方案.md`](演进方案.md) v1.5 DoD）。  
+> **Agentic 契约已达成**（见 [`演进方案.md`](演进方案.md) v2.0 DoD）。  
 > 库整体 12 个月路线图见 [`演进计划.md`](演进计划.md) v5.4 — 二者互补，不互相替代。
 
 Agent 通过 **SKILL + `leaves` CLI + metrics.json** 完成「训练→调参→发布」；**Agent 即优化器**（搜索逻辑在 SKILL，库不内置 HPO）。
+
+### 三步让 Agent 帮你训练（用户视角）
+
+1. **装 CLI**：`go install github.com/linkerlin/leaves/v2/cmd/leaves@latest`（或在仓库内用 `go run ./cmd/leaves ...`）。
+2. **把技能给 Agent**：Cursor 用户开箱即得（`.cursor/skills`）；Claude Code 读 [`CLAUDE.md`](CLAUDE.md) → [`AGENTS.md`](AGENTS.md)；其他 Agent 让它读 [`skills/leaves-autotrain/SKILL.md`](skills/leaves-autotrain/SKILL.md)。
+3. **对 Agent 说一句话**（无需懂 flag）：
+
+```text
+用 leaves-autotrain 技能，训练数据在 data/train.csv，
+目标把 RMSE 降下来，收敛后发布到 release/v1。
+```
+
+Agent 会自动：嗅探数据定任务类型 → CV 基线 → 按 SKILL §4.5 演化搜索协议调参（runs.jsonl 记账、早停保最优轮）→ 收敛后 `publish` 出工件包（模型 + manifest + 复现命令）。全程只读 JSON，不写 Go 代码。
 
 | 文档 | 用途 |
 |------|------|
@@ -461,7 +474,7 @@ go run ./cmd/leaves publish --model m.leaves.json --out-dir release/ --quantize 
 
 | 文档 | 说明 |
 |------|------|
-| [godoc](https://pkg.go.dev/github.com/linkerlin/leaves) | API 参考 |
+| [godoc](https://pkg.go.dev/github.com/linkerlin/leaves/v2) | API 参考 |
 | [docs/api-surface.md](docs/api-surface.md) | **推荐 / 兼容 / 实验** API 分层与迁移 |
 | [docs/versioning.md](docs/versioning.md) | v2.x 允许改什么 |
 | [docs/release-checklist.md](docs/release-checklist.md) | **v2.1 发版检查表** |

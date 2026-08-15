@@ -2,9 +2,9 @@
 
 **English** | [中文](README.md)
 
-[![Version](https://img.shields.io/badge/version-v2.4.0-blue.svg)](https://github.com/linkerlin/leaves/releases/tag/v2.4.0)
+[![Version](https://img.shields.io/badge/version-v2.5.0-blue.svg)](https://github.com/linkerlin/leaves/releases/tag/v2.5.0)
 [![CI](https://github.com/linkerlin/leaves/actions/workflows/ci.yml/badge.svg)](https://github.com/linkerlin/leaves/actions/workflows/ci.yml)
-[![Go Reference](https://pkg.go.dev/badge/github.com/linkerlin/leaves.svg)](https://pkg.go.dev/github.com/linkerlin/leaves)
+[![Go Reference](https://pkg.go.dev/badge/github.com/linkerlin/leaves/v2.svg)](https://pkg.go.dev/github.com/linkerlin/leaves/v2)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE.md)
 
 ![Logo](logo.png)
@@ -88,10 +88,10 @@ APIs, [演进计划.md](演进计划.md) (v5.4) for the library roadmap,
 ## Installation
 
 ```sh
-go install github.com/linkerlin/leaves@latest
+go install github.com/linkerlin/leaves/v2/cmd/leaves@latest
 ```
 
-Module path: `github.com/linkerlin/leaves` (Go 1.26+).
+Module path: `github.com/linkerlin/leaves/v2` (Go 1.26+).
 Tensors / GPU acceleration are powered by
 [github.com/born-ml/born](https://github.com/born-ml/born).
 
@@ -105,7 +105,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/linkerlin/leaves"
+	"github.com/linkerlin/leaves/v2/v2"
 )
 
 func main() {
@@ -145,7 +145,7 @@ Load failures return `*io.LoadError` with an actionable `hint:`. Numeric tables
 misnamed as `.txt` models point you to `data.FromFile`.
 
 ```go
-import "github.com/linkerlin/leaves/io"
+import "github.com/linkerlin/leaves/v2/io"
 
 m, err := io.LoadFromFile("model.ubj", io.DefaultLoadOptions()) // AutoTransform = true
 
@@ -312,8 +312,8 @@ space.
 
 ```go
 import (
-	"github.com/linkerlin/leaves"
-	"github.com/linkerlin/leaves/explain"
+	"github.com/linkerlin/leaves/v2/v2"
+	"github.com/linkerlin/leaves/v2/explain"
 )
 
 m, _ := leaves.LoadFromFile("model.json", leaves.DefaultLoadOptions())
@@ -332,7 +332,7 @@ dot := m.Explain().DumpDOT(nil)
 The unified output path is [`predict.Request`](predict/request.go):
 
 ```go
-import "github.com/linkerlin/leaves/predict"
+import "github.com/linkerlin/leaves/v2/predict"
 
 nf := m.NFeatures()
 nRows := 1
@@ -377,7 +377,7 @@ Built-in RMSE / MAE / AUC / LogLoss / MAPE / RMSLE / NDCG@k / MAP, named to
 match XGBoost's `eval_metric`:
 
 ```go
-import "github.com/linkerlin/leaves/metrics"
+import "github.com/linkerlin/leaves/v2/metrics"
 
 rmse, _ := metrics.RMSE{}.Evaluate(yTrue, yPred)
 m, _ := metrics.Resolve("ndcg@5", metrics.Options{Groups: []int{10, 10}})
@@ -398,8 +398,8 @@ XGBoost-compatible LambdaMART plus a native listwise head:
 
 ```go
 import (
-	"github.com/linkerlin/leaves/data"
-	"github.com/linkerlin/leaves/train"
+	"github.com/linkerlin/leaves/v2/data"
+	"github.com/linkerlin/leaves/v2/train"
 )
 
 dm, _ := data.LoadRankingTSV("rank_train.tsv", "\t") // qid label feat1 feat2 ...
@@ -477,11 +477,41 @@ eng, _ := quantize.NewEngine(qf, nil, tree.TransformRaw, m.NOutputGroups())
 model.NewEnsemble(eng) // swap the live engine
 ```
 
+## Agent automation (SKILL-driven, no MCP)
+
+Agents drive `train → tune → publish` through **SKILL + the `leaves` CLI +
+metrics.json**; the **agent is the optimizer** (search strategy lives in the
+SKILL text, the library ships no built-in HPO).
+
+### Three steps to let an agent train for you
+
+1. **Install the CLI**: `go install github.com/linkerlin/leaves/v2/cmd/leaves@latest`
+   (or use `go run ./cmd/leaves ...` inside the repo).
+2. **Give the agent the skill**: Cursor picks up `.cursor/skills` out of the
+   box; other agents read [`skills/leaves-autotrain/SKILL.md`](skills/leaves-autotrain/SKILL.md).
+3. **Say one sentence** (no flags to learn):
+
+```text
+Use the leaves-autotrain skill; training data is data/train.csv,
+drive RMSE down, publish to release/v1 once converged.
+```
+
+The agent sniffs the data to pick the objective, builds a CV baseline, tunes
+via the SKILL §4.5 evolutionary search protocol (Hall-of-Fame + fold-level
+Pareto parent selection, reflective mutation from `--emit-rounds` curves and
+`explain` importances, ledger lineage tags in `runs.jsonl`, budget cap), then
+`publish`es the artifact bundle (model + manifest + reproduce script). No Go
+code is written anywhere in the loop.
+
+Contract details and DoD: [演进方案.md](演进方案.md) (v2.0). CLI flags and
+metrics schema: [`skills/leaves-autotrain/cli.md`](skills/leaves-autotrain/cli.md).
+Zero-prep demo: [`examples/autotrain/`](examples/autotrain/README.md).
+
 ## Documentation
 
 | Document | Description |
 | -------- | ----------- |
-| [godoc](https://pkg.go.dev/github.com/linkerlin/leaves) | API reference |
+| [godoc](https://pkg.go.dev/github.com/linkerlin/leaves/v2) | API reference |
 | [docs/api-surface.md](docs/api-surface.md) | Recommended / compat / experimental APIs |
 | [docs/versioning.md](docs/versioning.md) | What can change in v2.x |
 | [docs/release-checklist.md](docs/release-checklist.md) | Pre-tag release checklist |

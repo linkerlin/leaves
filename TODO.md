@@ -1,25 +1,28 @@
 # leaves 演进 TODO
 
-> **对齐文档**：[`演进计划.md`](演进计划.md) v5.4（库线）· [`演进方案.md`](演进方案.md) v1.5+（Agentic）  
-> **更新**：2026-07-11（**开发期**；**v2.4.0** BackendAuto opt-in profiling；v2.3.0 完整 ONNX Graph 导入；v2.2.0 向量叶 multi_output_tree 训练；v2.1.6 lint 门禁 + race/panic 修复）  
+> **对齐文档**：[`演进计划.md`](演进计划.md) v5.4（库线）· [`演进方案.md`](演进方案.md) v2.0（Agentic + §十六 演化搜索）  
+> **更新**：2026-08-16（开发期；EVO 演化搜索 + AGUX 用户入口 + DOC 模块路径对齐；全量 `go test ./... -count=1` 28 包绿）  
 > **原则**：Native golden 不变；Born 直读 `ForestIR`；不做分布式/serving 框架 / 内置 HPO / 官方 registry。
 
 **图例**：`[ ]` 待办 · `[~]` 进行中 · `[x]` 完成 · `[-]` 明确不做
 
 ---
 
-## 现状快照（2026-07-11 · 开发期）
+## 现状快照（2026-08-16 · 开发期）
 
 | 线 | 方案状态 | 代码/发布 | 结论 |
 |----|----------|-----------|------|
 | **Agentic** | Phase 0–5 + POST 加固 | tag **v2.1.0** … **v2.4.0** | **完成** |
+| **演化搜索（EVO）** | 演进方案 §十六 | SKILL §4.5 协议 + 账本 `fold_metrics`/`n_trees`/`elapsed_ms` + 测试锁定 | **完成** |
+| **用户 Agent 入口（AGUX）** | TODO AGUX 节 | 安装修复 / CLAUDE.md / 三步上手 / walkthrough 实跑重写 | **完成** |
+| **文档对齐（DOC）** | TODO DOC 节 | 全仓 `/v2` 模块路径 / NOTES §4+§6 / CHANGELOG / testscripts | **完成** |
 | **库线 Phase A–E** | 第一轮 + 按需深化 | 扩展点 / BackendAuto 2.0 / interop / ONNX 子集 / multi-target / explain 缓存 / serving 模板 | **完成** |
 | **Demo** | MovieLens ranker + 四段 | meta 旁车 / Agent·MCP / `agent four-stage` | **完成** |
 | **历史** P0–T5 / v3.1 | 存档 | 均已交付 | 开发期 |
 
 **对照结论**：可执行 backlog **已清空**；Unreleased 已落盘。默认 **维护 + 按需开新项**；新需求先写进本文件再实现。发版走 [`docs/release-checklist.md`](docs/release-checklist.md)。
 
-**最新 tag**：https://github.com/linkerlin/leaves/releases/tag/v2.4.0
+**最新 tag**：https://github.com/linkerlin/leaves/releases/tag/v2.5.0
 
 ---
 
@@ -113,6 +116,53 @@ go test ./cmd/leaves -run 'Agentic|SaveBest|FromRun|NAPolicy|Publish' -count=1
 
 - [x] **LIB-30** [`examples/serving-template/`](examples/serving-template/)：可拆独立仓脚手架（http 仍为最小 embed）
 - [x] **LIB-31** registry 对接模板（S3 / gh release / curl / OCI）→ `skills/leaves-autotrain/cli.md`（**仅文档**）
+
+---
+
+### EVO — 演化搜索升级（演进方案 §十六，2026-08-15）
+
+> GEPA（arXiv:2507.19457）对标：把 Agent 搜索从贪心坐标下降升级为「带反射的演化搜索」。策略在 SKILL，库只加信号。
+
+- [x] **EVO-01** SKILL §4.5 演化搜索协议：Hall-of-Fame + 折级 Pareto 选父、反射式变异（ASI → 假设 → 定向变异）、交叉重组、筛选→晋级（`--cv 2`→`--cv 5`）、预算帽 ≤15、谱系 tag 约定（含 EVO-04）  
+- [x] **EVO-02** 账本信号：runs 行补 `fold_metrics` / `n_trees` / `elapsed_ms`（`cmd/leaves/common.go` + `train.go`；cli.md schema 同步）  
+- [x] **EVO-03** 优化环测试扩展：`TestAgenticOptimizeLoopSmoke` 锁定账本信号（n_trees/elapsed_ms/fold_metrics；CV 未存模型时 n_trees 合法省略）  
+- [x] **EVO-04** 谱系：并入 EVO-01 tag 约定（`p:<父>+<变异>` / `x:<A>|<B>`），零代码  
+
+**验收**：
+
+```powershell
+go test ./cmd/leaves -run "Agentic" -count=1
+go test ./docs -count=1   # 镜像 + 文档版本引用门禁
+```
+
+**远期观察（不立项）**：跨任务 lessons 记忆（项目级 `lessons.md`，AlphaEvolve 式自改写决策表的雏形）。
+
+---
+
+### DOC — 文档对齐模块迁移 `/v2`（2026-08-16）
+
+- [x] **DOC-01** 全仓文档 import/godoc/install 对齐 `github.com/linkerlin/leaves/v2`：README(.en)（godoc 徽章+链接、6 处 import 示例）、docs/api-surface、docs/extension-points、docs/versioning、examples/serving-template、skills/recsys-rank（SKILL + leaves-api；镜像已同步）  
+- [x] **DOC-02** NOTES.md §4 重写（模块已迁 `/v2`，旧 `go get` 建议已失效）+ 新增 §6「信号字段只增不删」契约兼容说明（演进方案 §9.6 流程）  
+- [x] **DOC-03** CHANGELOG Unreleased 补 EVO 账本信号 / SKILL §4.5 / 安装修复  
+- [x] **DOC-04** `testscripts/compatibility_*.py`：require/replace 与 Go import 已按 `/v2` 修正（`py_compile` 过；`require /v2 + replace => 本地路径` 模式与 cases 实际 API 已用临时模块 `go build` 实证）。注意：harness 本身 POSIX-only（venv `bin/python`、`./executable`），Windows 仅能做语法/模式验证，全量跑需 Linux/macOS  
+
+---
+
+### AGUX — 用户侧 Agent 入口（2026-08-16）
+
+> 目标：用户「装好 CLI → 把技能给 Agent → 说一句话」即开工。全部为文档/入口层，无策略代码。
+
+- [x] **AGUX-01** README 安装命令修正：`go install github.com/linkerlin/leaves/v2/cmd/leaves@latest`（原漏 `/v2` 与 `cmd/leaves`）；模块路径文字同步  
+- [x] **AGUX-02** [`CLAUDE.md`](CLAUDE.md) 适配器（`@AGENTS.md` 单行导入）——Claude Code 开箱读规约  
+- [x] **AGUX-03** README Agent 段新增「三步让 Agent 帮你训练」用户快速上手（装 CLI → 给技能 → 一句话开工）  
+- [x] **AGUX-04** SKILL walkthrough 以实跑数字重写（2026-08-16）：演示 §4.5 全协议——谱系 tag（`p:baseline+depth6_lr01+lambda2`）、反射轮（ASI：importance f1=0 + 曲线形态 → 假设 → 定向 lambda 变异 0.218→0.2129）、收敛判据（mcw 零改进）、`--from-run` 全量定稿 + `--emit-repro-script`；安装命令入 SKILL §三  
+- [x] **AGUX-05** examples/autotrain README 对齐 §4.5（账本新字段 + 谱系 tag 提示）
+
+**验收**：
+
+```powershell
+go test ./cmd/leaves ./docs -count=1   # 契约 + 镜像 + 文档门禁全绿
+```
 
 ---
 

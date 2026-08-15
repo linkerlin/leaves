@@ -1,7 +1,7 @@
 # 版本与兼容策略（v2.x）
 
 > 目标：用户能判断「这次升级安不安全」，而不依赖口头背景。  
-> 模块：`github.com/linkerlin/leaves` · 当前线：**v2.x**（semver）
+> 模块：`github.com/linkerlin/leaves/v2` · 当前线：**v2.x**（semver）
 
 ## 承诺分层
 
