@@ -7,10 +7,20 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/linkerlin/leaves/v2/data"
 	"github.com/linkerlin/leaves/v2/train"
 )
+
+// modelTreeCount 返回 learner 当前模型的树数（EVO-02；gblinear/无森林为 0）。
+func modelTreeCount(l *train.Learner) int {
+	ir := l.Model()
+	if ir == nil || ir.Forest == nil {
+		return 0
+	}
+	return len(ir.Forest.Trees)
+}
 
 func cmdTrain(args []string) error {
 	fs := flag.NewFlagSet("train", flag.ContinueOnError)
@@ -168,6 +178,7 @@ func cmdTrain(args []string) error {
 	}
 
 	// 交叉验证路径：CV 出诚实估计；若要存模型再在全量上单跑一次。
+	trainStart := time.Now()
 	if *cv >= 2 {
 		res, err := train.CrossValidate(cfg, dm, *cv)
 		if err != nil {
@@ -190,7 +201,9 @@ func cmdTrain(args []string) error {
 			if err := full.Save(*outModel); err != nil {
 				return err
 			}
+			doc.NTrees = modelTreeCount(full)
 		}
+		doc.ElapsedMS = time.Since(trainStart).Milliseconds()
 		if err := writeMetrics(*metricsPath, doc); err != nil {
 			return err
 		}
@@ -266,6 +279,8 @@ func cmdTrain(args []string) error {
 		doc.FinalRound = learner.BoostRounds()
 	}
 	doc.ModelRound = learner.BoostRounds()
+	doc.NTrees = modelTreeCount(learner)
+	doc.ElapsedMS = time.Since(trainStart).Milliseconds()
 
 	trainScore, err := learner.Eval(dm)
 	if err != nil {

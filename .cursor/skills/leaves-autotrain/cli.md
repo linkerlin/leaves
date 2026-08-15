@@ -39,6 +39,7 @@
 | `n_features` | train 时 | 特征维（= `Matrix.NumCol()`；标签/qid 不计） |
 | `cv_mean`/`cv_std`/`fold_metrics` | 仅 `--cv` | 交叉验证统计 |
 | `train_metric` | train 时 | 训练集指标，与 value 对照看过拟合 |
+| `n_trees` / `elapsed_ms` | train 时 | 模型树数与训练耗时 ms（EVO-02；「指标 vs 大小/耗时」权衡用；未存模型时省略） |
 | `params` | train 时 | **全部** CLI 旋钮（Agent 从 runs 复现最优；见下表） |
 | `train_accel` | 单次 Fit 后 | 实际训练加速模式（`cpu`/`born_cpu`/`webgpu` 等）；**与推理 BackendAuto 无关**；CV-only 未存模型时可能缺省 |
 | `final_model` / `final_round` | 使用 `--out-final` 时 | final-round 侧车路径与树轮数（早停截断前） |
@@ -53,13 +54,17 @@
 {"tag":"baseline","ts":"2026-07-09T04:06:20Z","model":"m.leaves.json",
  "objective":"reg:squarederror",
  "metric":"rmse","value":0.236,"maximize":false,"cv_mean":0.241,"cv_std":0.07,
+ "fold_metrics":[0.23,0.25],"n_trees":50,"elapsed_ms":812,
  "params":{"rounds":50,"depth":6,"lr":0.3,"lambda":1.0,"min_child_weight":1.0,
   "gamma":0,"max_bin":256,"subsample":1.0,"colsample":1.0,
   "tree_method":"auto","seed":42,"eval_metric":"rmse"}}
 ```
 
+`fold_metrics`（EVO-02，仅 `--cv`）：各折指标，供折级 Pareto 选父；`n_trees`/`elapsed_ms`：模型树数与耗时（未存模型时省略）。
+
 Agent 用法：
 - 读全文件 → 按 `maximize` 取 `value` 最优记录 → 其 **完整** `params` 作为下一轮起点与发布候选。
+- 演化搜索（SKILL §4.5）：`fold_metrics` 找「某折最优」的非支配集加权选父；`n_trees`/`elapsed_ms` 做大小/耗时权衡与筛选晋级。
 - **一键复现（WP-17）**：`leaves train --data PATH --from-run runs.jsonl [--tag NAME] [覆盖 flags]`  
   - 有 `--tag`：取该 tag **最后一次**出现的行；无 `--tag`：按 maximize 自动选最优行。  
   - 账本 `params` + `objective` 填默认；**CLI 显式 flag 始终优先**。  

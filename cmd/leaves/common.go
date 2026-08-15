@@ -59,9 +59,13 @@ type metricsDoc struct {
 	// TrainAccel：Fit 后实际生效的训练加速模式（POST-13）；与推理 BackendAuto 无关。
 	TrainAccel string `json:"train_accel,omitempty"`
 	// FinalModel / FinalRound：--out-final 侧车（POST-12）；早停时为截断前 final-round。
-	FinalModel string        `json:"final_model,omitempty"`
-	FinalRound int           `json:"final_round,omitempty"`
-	Params     *paramsRecord `json:"params,omitempty"`
+	FinalModel string `json:"final_model,omitempty"`
+	FinalRound int    `json:"final_round,omitempty"`
+	// NTrees / ElapsedMS（EVO-02）：模型树数与训练耗时（毫秒），供 Agent 做
+	// 「指标 vs 模型大小/耗时」Pareto 与时间感知的筛选晋级；gblinear 等无森林时省略。
+	NTrees    int           `json:"n_trees,omitempty"`
+	ElapsedMS int64         `json:"elapsed_ms,omitempty"`
+	Params    *paramsRecord `json:"params,omitempty"`
 }
 
 // newParamsRecord 从 train CLI 旋钮组装完备 params（Agent 账本复现用）。
@@ -120,16 +124,21 @@ func writeMetrics(path string, doc metricsDoc) error {
 
 // runRecord 是运行账本 runs.jsonl 的单行（Agent 跨迭代优化的持久记忆）。
 type runRecord struct {
-	Tag       string        `json:"tag"`
-	TS        string        `json:"ts"`
-	Model     string        `json:"model,omitempty"`
-	Objective string        `json:"objective,omitempty"` // WP-17：供 --from-run 复现
-	Metric    string        `json:"metric"`
-	Value     float64       `json:"value"`
-	Maximize  bool          `json:"maximize"`
-	CVMean    float64       `json:"cv_mean,omitempty"`
-	CVStd     float64       `json:"cv_std,omitempty"`
-	Params    *paramsRecord `json:"params,omitempty"`
+	Tag       string  `json:"tag"`
+	TS        string  `json:"ts"`
+	Model     string  `json:"model,omitempty"`
+	Objective string  `json:"objective,omitempty"` // WP-17：供 --from-run 复现
+	Metric    string  `json:"metric"`
+	Value     float64 `json:"value"`
+	Maximize  bool    `json:"maximize"`
+	CVMean    float64 `json:"cv_mean,omitempty"`
+	CVStd     float64 `json:"cv_std,omitempty"`
+	// FoldMetrics / NTrees / ElapsedMS（EVO-02）：折级指标、树数与耗时——
+	// 折级 Pareto 选父与预算感知筛选所需的账本信号；metrics 已有、账本行此前缺。
+	FoldMetrics []float64     `json:"fold_metrics,omitempty"`
+	NTrees      int           `json:"n_trees,omitempty"`
+	ElapsedMS   int64         `json:"elapsed_ms,omitempty"`
+	Params      *paramsRecord `json:"params,omitempty"`
 }
 
 // appendRun 把本次训练记录追加到 JSONL 账本（不存在则创建）。
@@ -138,16 +147,19 @@ func appendRun(runsPath, tag, modelPath string, doc metricsDoc) error {
 		return nil
 	}
 	rec := runRecord{
-		Tag:       tag,
-		TS:        time.Now().UTC().Format(time.RFC3339),
-		Model:     modelPath,
-		Objective: doc.Objective,
-		Metric:    doc.Metric,
-		Value:     doc.Value,
-		Maximize:  doc.Maximize,
-		CVMean:    doc.CVMean,
-		CVStd:     doc.CVStd,
-		Params:    doc.Params,
+		Tag:         tag,
+		TS:          time.Now().UTC().Format(time.RFC3339),
+		Model:       modelPath,
+		Objective:   doc.Objective,
+		Metric:      doc.Metric,
+		Value:       doc.Value,
+		Maximize:    doc.Maximize,
+		CVMean:      doc.CVMean,
+		CVStd:       doc.CVStd,
+		FoldMetrics: doc.FoldMetrics,
+		NTrees:      doc.NTrees,
+		ElapsedMS:   doc.ElapsedMS,
+		Params:      doc.Params,
 	}
 	b, err := json.Marshal(rec)
 	if err != nil {

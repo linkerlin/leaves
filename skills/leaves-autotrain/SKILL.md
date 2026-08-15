@@ -43,7 +43,7 @@ description: >-
 没有记忆的优化是盲搜。每次 `train --runs runs.jsonl --tag <名>` 会在账本追加一行：
 
 ```json
-{"tag":"baseline","ts":"2026-07-09T04:06:20Z","metric":"rmse","value":0.236,"maximize":false,"cv_mean":0.241,"cv_std":0.07,"params":{"rounds":50,"depth":6,"lr":0.3,...}}
+{"tag":"baseline","ts":"2026-07-09T04:06:20Z","metric":"rmse","value":0.236,"maximize":false,"cv_mean":0.241,"cv_std":0.07,"fold_metrics":[0.23,0.25],"n_trees":50,"elapsed_ms":812,"params":{"rounds":50,"depth":6,"lr":0.3,...}}
 ```
 
 Agent 每轮决策前 `Get-Content runs.jsonl`（或读全文件）：
@@ -53,6 +53,7 @@ Agent 每轮决策前 `Get-Content runs.jsonl`（或读全文件）：
 - **避免重复**：若新提议的 `params` 已在账本中且更差，跳过。
 - **可恢复**：长会话中断后，Agent 从账本续起，无需重头搜。
 - **收敛判据**（§五）的「连续 3 次改进 <0.5%」直接读账本尾部判定。
+- **演化信号**（EVO）：`fold_metrics` 支持折级 Pareto 选父（§4.5）；`n_trees`/`elapsed_ms` 支持「指标 vs 模型大小/耗时」权衡与时间感知的筛选晋级。
 
 > 账本由 CLI 可靠追加（不依赖 Agent 手写 JSON）；Agent 只读不写账本。
 
@@ -86,7 +87,7 @@ leaves publish --model m.leaves.json --out-dir release/v1 `
   --version 1.0.0 --quantize --export-xgb --metrics metrics.json
 ```
 
-> 若仓库内尚未 `go install`，用 `go run ./cmd/leaves ...` 等价。
+> 若仓库内尚未 `go install`，用 `go run ./cmd/leaves ...` 等价；仓库外安装：`go install github.com/linkerlin/leaves/v2/cmd/leaves@latest`。
 
 ## 四、决策表（Agent 的调参大脑）
 
@@ -158,7 +159,31 @@ leaves publish --model m.leaves.json --out-dir release/v1 `
 - 行数 ≥50k：切一份 holdout；优化期用 `--cv 3`，**定稿前**用 `eval` 在 holdout 上独立验收。
 - 排序任务：CV 可能切散 group，优先用 `--val`（保持 group 完整）。
 
-> 经验：80% 的收益来自前三步（sniff→基线→一次三角调整）。后续正则/采样是边际优化，达到 §五 收敛判据即停，不要无限调。
+### 4.5 演化搜索协议（EVO；对齐 GEPA 的反射式进化）
+
+> 上述网格是「骨架」；本协议是「大脑」。只变异全局最优 = 贪心坐标下降，易陷局部最优（GEPA 的 `current_best` 消融组正是此陷阱）。账本信号已支持以下全部策略。
+
+**① 选父（Hall-of-Fame + 折级 Pareto，每轮变异前）**
+
+1. 读 runs.jsonl → 构建前沿集：全局最优 + 「在某折上 `fold_metrics[i]` 最优」的每个候选（非支配集）。
+2. 加权随机选父：按候选领先折数加权抽签；或 ε-greedy（80% 从前沿抽、20% 从 top-3 锦标赛抽）。
+3. 账本行无 `fold_metrics`（非 CV 路径）时退化为 top-3 锦标赛。
+
+**② 反射式变异（退化或 plateau 时，替代盲目换格）**
+
+1. **组装 ASI 包**（Actionable Side Information）：`--emit-rounds` 曲线形态（早升晚降=过拟合 / 平坦=欠拟合）、`train_metric` 与 value 差、`cv_std`、`explain --type importance`（gain≈0 的特征）、错误码。
+2. **写假设一行**到 Agent 自持的 `decisions.md`（格式：`假设：<症状> → <定向变异>`；账本仍只读不写）。
+3. **定向变异 1–2 旋钮**——由假设驱动，不再查表碰运气。
+
+**③ 交叉重组（Merge）**：从两个前沿候选各取半参：A 的 `depth`/`rounds`/`lr` + B 的正则/采样（`lambda`/`min_child_weight`/`subsample`/`colsample`）；与账本去重后再评估。
+
+**④ 筛选 → 晋级（预算分层）**：新候选先廉价筛查（`--cv 2`，或小 rounds + `--early-stop`）；筛查分不劣于父代 2% 以内，才升 `--cv 5` 全量定分。省下的预算多试一个候选。
+
+**⑤ 预算帽**：默认总训练次数 ≤15（用户显式放宽除外）；触帽或 §五 判据满足 → 强制进入收敛/发布，不无限调参。
+
+**⑥ 谱系（tag 约定）**：`p:<父tag>+<变异摘要>`，如 `p:tune1+depth8`、`p:baseline+lambda3`；交叉记 `x:<A>|<B>`。便于追溯「哪个教训生了哪个后代」。
+
+> 经验：80% 的收益来自前三步（sniff→基线→一次三角调整）。后续走 §4.5 协议做边际优化，达到 §五 收敛判据即停。
 
 ---
 
@@ -213,94 +238,97 @@ CLI flag 全表与 metrics.json schema 见 [`cli.md`](cli.md)。零代码 demo �
 
 ---
 
-## 附录：Agent 推理 walkthrough（`examples/autotrain/` 实战，数字已验证 2026-07-10）
+## 附录：Agent 推理 walkthrough（`examples/autotrain/` 实战，数字已验证 2026-08-16）
 
-> Agent 拿到 `examples/autotrain/data/train.csv`（120 行、3 特征、回归，`y≈2x₀−1.5x₁+0.8x₂+微噪`）与 `holdout.csv`（30 行），按下面的推演完成全闭环。**以下数字均为实跑结果（seed=42），可复现。**
+> Agent 拿到 `examples/autotrain/data/train.csv`（120 行、3 特征、回归，`y≈2x₀−1.5x₁+0.8x₂+微噪`）与 `holdout.csv`（30 行），按 §4.5 演化搜索协议完成全闭环。**以下数字均为实跑结果（seed=42），可复现。**
 >
 > **路径纪律**：`--out-model` 与 `--metrics` **必须不同路径**（否则 metrics 覆盖模型，inspect 失败）。推荐 `mN.leaves.json` + `mN.metrics.json`。
 
 ### 第 0 轮：识别任务
 
 ```
-> go run ./cmd/leaves sniff --data examples/autotrain/data/train.csv --metrics sniff.json
+> leaves sniff --data examples/autotrain/data/train.csv --metrics sniff.json
 → {"format":"csv","n_rows":120,"n_features":3,"feature_names":["x0","x1","x2"],
    "label":{"kind":"regression"},"suggested_objective":"reg:squarederror","suggested_metric":"rmse",
    "data_quality":{"numeric":true,"nan_cells":0,"warnings":[]}}
 ```
 **Agent 推理**：3 特征、连续标签 → `reg:squarederror` + `rmse`。无需问用户。
 
-### 第 1 轮：基线（CV 5 折——诚实估计）
+### 第 1 轮：CV 基线（诚实估计）
 
 ```
-> go run ./cmd/leaves train --data .../train.csv --objective reg:squarederror
+> leaves train --data .../train.csv --objective reg:squarederror
   --cv 5 --rounds 40 --depth 4 --lr 0.2
   --out-model m1.leaves.json --metrics m1.metrics.json --runs runs.jsonl --tag baseline
 ```
 `m1.metrics.json`：
 ```json
-{"metric":"rmse","value":0.2314,"maximize":false,"cv_mean":0.2314,"cv_std":0.0089}
+{"metric":"rmse","value":0.2314,"maximize":false,"cv_mean":0.2314,"cv_std":0.0089,
+ "fold_metrics":[0.2323,0.2279,0.2288,0.2207,0.2475],"n_trees":40,"elapsed_ms":1824}
 ```
-**Agent 推理**：CV 基线 0.2314，cv_std=0.0089（约 3.8% of mean — 切分稳定）。此轮用 `--cv` 获取诚实估计；CV 路径不提供逐轮诊断。下一轮：切到 `--val` + `--early-stop` + `--emit-rounds` 做详细调参。
+**Agent 推理**：CV 基线 0.2314，`cv_std`=0.0089（约 3.8% of mean，切分稳定）；`fold_metrics` 记入账本供折级 Pareto。下一轮换 `--val --early-stop --emit-rounds` 做逐轮诊断。
 
-### 第 2 轮：加深 + 降学习率 + 早停（关键！）
+### 第 2 轮：定向变异①（谱系 tag：depth↑ + lr↓ + 早停）
 
 ```
-> go run ./cmd/leaves train --data .../train.csv --objective reg:squarederror
+> leaves train --data .../train.csv --objective reg:squarederror
   --rounds 200 --depth 6 --lr 0.1
   --val .../holdout.csv --early-stop 20 --emit-rounds rounds.jsonl
-  --out-model m2.leaves.json --metrics m2.metrics.json --runs runs.jsonl --tag depth6_lr01
+  --out-model m2.leaves.json --metrics m2.metrics.json --runs runs.jsonl --tag p:baseline+depth6_lr01
 ```
 `m2.metrics.json`：
 ```json
-{"value":0.218,"train_metric":0.139,"best_round":43,"stopped_round":63,"model_round":43}
+{"value":0.218,"train_metric":0.139,"best_round":43,"stopped_round":63,"model_round":43,
+ "n_trees":43,"elapsed_ms":813}
 ```
-**Agent 推理**：best val=0.218（早停报告 best-round），比基线 0.2314 降 5.8% ✓。`best_round=43` / `model_round=43`（默认 save-best 已截断）。`train_metric=0.139` 是 **截断后** 模型在训练集上的指标（非 final 200 轮）。**这是目前最优。** 下一轮：试加正则看能否超越 0.218。
+**Agent 推理**：0.2314→0.218（−5.8%）✓；`model_round==best_round==n_trees==43`（save-best 截断一致）。**当前最优**。
 
-### 第 3 轮：强正则（未加早停——反面教材）
+### 第 3 轮：反射式变异（§4.5 ②——重点）
 
-```
-> go run ./cmd/leaves train ... --rounds 200 --depth 6 --lr 0.1 --lambda 5 --min-child-weight 10
-  --val .../holdout.csv
-  --out-model m3.leaves.json --metrics m3.metrics.json --runs runs.jsonl --tag reg_strong
-```
-`m3.metrics.json`：
-```json
-{"value":0.2229,"train_metric":0.1293,"model_round":200}
-```
-**Agent 推理**：val=0.2229 > R2 的 0.218 → 退化！**但注意**：R3 未加 `--early-stop`，val 是 final-round（第 200 轮）的值——已过拟合。强正则（lambda=5）没带来收益。读 `runs.jsonl`：最优仍是 `depth6_lr01`(0.218)。
-
-### 第 4 轮：温和正则 + 采样（小数据上的反面教材）
+先组装 ASI 包：
 
 ```
-> go run ./cmd/leaves train ... --rounds 200 --depth 6 --lr 0.1 --lambda 2 --min-child-weight 3
-  --subsample 0.8 --colsample 0.8
-  --val .../holdout.csv
-  --out-model m4.leaves.json --metrics m4.metrics.json --runs runs.jsonl --tag reg_mild
-```
-`m4.metrics.json`：
-```json
-{"value":0.2309,"train_metric":0.129}
-```
-**Agent 推理**：val=0.2309 → 最差！`subsample=0.8` 在仅 120 行上砍掉 20% 样本。**教训：小数据（<1000 行）不要用 subsample/colsample。** 账本：baseline(0.2314)→depth6_lr01(0.218)→reg_strong(0.2229)→reg_mild(0.2309)。
-
-### 收敛判定与发布
-
-- 最优 run = `depth6_lr01`(value=0.218, best_round=43, model_round=43)。
-- 后续两轮均退化 → 收敛。
-- **定稿**：默认 save-best 已使磁盘模型 = best_round，**无需手写重训**。也可用一键复现：
-  `train --data ... --from-run runs.jsonl --tag depth6_lr01 --out-model final.leaves.json ...`
-  （params 从账本加载，CLI flag 可覆盖）。
-
-```
-> go run ./cmd/leaves inspect --model m2.leaves.json
-  → {"objective":"reg:squarederror","n_trees":43,"num_features":3,"kind":"gbtree"} ✓
-> go run ./cmd/leaves publish --model m2.leaves.json --out-dir release/v1 --version 1.0.0
-  --quantize --data .../train.csv --export-xgb --metrics m2.metrics.json
+> leaves explain --model m2.leaves.json --type importance --metrics imp.json
+→ {"features":[{"name":"f0","score":368},{"name":"f1","score":0},{"name":"f2","score":360}]}
+> 读 rounds.jsonl 尾部：train 0.129↘ 而 val 0.223 平台（round 43 后无改进）
 ```
 
-产物：`model.leaves.json` + `model.quant.json`（量化侧车，parity pass✓）+ `model.xgb.json` + `manifest.json`（含 `reproduce`）。
+**写假设**（decisions.md 一行）：`train_metric(0.139) 远好于 val(0.218) + 曲线晚段 train↓val平台 → 过拟合主导 → 定向变异：lambda 1→2（保留早停）`。
 
-**总结**：全程读 JSON/JSONL、零 Go 代码；(1) 早停关键；(2) 小数据别 subsample；(3) save-best 保证发布模型是最优轮；(4) `--out-model`≠`--metrics`；(5) `--from-run` 降低复现拼 flag 错误。
+```
+> leaves train ... --rounds 200 --depth 6 --lr 0.1 --lambda 2
+  --val .../holdout.csv --early-stop 20
+  --out-model m3.leaves.json --metrics m3.metrics.json --runs runs.jsonl --tag p:baseline+depth6_lr01+lambda2
+```
+`m3.metrics.json`：`{"value":0.2129,"best_round":50,"model_round":50,"n_trees":50,"elapsed_ms":494}`
+
+**Agent 推理**：0.218→0.2129（−2.3%）✓ 反射假设成立。**反例警示**：若像旧流程那样盲调 `lambda 5 + min_child 10` 而**漏掉 `--early-stop`**，会拿到 final-round 过拟合值 0.2229 误判「正则无效」——ASI 驱动的定向变异 + 早停缺一不可。
+
+### 第 4 轮：同族再变异 → 收敛判定
+
+```
+> leaves train ... --lambda 2 --min-child-weight 3 --val ... --early-stop 20
+  --tag p:baseline+depth6_lr01+lambda2_mcw3
+→ {"value":0.21293...,"best_round":50}  ← 与第 3 轮完全相同
+```
+**Agent 推理**：mcw=3 在此数据不约束（值零变化）→ 改进 0% < 0.5%。第 3、4 轮改进均落入噪声区 → **§五 收敛判据触发**，停止搜索。
+
+### 定稿与发布
+
+最优 run = `p:baseline+depth6_lr01+lambda2`（value=0.2129）。全量定稿复现：
+
+```
+> leaves train --data .../train.csv --from-run runs.jsonl --out-model final.leaves.json --metrics final.json
+  （自动取最优行 params；无 --val 时 value=train 指标 0.125——全量重训语义，发布模型即此）
+> leaves inspect --model final.leaves.json
+  → {"objective":"reg:squarederror","n_trees":200,"num_features":3,"kind":"gbtree"} ✓
+> leaves publish --model final.leaves.json --out-dir release/v1 --version 1.0.0
+  --quantize --data .../train.csv --export-xgb --metrics final.json --emit-repro-script both
+```
+
+产物：`model.leaves.json` + `model.quant.json`（parity pass✓）+ `model.xgb.json` + `manifest.json`（含 `reproduce` 与 sha256）+ `reproduce.ps1`/`reproduce.sh`。
+
+**总结**：全程读 JSON/JSONL、零 Go 代码；(1) 谱系 tag 记录「哪个教训生了哪个后代」；(2) 反射协议（ASI→假设→定向变异）比盲扫网格快且不误判；(3) save-best 保证最优轮入库；(4) `--from-run` 全量定稿；(5) `--out-model`≠`--metrics`。
 
 ---
 
@@ -332,7 +360,7 @@ publish  --model FILE --out-dir DIR     → 本地工件包 + manifest（--quant
 
 1. 先 sniff → 自动定 objective
 2. 默认超参 baseline → 看 train/cv 差距 → 定过拟合/欠拟合方向
-3. 每轮只动 1-2 个旋钮 → runs.jsonl 去重 → 收敛即停
-4. plateau → run explain --type importance 看特征权重
-5. 收敛 → inspect 复核 → publish 定稿
+3. 每轮按 §4.5 选父（HoF/折级 Pareto）→ 定向变异 1-2 旋钮 → runs.jsonl 去重
+4. 退化/plateau → 组装 ASI（emit-rounds/explain/错误码）→ 写假设 → 定向变异
+5. 预算帽 15 次或收敛 → inspect 复核 → publish 定稿
 ```

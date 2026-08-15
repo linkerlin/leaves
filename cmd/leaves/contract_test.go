@@ -825,28 +825,59 @@ func TestAgenticOptimizeLoopSmoke(t *testing.T) {
 		t.Fatalf("train tune1: %v", err)
 	}
 
+	// 第三轮走 --cv 路径：锁定 EVO-02 账本信号 fold_metrics（折级 Pareto 选父依据）。
+	if err := cmdTrain([]string{
+		"--data", trainPath, "--objective", "reg:squarederror",
+		"--cv", "2", "--rounds", "10", "--depth", "3", "--lr", "0.2",
+		"--metrics", filepath.Join(dir, "m3.json"),
+		"--runs", runs, "--tag", "tune2_cv2",
+	}); err != nil {
+		t.Fatalf("train tune2_cv2: %v", err)
+	}
+
 	b, err := os.ReadFile(runs)
 	if err != nil {
 		t.Fatal(err)
 	}
 	lines := strings.Split(strings.TrimSpace(string(b)), "\n")
-	if len(lines) != 2 {
-		t.Fatalf("runs lines=%d want 2", len(lines))
+	if len(lines) != 3 {
+		t.Fatalf("runs lines=%d want 3", len(lines))
 	}
 	var best runRecord
 	best.Value = 1e300
-	var tune1 runRecord
+	var tune1, cvRun runRecord
+	cvRun.Tag = ""
 	for _, line := range lines {
 		var rec runRecord
 		if err := json.Unmarshal([]byte(line), &rec); err != nil {
 			t.Fatal(err)
 		}
+		// EVO-02：有模型的账本行必须携带 n_trees（CV 未存模型时合法省略）。
+		if rec.Model != "" && rec.NTrees <= 0 {
+			t.Fatalf("run %s: n_trees missing/zero", rec.Tag)
+		}
+		var raw map[string]any
+		if err := json.Unmarshal([]byte(line), &raw); err != nil {
+			t.Fatal(err)
+		}
+		if _, ok := raw["elapsed_ms"]; !ok {
+			t.Fatalf("run %s: elapsed_ms missing from ledger line", rec.Tag)
+		}
 		if rec.Tag == "tune1" {
 			tune1 = rec
+		}
+		if rec.Tag == "tune2_cv2" {
+			cvRun = rec
 		}
 		if !rec.Maximize && rec.Value < best.Value {
 			best = rec
 		}
+	}
+	if cvRun.Tag == "" {
+		t.Fatal("cv run missing from ledger")
+	}
+	if len(cvRun.FoldMetrics) != 2 {
+		t.Fatalf("cv run fold_metrics=%v want len 2", cvRun.FoldMetrics)
 	}
 	if best.Tag == "" {
 		t.Fatal("no best run")
