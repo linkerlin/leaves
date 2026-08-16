@@ -7,6 +7,17 @@
 
 ---
 
+## [2.5.2] - 2026-08-16
+
+> **主题**：`--from-run` 谱系流程修复（tag 未命中不再硬错）  
+> **Release 正文**：[`docs/release-notes-v2.5.2.md`](docs/release-notes-v2.5.2.md)
+
+### Changed
+
+- **`train --from-run --tag`（新 tag）回落最优行**：tag 不在账本时原报 `usage` 错误退出——SKILL §4.5 的「复现最优 + `--tag p:parent+mutation` 起新谱系名」流程无法直接组合。现回落最优行作父代（stderr 注明父代 tag，可审计），用户新 tag 原样写入本次账本行。与 `--from-run` 联用且要切换单跑路径时显式 `--cv 0`（父代 `cv_folds` 会连带 CV 路径，SKILL 已注明）。
+
+---
+
 ## [2.5.1] - 2026-08-16
 
 > **主题**：CI 修复（自 v2.2.0 起慢性红灯收口）  

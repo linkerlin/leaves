@@ -64,9 +64,12 @@ func cmdTrain(args []string) error {
 	}
 	// WP-17：--from-run 填未显式设置的旋钮；显式 CLI flag 始终优先。
 	if *fromRun != "" {
-		rec, err := loadRunFromLedger(*fromRun, *tag)
+		rec, notice, err := loadRunFromLedger(*fromRun, *tag)
 		if err != nil {
 			return err
+		}
+		if notice != "" {
+			fmt.Fprintf(os.Stderr, "leaves: 注意：%s\n", notice)
 		}
 		set := map[string]bool{}
 		fs.Visit(func(f *flag.Flag) { set[f.Name] = true })

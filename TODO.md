@@ -22,7 +22,7 @@
 
 **对照结论**：可执行 backlog **已清空**；Unreleased 已落盘。默认 **维护 + 按需开新项**；新需求先写进本文件再实现。发版走 [`docs/release-checklist.md`](docs/release-checklist.md)。
 
-**最新 tag**：https://github.com/linkerlin/leaves/releases/tag/v2.5.1
+**最新 tag**：https://github.com/linkerlin/leaves/releases/tag/v2.5.2
 
 ---
 
@@ -157,6 +157,7 @@ go test ./docs -count=1   # 镜像 + 文档版本引用门禁
 - [x] **CIFIX-03** 新增 `LEAVES_BORN_GPU=0|off|false`（Windows）：`tree.BornWebGPUAvailable()` 强制 false，训练+推理 WebGPU 全回落 CPU；CI test job 设置该变量（WARP 探测通过但运行时 `DXGI_ERROR_DEVICE_REMOVED`）；`docs/backend-auto.md` 已文档化  
 - [x] **CIFIX-04** `model/predict_contrib_p0_test.go`：TSV 解析前 TrimSpace（CI Windows autocrlf 下 `"-0.670\r"` 失败）  
 - [x] **CIFIX-05** runs.jsonl `elapsed_ms` 去 omitempty：账本行必带（0=<1ms；CI 小数据 sub-ms 丢字段曾挂 TestAgenticOptimizeLoopSmoke）  
+- [x] **AGUX-06** `--from-run --tag <新tag>` 回落最优行（v2.5.2）：原硬错阻断 §4.5 谱系流程；仓库外 `go install` 二进制用户路径实测全通；`--cv 0` 切换单跑路径已注明 SKILL/cli.md  
 
 **验收**：本地 `LEAVES_BORN_GPU=0 go test ./tree ./model` 绿；wasm 交叉编译过；CI 全 job 绿（v2.5.1 起）。
 

@@ -1047,6 +1047,43 @@ func TestFromRunReproduce(t *testing.T) {
 	if bdoc.Params == nil || bdoc.Params.Depth != 4 || bdoc.Params.LR != 0.2 {
 		t.Fatalf("best pick want depth=4 lr=0.2: %+v", bdoc.Params)
 	}
+
+	// 4) EVO 谱系流程：--tag 为账本中不存在的【新】tag → 回落最优行作父代，
+	//    且新 tag 原样写入本次账本行（不强制 _repro 后缀）。
+	lineageRuns := filepath.Join(dir, "lineage.jsonl")
+	if err := os.WriteFile(lineageRuns, []byte(ledgerBody), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	linMetrics := filepath.Join(dir, "lin.json")
+	if err := cmdTrain([]string{
+		"--data", trainPath,
+		"--from-run", lineageRuns, "--tag", "p:best+depth8", // 新谱系 tag，账本中无
+		"--rounds", "4",
+		"--metrics", linMetrics,
+		"--runs", lineageRuns,
+	}); err != nil {
+		t.Fatalf("from-run lineage: %v", err)
+	}
+	var ldoc metricsDoc
+	mustJSON(t, linMetrics, &ldoc)
+	if ldoc.Params == nil || ldoc.Params.Depth != 4 || ldoc.Params.LR != 0.2 {
+		t.Fatalf("lineage fallback want parent(best) depth=4 lr=0.2: %+v", ldoc.Params)
+	}
+	lb, err := os.ReadFile(lineageRuns)
+	if err != nil {
+		t.Fatal(err)
+	}
+	llines := strings.Split(strings.TrimSpace(string(lb)), "\n")
+	if len(llines) != 4 {
+		t.Fatalf("lineage ledger lines=%d want 4", len(llines))
+	}
+	var lastRec runRecord
+	if err := json.Unmarshal([]byte(llines[len(llines)-1]), &lastRec); err != nil {
+		t.Fatal(err)
+	}
+	if lastRec.Tag != "p:best+depth8" {
+		t.Fatalf("lineage tag preserved: got %q", lastRec.Tag)
+	}
 }
 
 // TestOutModelMetricsSamePath 防止 metrics 覆盖模型文件。

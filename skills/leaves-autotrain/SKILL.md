@@ -49,7 +49,7 @@ description: >-
 Agent 每轮决策前 `Get-Content runs.jsonl`（或读全文件）：
 
 - **选最优**：按 `maximize` 在所有记录里取 `value` 最优的一组 `params`，作为下一轮起点与发布候选。
-- **一键复现**：`leaves train --data X --from-run runs.jsonl --tag <最优tag> --out-model ...`（无 `--tag` 则自动取最优行；其余 CLI flag 覆盖账本）。
+- **一键复现**：`leaves train --data X --from-run runs.jsonl --tag <最优tag> --out-model ...`（无 `--tag` 则自动取最优行；`--tag` 为**新**谱系名时回落最优行作父代、新名入账；其余 CLI flag 覆盖账本）。注意：父代行含 `cv_folds` 时会连带走 CV 路径——要切 `--val --early-stop` 单跑路径须显式 `--cv 0`。
 - **避免重复**：若新提议的 `params` 已在账本中且更差，跳过。
 - **可恢复**：长会话中断后，Agent 从账本续起，无需重头搜。
 - **收敛判据**（§五）的「连续 3 次改进 <0.5%」直接读账本尾部判定。

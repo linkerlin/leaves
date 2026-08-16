@@ -11,10 +11,12 @@ import (
 // loadRunFromLedger 从 runs.jsonl 选取一行：
 //   - tag 非空：取该 tag 的最后一次出现（同 tag 重跑时以最新为准）
 //   - tag 为空：按 maximize 取 value 最优行
-func loadRunFromLedger(path, tag string) (*runRecord, error) {
+//   - tag 非空但账本中不存在：回落最优行（notice 说明），保留用户新 tag——
+//     支持演化谱系流程「--from-run 复现最优 + --tag p:parent+mutation 起新名」
+func loadRunFromLedger(path, tag string) (*runRecord, string, error) {
 	f, err := os.Open(path)
 	if err != nil {
-		return nil, errAgentWrap("data_load", fmt.Sprintf("open --from-run: %v", err),
+		return nil, "", errAgentWrap("data_load", fmt.Sprintf("open --from-run: %v", err),
 			"确认 runs.jsonl 路径存在且由 train --runs 写出", false, err)
 	}
 	defer f.Close()
@@ -35,43 +37,39 @@ func loadRunFromLedger(path, tag string) (*runRecord, error) {
 		}
 		var rec runRecord
 		if err := json.Unmarshal([]byte(line), &rec); err != nil {
-			return nil, errAgent("data_load", fmt.Sprintf("runs.jsonl 第 %d 行 JSON 无效: %v", n+1, err),
+			return nil, "", errAgent("data_load", fmt.Sprintf("runs.jsonl 第 %d 行 JSON 无效: %v", n+1, err),
 				"账本须由 leaves train --runs 追加，勿手写损坏行", false)
 		}
 		n++
-		if tag != "" {
-			if rec.Tag == tag {
-				cp := rec
-				byTag = &cp
-			}
-			continue
-		}
-		// 无 tag：按 maximize 选最优
 		cp := rec
 		if !bestInit {
 			best = &cp
 			bestInit = true
-			continue
-		}
-		if betterRun(&cp, best) {
+		} else if betterRun(&cp, best) {
 			best = &cp
+		}
+		if tag != "" {
+			if rec.Tag == tag {
+				cp2 := rec
+				byTag = &cp2
+			}
 		}
 	}
 	if err := sc.Err(); err != nil {
-		return nil, fmt.Errorf("read runs: %w", err)
+		return nil, "", fmt.Errorf("read runs: %w", err)
 	}
 	if n == 0 {
-		return nil, errAgent("data_load", "runs.jsonl 为空",
+		return nil, "", errAgent("data_load", "runs.jsonl 为空",
 			"先 train --runs PATH --tag NAME 写入至少一行", false)
 	}
 	if tag != "" {
-		if byTag == nil {
-			return nil, errAgent("usage", fmt.Sprintf("runs.jsonl 中无 tag=%q", tag),
-				"用 Get-Content runs.jsonl 查看已有 tag；或不带 --tag 自动选最优", false)
+		if byTag != nil {
+			return byTag, "", nil
 		}
-		return byTag, nil
+		// 未命中：回落最优行。若与最优 tag 也不同名，仍可能是笔误——notice 让 Agent 可审计纠正。
+		return best, fmt.Sprintf("runs.jsonl 中无 tag=%q，已回落最优行 tag=%q（若本意是复现某父代，请核对其 tag）", tag, best.Tag), nil
 	}
-	return best, nil
+	return best, "", nil
 }
 
 func betterRun(a, b *runRecord) bool {

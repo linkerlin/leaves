@@ -66,9 +66,9 @@ Agent 用法：
 - 读全文件 → 按 `maximize` 取 `value` 最优记录 → 其 **完整** `params` 作为下一轮起点与发布候选。
 - 演化搜索（SKILL §4.5）：`fold_metrics` 找「某折最优」的非支配集加权选父；`n_trees`/`elapsed_ms` 做大小/耗时权衡与筛选晋级。
 - **一键复现（WP-17）**：`leaves train --data PATH --from-run runs.jsonl [--tag NAME] [覆盖 flags]`  
-  - 有 `--tag`：取该 tag **最后一次**出现的行；无 `--tag`：按 maximize 自动选最优行。  
+  - 有 `--tag`：取该 tag **最后一次**出现的行；**tag 不在账本时回落最优行**（stderr 注明；支持谱系流程「复现最优 + `--tag p:parent+mutation` 起新名」）。无 `--tag`：按 maximize 自动选最优行（新 tag 自动取 `<最优tag>_repro`）。  
   - 账本 `params` + `objective` 填默认；**CLI 显式 flag 始终优先**。  
-  - 仍须提供 `--data`（及需要时的 `--val`）；`--objective` 可省略（由账本补全）。
+  - 仍须提供 `--data`（及需要时的 `--val`）；`--objective` 可省略（由账本补全）。  
 - 尾部记录用于判定收敛（连续 3 次改进 <0.5%）。
 
 ## sniff
