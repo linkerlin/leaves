@@ -135,9 +135,10 @@ type runRecord struct {
 	CVStd     float64 `json:"cv_std,omitempty"`
 	// FoldMetrics / NTrees / ElapsedMS（EVO-02）：折级指标、树数与耗时——
 	// 折级 Pareto 选父与预算感知筛选所需的账本信号；metrics 已有、账本行此前缺。
+	// ElapsedMS 不用 omitempty：账本契约「每行必带」，0 表示 <1ms（CI 小数据即 0）。
 	FoldMetrics []float64     `json:"fold_metrics,omitempty"`
 	NTrees      int           `json:"n_trees,omitempty"`
-	ElapsedMS   int64         `json:"elapsed_ms,omitempty"`
+	ElapsedMS   int64         `json:"elapsed_ms"`
 	Params      *paramsRecord `json:"params,omitempty"`
 }
 

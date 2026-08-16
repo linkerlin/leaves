@@ -79,6 +79,10 @@ jobs:
   lint:
     name: lint (golangci-lint)
     runs-on: ubuntu-latest
+    env:
+      # 加速面（WebGPU hist/dispatch）只在 windows 构建下编译；GOOS=windows 使 lint 覆盖完整代码集。
+      # 这些 helper 在 linux 构建中会被误判 unused（调用方均在 //go:build windows 文件）。
+      GOOS: windows
     steps:
       - uses: actions/checkout@v4
 

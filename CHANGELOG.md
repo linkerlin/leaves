@@ -15,9 +15,10 @@
 ### Fixed
 
 - **CI wasm 构建**：`examples/wasm` 带 `//go:build js`，构建步骤缺 `GOOS=js GOARCH=wasm` → "build constraints exclude all Go files"。
-- **CI lint job**：golangci-lint-action v6 不支持 golangci-lint v2 → 升 v7（自 v2.1.6 启用 golangci-lint v2 起即挂）。
+- **CI lint job**：golangci-lint-action v6 不支持 golangci-lint v2 → 升 v7；lint 以 `GOOS=windows` 分析（加速面 helper 仅被 `//go:build windows` 的 GPU 文件调用，linux 构建会误判 unused；lint 自 v2.1.6 起 action 崩溃从未跑完，升 v7 后才暴露）。
 - **CI Windows GPU panic**：runner 只有 WARP 软件设备，`IsAvailable()` 探测通过但运行时 `DXGI_ERROR_DEVICE_REMOVED`。新增环境变量 **`LEAVES_BORN_GPU=0|off|false`**（Windows）强制关闭 WebGPU 路径（训练与推理全部回落 CPU）；CI test job 已设置。
 - **CRLF 测试解析**：`model` 测试在 CI Windows（autocrlf）下解析 testdata 尾部 `\r` 失败（`"-0.670\r"`）→ 解析前 TrimSpace。
+- **runs.jsonl `elapsed_ms` 契约收紧**：账本行 **必带** `elapsed_ms`（去掉 omitempty；`0` 表示 <1ms）——原实现 sub-ms 训练会丢字段，与「每行必带耗时」的账本语义不符。
 
 ---
 

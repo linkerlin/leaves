@@ -153,9 +153,10 @@ go test ./docs -count=1   # 镜像 + 文档版本引用门禁
 > 自 v2.2.0 起 CI 恒红（lint action 版本、wasm GOOS、CI Windows WARP GPU panic、CRLF 解析）。与 v2.5.0 同日修复发版。
 
 - [x] **CIFIX-01** CI wasm job：构建步骤补 `GOOS=js GOARCH=wasm`（`examples/wasm` 带 `//go:build js`）  
-- [x] **CIFIX-02** CI lint job：golangci-lint-action v6 → v7（v6 不支持 golangci-lint v2）  
+- [x] **CIFIX-02** CI lint job：golangci-lint-action v6 → v7（v6 不支持 golangci-lint v2）；并以 `GOOS=windows` 分析——加速面 helper 仅被 `//go:build windows` 的 GPU 文件调用，linux 构建误判 unused（本地 Windows lint 0 issues 复核）  
 - [x] **CIFIX-03** 新增 `LEAVES_BORN_GPU=0|off|false`（Windows）：`tree.BornWebGPUAvailable()` 强制 false，训练+推理 WebGPU 全回落 CPU；CI test job 设置该变量（WARP 探测通过但运行时 `DXGI_ERROR_DEVICE_REMOVED`）；`docs/backend-auto.md` 已文档化  
 - [x] **CIFIX-04** `model/predict_contrib_p0_test.go`：TSV 解析前 TrimSpace（CI Windows autocrlf 下 `"-0.670\r"` 失败）  
+- [x] **CIFIX-05** runs.jsonl `elapsed_ms` 去 omitempty：账本行必带（0=<1ms；CI 小数据 sub-ms 丢字段曾挂 TestAgenticOptimizeLoopSmoke）  
 
 **验收**：本地 `LEAVES_BORN_GPU=0 go test ./tree ./model` 绿；wasm 交叉编译过；CI 全 job 绿（v2.5.1 起）。
 
