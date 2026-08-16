@@ -122,8 +122,8 @@ func cmdPublish(args []string) error {
 		"metrics":        metricsSnap,
 		"created_at":     time.Now().UTC().Format(time.RFC3339),
 		"schema_version": 1,
-		// leaves_cli 为 CLI 契约版本锚点（非 go.mod 模块版本）。
-		"leaves_cli": "agentic-1",
+		// leaves_cli：生成本工件包的 CLI 版本（go install 二进制带真实 tag；仓库内为 (devel)+commit）。
+		"leaves_cli": cliVersionLabel(),
 	}
 	reproCmd := buildReproduceCommand(metricsSnap, *dataPath, objective)
 	if reproCmd != "" {
@@ -224,6 +224,20 @@ func buildReproduceCommand(metricsSnap any, dataPath, objective string) string {
 	add("colsample", "colsample")
 	add("tree-method", "tree_method")
 	add("seed", "seed")
+	// AGUX-08：max-leaves / num-target / cv 同为复现必需（原缺失使 CV run 退化为全量单训）。
+	add("max-leaves", "max_leaves")
+	add("num-target", "num_target")
+	if cv, ok := asFloat(params["cv_folds"]); ok && cv >= 2 {
+		cmd += fmt.Sprintf(" --cv %d", int(cv))
+	} else {
+		// 单跑路径：早停语义需 --val + --early-stop 成对（val 路径由 params.val 提供）。
+		if vp, ok := params["val"].(string); ok && vp != "" {
+			cmd += " --val " + quotePath(vp)
+		}
+		if es, ok := asFloat(params["early_stop"]); ok && es > 0 {
+			cmd += fmt.Sprintf(" --early-stop %d", int(es))
+		}
+	}
 	if em, ok := params["eval_metric"].(string); ok && em != "" {
 		cmd += " --eval-metric " + em
 	} else if em, ok := m["metric"].(string); ok && em != "" {

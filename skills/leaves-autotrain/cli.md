@@ -44,7 +44,9 @@
 | `train_accel` | 单次 Fit 后 | 实际训练加速模式（`cpu`/`born_cpu`/`webgpu` 等）；**与推理 BackendAuto 无关**；CV-only 未存模型时可能缺省 |
 | `final_model` / `final_round` | 使用 `--out-final` 时 | final-round 侧车路径与树轮数（早停截断前） |
 
-`params` 完备字段：`rounds`, `depth`, `max_leaves`, `lr`, `lambda`, `min_child_weight`, `gamma`, `max_bin`, `subsample`, `colsample`, `tree_method`, `seed`, `eval_metric`；以及按需 `num_class`, `num_target`, `ndcg_k`, `early_stop`, `cv_folds`。
+`params` 完备字段：`rounds`, `depth`, `max_leaves`, `lr`, `lambda`, `min_child_weight`, `gamma`, `max_bin`, `subsample`, `colsample`, `tree_method`, `seed`, `eval_metric`；以及按需 `num_class`, `num_target`, `ndcg_k`, `early_stop`, `cv_folds`, `val`（仅单跑路径记录；早停 run 忠实复现用）。
+
+> **复现语义分工**：`manifest.reproduce` = 忠实重放该 run（CV 行带 `--cv K`，早停行带 `--val X --early-stop N`）；`--from-run` = 定稿/变异起点（**不回填 val**，默认全量重训；要早停路径显式传 `--val`）。
 
 ## runs.jsonl schema（运行账本，每行一条）
 

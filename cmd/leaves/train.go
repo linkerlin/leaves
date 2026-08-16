@@ -179,6 +179,11 @@ func cmdTrain(args []string) error {
 			metric,
 		),
 	}
+	// AGUX-08：记录 val 路径（非超参；早停 run 的忠实复现需要）。
+	// 仅单跑路径记录——--cv 与 --val 并存时 val 被忽略，记录会误导复现。
+	if *valPath != "" && *cv < 2 {
+		doc.Params.Val = *valPath
+	}
 
 	// 交叉验证路径：CV 出诚实估计；若要存模型再在全量上单跑一次。
 	trainStart := time.Now()

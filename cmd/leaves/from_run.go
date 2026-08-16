@@ -143,6 +143,8 @@ func applyParamsIfUnset(
 	setF64("subsample", subsample, p.Subsample)
 	setF64("colsample", colsample, p.Colsample)
 	setStr("tree-method", treeMethod, p.TreeMethod)
+	// 注意：val 不回填——--from-run 语义是「定稿/变异起点」（默认全量重训，见 SKILL 定稿），
+	// 忠实重放某次早停 run 用 manifest.reproduce（其含 --val --early-stop）或显式传 --val。
 	if !set["seed"] && p.Seed != 0 {
 		*seed = p.Seed
 	}

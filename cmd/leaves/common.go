@@ -33,7 +33,9 @@ type paramsRecord struct {
 	NDCGK          int     `json:"ndcg_k,omitempty"`
 	EarlyStop      int     `json:"early_stop,omitempty"`
 	CVFolds        int     `json:"cv_folds,omitempty"`
-	EvalMetric     string  `json:"eval_metric,omitempty"`
+	// Val（AGUX-08）：验证集路径——非超参，但早停 run 的忠实复现需要它（manifest.reproduce / --from-run）。
+	Val        string `json:"val,omitempty"`
+	EvalMetric string `json:"eval_metric,omitempty"`
 }
 
 // metricsSchemaVersion 是 metrics/sniff 等 Agent 信号 JSON 的契约版本（WP-18）。

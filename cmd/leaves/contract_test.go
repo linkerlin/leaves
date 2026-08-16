@@ -653,6 +653,77 @@ func TestPublishReproduce(t *testing.T) {
 			t.Fatalf("%s incomplete: %s", name, b)
 		}
 	}
+	// AGUX-08：leaves_cli 为真实版本标签（非占位符）。
+	if lc, _ := man["leaves_cli"].(string); lc == "" || lc == "agentic-1" {
+		t.Fatalf("leaves_cli placeholder/empty: %v", man["leaves_cli"])
+	}
+}
+
+// TestPublishReproduceFaithful 锁定 AGUX-08：reproduce 不丢路径语义——
+// CV run 带 --cv K；早停 run 带 --val + --early-stop（原实现均缺失，复现退化为全量单训）。
+func TestPublishReproduceFaithful(t *testing.T) {
+	dir := t.TempDir()
+	var rows []string
+	for i := 0; i < 30; i++ {
+		fi := float64(i)
+		rows = append(rows, f2(fi)+","+f2(fi*2)+","+f2(fi))
+	}
+	trainPath := filepath.Join(dir, "t.csv")
+	writeCSV(t, trainPath, "x0,x1,label", rows)
+	holdPath := filepath.Join(dir, "h.csv")
+	writeCSV(t, holdPath, "x0,x1,label", rows[:10])
+
+	// CV run：reproduce 必含 --cv 3
+	cvModel := filepath.Join(dir, "cv.leaves.json")
+	cvMetrics := filepath.Join(dir, "cv.json")
+	if err := cmdTrain([]string{
+		"--data", trainPath, "--objective", "reg:squarederror",
+		"--cv", "3", "--rounds", "5", "--depth", "2",
+		"--out-model", cvModel, "--metrics", cvMetrics,
+	}); err != nil {
+		t.Fatalf("cv train: %v", err)
+	}
+	rel1 := filepath.Join(dir, "rel1")
+	if err := cmdPublish([]string{"--model", cvModel, "--out-dir", rel1, "--version", "1.0.0", "--metrics", cvMetrics}); err != nil {
+		t.Fatalf("publish cv: %v", err)
+	}
+	var man1 map[string]any
+	mustJSON(t, filepath.Join(rel1, "manifest.json"), &man1)
+	if repro, _ := man1["reproduce"].(string); !strings.Contains(repro, "--cv 3") {
+		t.Fatalf("cv reproduce missing --cv 3: %q", repro)
+	}
+
+	// 早停 run：reproduce 必含 --val + --early-stop
+	esModel := filepath.Join(dir, "es.leaves.json")
+	esMetrics := filepath.Join(dir, "es.json")
+	if err := cmdTrain([]string{
+		"--data", trainPath, "--objective", "reg:squarederror",
+		"--rounds", "40", "--depth", "3",
+		"--val", holdPath, "--early-stop", "5",
+		"--out-model", esModel, "--metrics", esMetrics,
+	}); err != nil {
+		t.Fatalf("es train: %v", err)
+	}
+	rel2 := filepath.Join(dir, "rel2")
+	if err := cmdPublish([]string{"--model", esModel, "--out-dir", rel2, "--version", "1.0.0", "--metrics", esMetrics}); err != nil {
+		t.Fatalf("publish es: %v", err)
+	}
+	var man2 map[string]any
+	mustJSON(t, filepath.Join(rel2, "manifest.json"), &man2)
+	repro, _ := man2["reproduce"].(string)
+	if !strings.Contains(repro, "--early-stop 5") {
+		t.Fatalf("es reproduce missing --early-stop 5: %q", repro)
+	}
+	if !strings.Contains(repro, "--val") {
+		t.Fatalf("es reproduce missing --val: %q", repro)
+	}
+
+	// 账本回填：--from-run 复现早停行时 val 自动回填（metrics.params.val 断言）
+	var esDoc metricsDoc
+	mustJSON(t, esMetrics, &esDoc)
+	if esDoc.Params == nil || esDoc.Params.Val != holdPath {
+		t.Fatalf("params.val not recorded: %+v", esDoc.Params)
+	}
 }
 
 // TestPublishPrintRepro 锁定 POST-11：--print-repro 写出完整 train 命令到 stdout。

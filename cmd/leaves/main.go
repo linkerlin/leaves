@@ -79,6 +79,16 @@ func main() {
 	}
 }
 
+// cliVersionLabel 供 manifest.leaves_cli：tag 或 "(devel)+<短commit>"。
+func cliVersionLabel() string {
+	doc := buildVersionDoc()
+	v, _ := doc["version"].(string)
+	if c, ok := doc["commit"].(string); ok && len(c) >= 8 {
+		return v + "+" + c[:8]
+	}
+	return v
+}
+
 // buildVersionDoc 从 go build 信息取真实版本：
 //   - go install pkg@vX.Y.Z → Main.Version = "vX.Y.Z"
 //   - 仓库内 go build/run → "(devel)" + vcs.revision

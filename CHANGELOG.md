@@ -7,6 +7,22 @@
 
 ---
 
+## [2.5.4] - 2026-08-16
+
+> **主题**：manifest 复现契约修复——reproduce 不再丢路径语义  
+> **Release 正文**：[`docs/release-notes-v2.5.4.md`](docs/release-notes-v2.5.4.md)
+
+### Fixed
+
+- **manifest.reproduce 丢参**：原构建器漏 `--cv`/`--max-leaves`/`--num-target`/`--val`/`--early-stop`——CV run 的复现命令会退化为全量单训（与记录的 `cv_mean` 不可比）；早停 run 复现丢 `--val --early-stop`。现按 run 类型补全（CV 行带 `--cv K`；早停行带 `--val X --early-stop N`，val 路径记录于 `params.val`，仅单跑路径记录）。
+- **`manifest.leaves_cli`**：硬编码占位 `agentic-1` → 真实版本标签（`vX.Y.Z` 或 `(devel)+<短commit>`，同 `leaves version`）。
+
+### Changed
+
+- **复现语义分工**（写实既有行为）：`--from-run` 为定稿/变异起点，**不回填 val**（默认全量重训，SKILL 定稿流程不变）；忠实重放某次 run 用 `manifest.reproduce` 或显式 `--val`。
+
+---
+
 ## [2.5.3] - 2026-08-16
 
 > **主题**：`leaves version` 子命令  
