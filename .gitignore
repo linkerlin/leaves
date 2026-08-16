@@ -48,3 +48,6 @@ vendor/
 # Temp
 tmp/
 temp/
+
+.chong/
+examples/wasm/leaves.wasm

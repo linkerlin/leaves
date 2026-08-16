@@ -7,6 +7,21 @@
 
 ---
 
+## [2.5.5] - 2026-08-16
+
+> **主题**：module zip 瘦身——21.8 MB → ~5 MB  
+> **Release 正文**：[`docs/release-notes-v2.5.5.md`](docs/release-notes-v2.5.5.md)
+
+### Removed
+
+- **`bin/install_pjrt.exe` / `bin/verify_pjrt.exe`**（合计 ~36 MB 原始体积，全仓零引用的孤儿实验二进制）：此前随 module zip 分发，`go get` 每次下载。module zip 由 git 追踪文件构成——**这是所有「不该提交的产物会被 go get 用户下载」问题的根因**。
+- **`examples/wasm/leaves.wasm`**（3.5 MB，可重建产物；README/CI 均为现场构建，wasm 体积门禁也是临时目录新构建而非读该文件）。
+- **`.chong/`**（11 个文件，另一 Agent 工具的工作记忆/事件日志，与库无关）。
+
+以上均加 `.gitignore`；testdata（回归矩阵必需）与 logo 保留。
+
+---
+
 ## [2.5.4] - 2026-08-16
 
 > **主题**：manifest 复现契约修复——reproduce 不再丢路径语义  
