@@ -244,6 +244,16 @@ leaves inspect --model PATH [--metrics PATH]
 输出：`{"file","objective","kind"（gbtree|dart|gblinear|sklearn_gbdt）,
 "num_features","n_output_groups","n_trees","name"[,"feature_names"]}`。
 
+## version
+
+输出版本/构建信息 JSON（排查「装的哪个版本」用；`go install pkg@vX.Y.Z` 会带真实 tag）。
+
+```
+leaves version
+→ {"go":"go1.26.5","version":"v2.5.3"}            # go install 安装
+→ {"go":"go1.26.5","version":"(devel)","commit":"…"}  # 仓库内 go build/run
+```
+
 ## publish
 
 把模型打成本地工件包。**不推 registry**（leaves 边界）。

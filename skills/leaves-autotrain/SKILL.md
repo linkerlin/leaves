@@ -335,7 +335,7 @@ CLI flag 全表与 metrics.json schema 见 [`cli.md`](cli.md)。零代码 demo �
 ## 速查卡（Agent 缓存用）
 
 ```
-⸻ 8 命令速查 ⸻
+⸻ 9 命令速查 ⸻
 
 sniff    --data FILE                    → suggested_objective / feature_names / label stats
 train    --data FILE --objective OBJ    → metrics.json + --out-model + --emit-rounds + --runs/--tag
@@ -346,6 +346,7 @@ predict  --model FILE --data FILE       → JSONL 或 --format csv（部署）
 inspect  --model FILE                   → {objective, kind, n_trees, num_features, n_output_groups}
 explain  --model FILE [--type importance] [--data FILE]  → 特征重要性/SHAP
 publish  --model FILE --out-dir DIR     → 本地工件包 + manifest（--quantize --export-xgb --emit-repro-script）
+version                                   → {version, go[, commit]}（排查装的哪个版本）
 
 ⸻ 最常见 flags ⸻
 

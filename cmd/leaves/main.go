@@ -7,6 +7,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"runtime/debug"
 
 	_ "github.com/linkerlin/leaves/v2" // 注册 io 加载器（leaves.json/XGB/LGB）
 )
@@ -25,6 +26,7 @@ const usage = `leaves — Agent 友好的训练/评估/预测/发布 CLI（SKILL
   sniff    --data PATH [--metrics PATH]            数据画像 → 推荐 objective
   explain  --model PATH [--type importance|shap]   特征重要性 / SHAP
   publish  --model PATH --out-dir DIR [flags]      本地工件包（--emit-repro-script）
+  version                                            版本/构建信息 → JSON
 
 全局:
   --error-format text|json   错误输出格式（默认 text；json 供 Agent 解析）
@@ -62,15 +64,34 @@ func main() {
 		err = cmdExplain(args[1:])
 	case "publish":
 		err = cmdPublish(args[1:])
+	case "version":
+		err = writeJSON("", buildVersionDoc())
 	case "-h", "--help", "help":
 		fmt.Print(usage)
 		return
 	default:
 		err = errAgent("usage", fmt.Sprintf("未知子命令: %s", args[0]),
-			"合法子命令: train|eval|predict|inspect|sniff|explain|publish", false)
+			"合法子命令: train|eval|predict|inspect|sniff|explain|publish|version", false)
 		os.Exit(writeError(err))
 	}
 	if err != nil {
 		os.Exit(writeError(err))
 	}
+}
+
+// buildVersionDoc 从 go build 信息取真实版本：
+//   - go install pkg@vX.Y.Z → Main.Version = "vX.Y.Z"
+//   - 仓库内 go build/run → "(devel)" + vcs.revision
+func buildVersionDoc() map[string]any {
+	doc := map[string]any{"go": "?", "version": "unknown"}
+	if bi, ok := debug.ReadBuildInfo(); ok {
+		doc["go"] = bi.GoVersion
+		doc["version"] = bi.Main.Version
+		for _, s := range bi.Settings {
+			if s.Key == "vcs.revision" && s.Value != "" {
+				doc["commit"] = s.Value
+			}
+		}
+	}
+	return doc
 }

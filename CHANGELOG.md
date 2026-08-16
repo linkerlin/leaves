@@ -7,6 +7,17 @@
 
 ---
 
+## [2.5.3] - 2026-08-16
+
+> **主题**：`leaves version` 子命令  
+> **Release 正文**：[`docs/release-notes-v2.5.3.md`](docs/release-notes-v2.5.3.md)
+
+### Added
+
+- **`leaves version`**：输出版本/构建信息 JSON（`{version, go[, commit]}`，基于 `debug.ReadBuildInfo`）。`go install github.com/linkerlin/leaves/v2/cmd/leaves@vX.Y.Z` 安装的用户与 Agent 可自查版本（原报「未知子命令」）；仓库内 `go build/run` 显示 `(devel)`（+ commit，若 VCS 信息被嵌入）。
+
+---
+
 ## [2.5.2] - 2026-08-16
 
 > **主题**：`--from-run` 谱系流程修复（tag 未命中不再硬错）  

@@ -1086,6 +1086,17 @@ func TestFromRunReproduce(t *testing.T) {
 	}
 }
 
+// TestVersionDoc 锁定 AGUX-07：version 信号必有 version 与 go 字段（go install 用户可自查版本）。
+func TestVersionDoc(t *testing.T) {
+	doc := buildVersionDoc()
+	if v, ok := doc["version"].(string); !ok || v == "" {
+		t.Fatalf("version missing: %v", doc)
+	}
+	if v, ok := doc["go"].(string); !ok || v == "" {
+		t.Fatalf("go missing: %v", doc)
+	}
+}
+
 // TestOutModelMetricsSamePath 防止 metrics 覆盖模型文件。
 func TestOutModelMetricsSamePath(t *testing.T) {
 	dir := t.TempDir()
