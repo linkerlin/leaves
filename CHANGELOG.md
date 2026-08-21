@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+---
+
+## [2.6.1] - 2026-08-21
+
+> **主题**：控制面 CLI——八段剧本从 shell 驱动（Agent 零 Go 代码）  
+> **Release 正文**：[`docs/release-notes-v2.6.1.md`](docs/release-notes-v2.6.1.md)
+
 ### Added — 控制面 CLI（recsys/cmd/control，2026-08-21）
 
 - **`recsys/cmd/control`**：八段剧本的 shell 入口（Agent 零 Go 代码编排）——`snapshot`（工作区文件 sha256 + 特征指纹）、`split`（时间切分 + 泄漏检查）、`eval`（三层门禁）、`from-deal`（deal 终稿→决策账本）、`append-exposure/feedback`（事件摄取校验）、`replay`、`monitor`（阈值 + 触发器 → `fired.jsonl`）、`release`（状态机跨命令持久化，promote/rollback 请求打印 stdout）；退出码 0/1/2；端到端测试 `TestControlCLIEndToEnd` 跑完八段。

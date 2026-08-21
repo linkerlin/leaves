@@ -1,7 +1,7 @@
 # leaves 演进 TODO
 
 > **对齐文档**：[`演进计划.md`](演进计划.md) v5.4（库线）· [`演进方案.md`](演进方案.md) v2.2（Agentic + §十六 演化搜索 + §十七 RC）  
-> **更新**：2026-08-21（v2.6.0：§十七 RC 推荐生产闭环落地；全量 `go test ./... -count=1` 绿）  
+> **更新**：2026-08-21（v2.6.1：控制面 CLI；§十七 RC 推荐生产闭环 + shell 入口；全量 `go test ./... -count=1` 绿）  
 > **原则**：Native golden 不变；Born 直读 `ForestIR`；不做分布式/serving 框架 / 内置 HPO / 官方 registry。
 
 **图例**：`[ ]` 待办 · `[~]` 进行中 · `[x]` 完成 · `[-]` 明确不做
@@ -14,7 +14,7 @@
 |----|----------|-----------|------|
 | **Agentic** | Phase 0–5 + POST 加固 | tag **v2.1.0** … **v2.4.0** | **完成** |
 | **演化搜索（EVO）** | 演进方案 §十六 | SKILL §4.5 协议 + 账本 `fold_metrics`/`n_trees`/`elapsed_ms` + 测试锁定 | **完成** |
-| **推荐生产闭环（RC）** | 演进方案 §十七 v2.2 | 控制面七包 + 触发器 + 八段演练；tag **v2.6.0** | **完成** |
+| **推荐生产闭环（RC）** | 演进方案 §十七 v2.2 | 控制面七包 + 触发器 + 八段演练；tag **v2.6.1** | **完成** |
 | **用户 Agent 入口（AGUX）** | TODO AGUX 节 | 安装修复 / CLAUDE.md / 三步上手 / walkthrough 实跑重写 | **完成** |
 | **文档对齐（DOC）** | TODO DOC 节 | 全仓 `/v2` 模块路径 / NOTES §4+§6 / CHANGELOG / testscripts | **完成** |
 | **库线 Phase A–E** | 第一轮 + 按需深化 | 扩展点 / BackendAuto 2.0 / interop / ONNX 子集 / multi-target / explain 缓存 / serving 模板 | **完成** |
@@ -23,7 +23,7 @@
 
 **对照结论**：可执行 backlog **已清空**；Unreleased 已落盘。默认 **维护 + 按需开新项**；新需求先写进本文件再实现。发版走 [`docs/release-checklist.md`](docs/release-checklist.md)。
 
-**最新 tag**：https://github.com/linkerlin/leaves/releases/tag/v2.6.0
+**最新 tag**：https://github.com/linkerlin/leaves/releases/tag/v2.6.1
 
 ---
 
