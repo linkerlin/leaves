@@ -87,6 +87,37 @@ func TestSmokePipeline100PerUser(t *testing.T) {
 	}
 }
 
+func TestSmokePipelineTimeSplit(t *testing.T) {
+	dir := t.TempDir()
+	w, err := recsys.NewWorkspace(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg := recsys.DefaultSmokeConfig()
+	cfg.SplitMode = "time"
+
+	res, err := pipeline.Run(w, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Prep.SplitMode != "time" {
+		t.Fatalf("split mode: got %q want time", res.Prep.SplitMode)
+	}
+	if res.RecallTrain == 0 || res.RecallTest == 0 {
+		t.Fatalf("recall rows: train=%d test=%d", res.RecallTrain, res.RecallTest)
+	}
+	if res.Eval.TestNDCG <= 0 {
+		t.Fatalf("expected positive test NDCG, got %f", res.Eval.TestNDCG)
+	}
+	dealRows, err := readDealCount(w.DealTest())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if dealRows == 0 {
+		t.Fatal("empty deal output")
+	}
+}
+
 func readDealCount(path string) (int, error) {
 	b, err := os.ReadFile(path)
 	if err != nil {

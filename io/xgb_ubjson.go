@@ -27,7 +27,14 @@ func ParseXGBoostUBJSONFile(filename string) (*XGBoostLoadResult, error) {
 	return parseXGBoostUBJSONBytes(data)
 }
 
-func parseXGBoostUBJSONBytes(data []byte) (*XGBoostLoadResult, error) {
+func parseXGBoostUBJSONBytes(data []byte) (res *XGBoostLoadResult, err error) {
+	// ponytail: toitware/ubjson 对畸形输入可能 panic（负长度切片等），无上游版本可升；
+	// 信任边界统一在此兜底转错误，上游修复后可移除。
+	defer func() {
+		if r := recover(); r != nil {
+			res, err = nil, fmt.Errorf("invalid xgboost ubjson (panic in ubjson decoder): %v", r)
+		}
+	}()
 	var root map[string]interface{}
 	if err := ubjson.Unmarshal(data, &root); err != nil {
 		return nil, fmt.Errorf("invalid xgboost ubjson: %w", err)

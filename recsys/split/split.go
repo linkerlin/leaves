@@ -61,6 +61,27 @@ func Split(events []contract.InteractionEvent, cfg TimeConfig) (train, val, test
 	return train, val, test, nil
 }
 
+// SuggestTimeConfig 按事件时间分位确定性推导边界：train=[…,p70)、
+// 隔离带 [p70, p70+1ms)、val=[p70+1ms, p85+1ms)、test=[p85+1ms,…)。
+// 事件数 <10 时拒绝（分位无意义）。
+func SuggestTimeConfig(events []contract.InteractionEvent) (TimeConfig, error) {
+	if len(events) < 10 {
+		return TimeConfig{}, fmt.Errorf("split: need >=10 events to suggest boundaries (got %d)", len(events))
+	}
+	ts := make([]time.Time, len(events))
+	for i := range events {
+		ts[i] = events[i].OccurredAt
+	}
+	sort.Slice(ts, func(i, j int) bool { return ts[i].Before(ts[j]) })
+	at := func(p float64) time.Time { return ts[int(p*float64(len(ts)-1))] }
+	trainEnd := at(0.70)
+	return TimeConfig{
+		TrainEnd:  trainEnd,
+		ValStart:  trainEnd.Add(time.Millisecond),
+		TestStart: at(0.85).Add(time.Millisecond),
+	}, nil
+}
+
 // CheckLeakage 断言训练事件全部早于 evalStart（as-of 因果门禁）。
 func CheckLeakage(train []contract.InteractionEvent, evalStart time.Time) error {
 	for _, e := range train {

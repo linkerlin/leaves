@@ -7,6 +7,39 @@
 
 ---
 
+## [2.6.2] - 2026-08-22
+
+> **主题**：解析面模糊测试（含 1 个真实 panic 修复）· prep 时间切分主线 · SKILL 跨任务记忆  
+> **Release 正文**：[`docs/release-notes-v2.6.2.md`](docs/release-notes-v2.6.2.md)
+
+### Fixed — 信任边界加固（FUZZ 战果）
+
+- **`io/xgb_ubjson.go`**：`toitware/ubjson` 依赖解 4 字节畸形输入（`{"i\xef`）时负长度切片 panic，无上游版本可升；`parseXGBoostUBJSONBytes` 信任边界统一 recover 转错误（所有 UBJSON 加载路径经过此处）。由 `FuzzLoadFromFileBytes` 首轮 20 秒发现；crash 语料留 `io/testdata/fuzz/` 作回归种子
+- **控制面 CLI（v2.6.1 遗留）**：`snapshot` 子命令 `-time-start/-time-end` 改为必填（契约要求快照时间范围），usage 级失败（exit 1）而非运行时校验（exit 2）；`docs/recsys-loop.md` §10.1 以实跑数字重写
+
+### Added — 解析面模糊测试（FUZZ）
+
+- **`io/fuzz_test.go`** `FuzzLoadFromFileBytes`：任意字节经 `DetectFormat` + 遗留 loader + engine builder 不得 panic；种子含 testdata 小模型；外部测试包导入根包完成 loader 注册
+- **`data/fuzz_test.go`** `FuzzSniffFileFormatBytes`：CSV/LIBSVM/RankingTSV/垃圾种子 → `SniffFileFormat` + `DetectFileFormat` 不 panic
+- **`recsys/contract/fuzz_test.go`** `FuzzValidateInteractionsJSON`：任意 JSON 过 `ValidateInteractions` 不 panic，空 `event_id` 必被拒
+- CI 默认以种子语料跑单测形态；深挖按需 `go test <pkg> -fuzz <名> -fuzztime 60s`（冒烟：io 30s 14k execs / data 15s / contract 15s 2.4M execs 全 PASS）
+
+### Added — prep 时间切分主线（RC 遗留收口，演进方案 §17.1 P0）
+
+- **`recsys.Interaction`** 增可选 `Time`（UTC；零值=未知；samples TSV 四元格式不变）
+- **`recsys/synth`**：生成确定性交织时间戳（先按 seed 洗牌再赋单调 UTC 时间，避免 user-major 顺序使时间切分退化为按用户块切分）
+- **`recsys/movielens`**：解析 `u.data` 第 4 列真实 Unix 时间戳
+- **`recsys/split.SuggestTimeConfig`**：按 70/72/85 分位确定性推导边界（<10 事件拒绝）
+- **`recsys/prep.RunTimeSplit`**：as-of 切分 + `CheckLeakage` 门禁 + 隔离带/val 丢弃计数；无时间戳诚实报错（不静默回退用户切分）；同一用户可重叠 train/test（QID 按 user+split 唯一，用户字典序保证确定性）；Tag 从 catalog 回填（`split.Assign` 只映射三元）
+- **`recsys.SmokeConfig.SplitMode`**：`""`/`"user"`=用户切分（默认，行为不变）；`"time"`=时间切分（边界零值→自动推导）；pipeline 接线 + `TestPrepTimeSplitAuto` / `TestPrepTimeSplitRequiresTimestamps` / `TestSmokePipelineTimeSplit`
+- `docs/recsys-loop.md` §1 缺口表更新：时间切分已进四段主线（opt-in）
+
+### Added — SKILL 跨任务记忆（LESSONS，演进方案 §16.2 远期观察转正）
+
+- **SKILL §4.6 跨任务记忆（lessons.md）**：与 runs.jsonl 同目录的 Markdown 表格；Agent 读写（库不读不写；runs.jsonl 仍 CLI 独占）；核心闭环增步骤 -1（读旧教训）与 8（沉淀教训）；写入仅限三处（反射假设证实/证伪、新失败模式、收敛后合并 ≤1 条并删证伪旧行）；镜像已同步
+
+---
+
 ## [2.6.1] - 2026-08-21
 
 > **主题**：控制面 CLI——八段剧本从 shell 驱动（Agent 零 Go 代码）  

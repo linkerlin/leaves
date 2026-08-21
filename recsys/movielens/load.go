@@ -178,6 +178,7 @@ func loadFromZip(zipPath string, cfg Config) (synth.Dataset, map[string]string, 
 	type rating struct {
 		user, movie int
 		score       float64
+		ts          int64
 	}
 	var ratings []rating
 	pop := map[int]int{}
@@ -196,10 +197,14 @@ func loadFromZip(zipPath string, cfg Config) (synth.Dataset, map[string]string, 
 		u, _ := strconv.Atoi(parts[0])
 		m, _ := strconv.Atoi(parts[1])
 		r, _ := strconv.ParseFloat(parts[2], 64)
+		var sec int64
+		if len(parts) >= 4 {
+			sec, _ = strconv.ParseInt(parts[3], 10, 64)
+		}
 		if _, ok := movies[m]; !ok {
 			continue
 		}
-		ratings = append(ratings, rating{user: u, movie: m, score: r})
+		ratings = append(ratings, rating{user: u, movie: m, score: r, ts: sec})
 		pop[m]++
 		sumR[m] += r
 	}
@@ -284,6 +289,7 @@ func loadFromZip(zipPath string, cfg Config) (synth.Dataset, map[string]string, 
 			Item:  strconv.Itoa(r.movie),
 			Tag:   primaryTag(mv.genres),
 			Score: r.score,
+			Time:  time.Unix(r.ts, 0).UTC(),
 		})
 	}
 

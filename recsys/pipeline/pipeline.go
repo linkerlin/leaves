@@ -8,6 +8,7 @@ import (
 	"github.com/linkerlin/leaves/v2/recsys/prep"
 	"github.com/linkerlin/leaves/v2/recsys/rankconv"
 	"github.com/linkerlin/leaves/v2/recsys/recall"
+	"github.com/linkerlin/leaves/v2/recsys/split"
 	"github.com/linkerlin/leaves/v2/recsys/synth"
 	"github.com/linkerlin/leaves/v2/recsys/trainrank"
 	"github.com/linkerlin/leaves/v2/recsys/tsvio"
@@ -55,7 +56,17 @@ func RunFromDataset(w recsys.Workspace, ds synth.Dataset, cfg recsys.SmokeConfig
 		return Result{}, fmt.Errorf("pipeline: catalog size %d < recall size %d", len(ds.Catalog), cfg.RecallSize)
 	}
 
-	prepRes, err := prep.Run(w, ds)
+	// 切分模式：""/"user"=用户切分（默认）；"time"=时间切分（边界零值→自动推导）。
+	var prepRes prep.Result
+	var err error
+	switch cfg.SplitMode {
+	case "", "user":
+		prepRes, err = prep.Run(w, ds)
+	case "time":
+		prepRes, err = prep.RunTimeSplit(w, ds, split.TimeConfig{})
+	default:
+		return Result{}, fmt.Errorf("pipeline: unknown split mode %q (want user|time)", cfg.SplitMode)
+	}
 	if err != nil {
 		return Result{}, fmt.Errorf("pipeline: prep: %w", err)
 	}

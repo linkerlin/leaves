@@ -1,11 +1,15 @@
 package recsys
 
+import "time"
+
 // Interaction 四元交互：User/Item/Tag 为 String，Score 为 float64。
+// Time 为可选事件时间（UTC；零值=未知，走用户切分；时间切分要求全部非零）。
 type Interaction struct {
 	User  string
 	Item  string
 	Tag   string
 	Score float64
+	Time  time.Time `json:",omitempty"`
 }
 
 // CatalogItem 物品目录行：Item/Tag + 数值特征列。
@@ -52,6 +56,7 @@ type DealRow struct {
 // PrepReport 数据准备统计。
 type PrepReport struct {
 	Stage       string         `json:"stage"`
+	SplitMode   string         `json:"split_mode"` // user | time
 	TrainUsers  int            `json:"train_users"`
 	TestUsers   int            `json:"test_users"`
 	TrainRows   int            `json:"train_rows"`
@@ -61,7 +66,8 @@ type PrepReport struct {
 	Dropped     map[string]int `json:"dropped"`
 }
 
-// SmokeConfig 端到端 smoke 参数。
+// SmokeConfig 端到端 smoke 参数。SplitMode：""/"user"=用户切分（默认，兼容旧
+// 四元数据）；"time"=时间切分（要求交互全部带 UTC 时间戳；边界零值时自动推导）。
 type SmokeConfig struct {
 	Seed        int64
 	TrainUsers  int
@@ -73,6 +79,7 @@ type SmokeConfig struct {
 	MaxSameTag  int
 	TrainRounds int
 	NDCGK       int
+	SplitMode   string
 }
 
 // DefaultSmokeConfig 默认 smoke 参数（100 Item/User）。

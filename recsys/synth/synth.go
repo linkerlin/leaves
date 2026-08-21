@@ -5,6 +5,7 @@ import (
 	"math"
 	"math/rand"
 	"sort"
+	"time"
 
 	"github.com/linkerlin/leaves/v2/recsys"
 )
@@ -66,6 +67,14 @@ func Generate(cfg recsys.SmokeConfig) (Dataset, error) {
 			})
 		}
 		_ = itemByID
+	}
+
+	// 事件时间：先按 seed 洗牌再赋单调 UTC 时间戳，保证用户跨时间窗交织
+	// （否则 user-major 生成顺序会让时间切分退化为按用户块切分）。
+	rng.Shuffle(len(raw), func(i, j int) { raw[i], raw[j] = raw[j], raw[i] })
+	base := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	for i := range raw {
+		raw[i].Time = base.Add(time.Duration(i) * time.Minute)
 	}
 
 	return Dataset{

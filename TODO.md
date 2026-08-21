@@ -1,7 +1,7 @@
 # leaves 演进 TODO
 
 > **对齐文档**：[`演进计划.md`](演进计划.md) v5.4（库线）· [`演进方案.md`](演进方案.md) v2.2（Agentic + §十六 演化搜索 + §十七 RC）  
-> **更新**：2026-08-21（v2.6.1：控制面 CLI；§十七 RC 推荐生产闭环 + shell 入口；全量 `go test ./... -count=1` 绿）  
+> **更新**：2026-08-22（v2.6.2：FUZZ/LESSONS/RC-TS + 控制面 CLI 时间范围修复；全量 `go test ./... -count=1` 绿）  
 > **原则**：Native golden 不变；Born 直读 `ForestIR`；不做分布式/serving 框架 / 内置 HPO / 官方 registry。
 
 **图例**：`[ ]` 待办 · `[~]` 进行中 · `[x]` 完成 · `[-]` 明确不做
@@ -57,7 +57,42 @@ go test ./recsys/... -count=1        # 含 contract/split/eval/ledger/replay/mon
 go test ./docs -run TestSkillsMirrorSync -count=1
 ```
 
-**遗留（不立项，按需开）**：prep 主线改时间切分（现为 user 切分 + split 包独立提供）；自动推广配置（需应用侧签名/访问控制前提）。
+**遗留（不立项，按需开）**：~~prep 主线改时间切分~~（**RC-TS 已收口 2026-08-22**：`prep.RunTimeSplit` + `SplitMode=time` opt-in，用户切分保留默认）；自动推广配置（需应用侧签名/访问控制前提）。
+
+---
+
+### FUZZ — 解析面模糊测试（2026-08-22 立项）
+
+> 信任边界（io 模型加载 / data 嗅探 / recsys 契约校验）不得因任意字节 panic。Go 原生 fuzzing：CI 以种子语料跑单测形态，`-fuzz` 按需深挖。
+
+- [x] **FUZZ-01** `io/fuzz_test.go`：`FuzzLoadFromFileBytes`（无扩展名临时文件 → `io.LoadFromFile`；种子含 testdata 小模型；外部测试包导入根包完成 loader 注册）
+- [x] **FUZZ-02** `data/fuzz_test.go`：`FuzzSniffFileFormatBytes`（CSV/LIBSVM/RankingTSV/垃圾种子 → `SniffFileFormat` + `DetectFileFormat`）
+- [x] **FUZZ-03** `recsys/contract/fuzz_test.go`：`FuzzValidateInteractionsJSON`（任意 JSON → Unmarshal + `ValidateInteractions` 不 panic；空 `event_id` 必被拒）
+
+> **战果**：FUZZ-01 首轮 20s 即抓到真实 panic——`toitware/ubjson` 解 4 字节畸形输入 `{"i\xef` 时负长度切片（无上游版本可升）；已在 `parseXGBoostUBJSONBytes` 信任边界统一 recover 转错误，crash 语料留 `io/testdata/fuzz/` 作回归种子。 fuzz 冒烟：io 30s / data 15s / contract 15s 全 PASS。
+
+**验收**：`go test ./io ./data ./recsys/contract -count=1`（种子形态）绿；无 panic。
+
+### LESSONS — 跨任务记忆（演进方案 §16.2 远期观察转正，2026-08-22 立项）
+
+- [x] **LES-01** SKILL §4.6 跨任务记忆协议：工作目录 `lessons.md`（Agent 读写；`runs.jsonl` 仍 CLI 独占）；镜像同步 `.cursor/skills`
+- [x] **LES-02** §二/§4.5 交叉引用（启动读 lessons、反射假设证实时写 lessons）；cli.md 不动（非 CLI 契约）
+
+**验收**：`go test ./docs -run TestSkillsMirrorSync -count=1` 绿。
+
+### RC-TS — prep 主线时间切分（RC 遗留收口，2026-08-22 立项）
+
+- [x] **RCTS-01** `recsys.Interaction` 增可选 `Time`（零值=未知；TSV 四元格式不变）；synth 产确定性交织时间戳；MovieLens 解析 `u.data` 第 4 列真实时间戳
+- [x] **RCTS-02** `split.SuggestTimeConfig`：按 70/72/85 分位确定性推导边界
+- [x] **RCTS-03** `prep.RunTimeSplit`：as-of 切分 + `CheckLeakage` 门禁 + 隔离带/val 丢弃计数；无时间戳诚实报错（不静默回退用户切分）；同用户可重叠 train/test（QID 按 user+split 唯一）
+- [x] **RCTS-04** `SmokeConfig.SplitMode`（`""`/`"user"`=默认用户切分，`"time"`=时间切分）+ pipeline 接线 + prep/pipeline e2e 测试
+- [x] **RCTS-05** `docs/recsys-loop.md` §1 缺口表更新 + 本文件「遗留」行删除
+
+### REL — v2.6.2 发版收尾（2026-08-22 立项）
+
+- [x] **REL-01** CHANGELOG Unreleased 落成 `2.6.2`（控制面 CLI 时间范围修复 + FUZZ + LESSONS + RC-TS）+ `docs/release-notes-v2.6.2.md`
+- [x] **REL-02** TODO 陈旧行清理（「按需可开」中向量叶训练已于 2026-07-11 实现，行 486 已记；另删已完成的「模块路径迁 /v2」陈旧行）
+- [ ] **REL-03** README badge → v2.6.2；tag 前 CI 全绿；tag 后代理 hash + `leaves version` 自检
 
 ---
 
@@ -503,8 +538,6 @@ go test -run TestBenchGateBornCPUSlowerBatch1 -count=1
 
 ### 按需可开（默认不做，需产品信号）
 
-- 向量叶 `multi_output_tree` **训练**（推理/加载已有）
 - 完整 ONNX Graph
 - BackendAuto 第二轮 profiling
-- 模块路径迁 `.../leaves/v2`（MAJOR）
 - 独立 serving 产品仓（模板已在 `examples/serving-template`）
