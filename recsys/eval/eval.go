@@ -333,6 +333,41 @@ func WriteReport(path string, r *Report) error {
 	return nil
 }
 
+// RankViews 从流水线工件构造评估视图：
+// relevant（正样本集）、ranked（按 margin 降序的候选列表）、Groups（标签序列）。
+// 供 CLI 与端到端演练共用。
+func RankViews(testSamples []recsys.Interaction, scored []recsys.ManifestRow) (
+	relevant map[string]map[string]bool, ranked map[string][]string, groups []RankGroup,
+) {
+	relevant = map[string]map[string]bool{}
+	for _, s := range testSamples {
+		if relevant[s.User] == nil {
+			relevant[s.User] = map[string]bool{}
+		}
+		relevant[s.User][s.Item] = true
+	}
+	byUser := map[string][]recsys.ManifestRow{}
+	for _, r := range scored {
+		byUser[r.User] = append(byUser[r.User], r)
+	}
+	ranked = map[string][]string{}
+	for u, rows := range byUser {
+		sorted := append([]recsys.ManifestRow(nil), rows...)
+		sort.Slice(sorted, func(i, j int) bool { return sorted[i].Score > sorted[j].Score })
+		list := make([]string, len(sorted))
+		labels := make([]float64, len(sorted))
+		for i, r := range sorted {
+			list[i] = r.Item
+			if relevant[u][r.Item] {
+				labels[i] = 1
+			}
+		}
+		ranked[u] = list
+		groups = append(groups, RankGroup{SubjectID: u, Labels: labels})
+	}
+	return relevant, ranked, groups
+}
+
 // SortedMetricNames 稳定输出指标名（测试/报告用）。
 func SortedMetricNames(m map[string]float64) []string {
 	out := make([]string, 0, len(m))

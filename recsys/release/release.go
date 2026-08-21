@@ -236,6 +236,67 @@ func (m *Machine) Evidence() *contract.ReleaseEvidence {
 	return &ev
 }
 
+// MachineState 机器可序列化状态（CLI/Agent 持久化与重构用；release_state.json）。
+type MachineState struct {
+	ReleaseID     string                    `json:"release_id"`
+	State         State                     `json:"state"`
+	Evidence      *contract.ReleaseEvidence `json:"evidence,omitempty"`
+	LastKnownGood string                    `json:"last_known_good,omitempty"`
+	History       []Transition              `json:"history"`
+}
+
+// Export 导出可持久化状态。
+func (m *Machine) Export() MachineState {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	s := MachineState{
+		ReleaseID:     m.ReleaseID,
+		State:         m.state,
+		LastKnownGood: m.lastKnownGood,
+		History:       append([]Transition(nil), m.history...),
+	}
+	if m.evidence != nil {
+		ev := *m.evidence
+		s.Evidence = &ev
+	}
+	return s
+}
+
+// FromState 从持久化状态重构机器（轻校验：已知状态、证据齐全、历史尾部一致）。
+func FromState(s MachineState) (*Machine, error) {
+	if s.ReleaseID == "" {
+		return nil, fmt.Errorf("release: state release_id is empty")
+	}
+	switch s.State {
+	case StateExploratory, StateCandidate, StateApproved, StatePromoted,
+		StateObserving, StateRetrainRequested, StateRollbackRequested, StateRetired:
+	default:
+		return nil, fmt.Errorf("release: state %q unknown", s.State)
+	}
+	if s.State != StateExploratory && s.Evidence == nil {
+		return nil, fmt.Errorf("release: state %s requires evidence", s.State)
+	}
+	if s.Evidence != nil {
+		if err := contract.ValidateEvidence(s.Evidence); err != nil {
+			return nil, err
+		}
+	}
+	if n := len(s.History); n > 0 && s.History[n-1].To != s.State {
+		return nil, fmt.Errorf("release: history tail %s != state %s", s.History[n-1].To, s.State)
+	}
+	m := &Machine{
+		ReleaseID:     s.ReleaseID,
+		state:         s.State,
+		lastKnownGood: s.LastKnownGood,
+		history:       append([]Transition(nil), s.History...),
+	}
+	if s.Evidence != nil {
+		ev := *s.Evidence
+		m.evidence = &ev
+	}
+	return m, nil
+}
+
 // PromoteRequest / RollbackRequest：adapter-neutral desired-state 请求。
 type PromoteRequest struct {
 	ReleaseID    string `json:"release_id"`

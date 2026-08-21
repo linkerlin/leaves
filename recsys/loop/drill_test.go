@@ -97,7 +97,7 @@ func TestAgenticRecsysLoopDrill(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	relevant, ranked, groups := rankViews(testSamples, scored)
+	relevant, ranked, groups := eval.RankViews(testSamples, scored)
 
 	dealCfg := deal.Config{DeckSize: cfg.DeckSize, MaxSameTag: cfg.MaxSameTag}
 	recent := deal.RecentItems(testSamples)
@@ -369,40 +369,6 @@ func timedEvents(t *testing.T, ds synth.Dataset, cfg recsys.SmokeConfig) []contr
 		t.Fatal(err)
 	}
 	return out
-}
-
-// rankViews 构造 eval 输入：relevant（test 正样本）、ranked（按 margin 降序）、
-// Groups（标签按预测分数排序后的命中序列）。
-func rankViews(testSamples []recsys.Interaction, scored []recsys.ManifestRow) (
-	relevant map[string]map[string]bool, ranked map[string][]string, groups []eval.RankGroup,
-) {
-	relevant = map[string]map[string]bool{}
-	for _, s := range testSamples {
-		if relevant[s.User] == nil {
-			relevant[s.User] = map[string]bool{}
-		}
-		relevant[s.User][s.Item] = true
-	}
-	byUser := map[string][]recsys.ManifestRow{}
-	for _, r := range scored {
-		byUser[r.User] = append(byUser[r.User], r)
-	}
-	ranked = map[string][]string{}
-	for u, rows := range byUser {
-		sorted := append([]recsys.ManifestRow(nil), rows...)
-		sort.Slice(sorted, func(i, j int) bool { return sorted[i].Score > sorted[j].Score })
-		list := make([]string, len(sorted))
-		labels := make([]float64, len(sorted))
-		for i, r := range sorted {
-			list[i] = r.Item
-			if relevant[u][r.Item] {
-				labels[i] = 1
-			}
-		}
-		ranked[u] = list
-		groups = append(groups, eval.RankGroup{SubjectID: u, Labels: labels})
-	}
-	return relevant, ranked, groups
 }
 
 func groupDeal(rows []recsys.DealRow, logs []deal.LogEntry) (map[string][]recsys.DealRow, map[string]deal.LogEntry) {

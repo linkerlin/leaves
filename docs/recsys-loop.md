@@ -108,12 +108,42 @@ Agent/编排层拿 `Evaluate` 返回的 `Fired` 去调 `release.Machine` 的
 快照/切分 → 门禁 evidence → fake adapter promoted → 决策/曝光/反馈账本 →
 健康窗口 observing → 注入 deck 退化 block → **触发器**产出回滚请求（含冷却抑制）
 → rollback 指向 last_known_good → replay 只消费可归因反馈 → retrain_requested + 下一轮快照。
+同剧本的 shell 版见 §10（`recsys/cmd/control`）。
 
 ```powershell
 go test ./recsys/... -count=1
 ```
 
-## 10. 边界与非目标
+## 10. 控制面 CLI（`recsys/cmd/control`）
+
+八段剧本的 shell 入口（Agent 零 Go 代码编排）。退出码 0/1/2（1=用法/IO，2=校验/内部）；
+全部输出为结构化文件；promote/rollback 请求打印到 stdout 由调用方转发给应用侧 adapter。
+
+```text
+control snapshot   -workspace DIR -out snapshot.json -snapshot-id ID -purpose train|eval|release
+control split      -events events.jsonl -train-end T -val-start T -test-start T -out-dir DIR
+control eval       -workspace DIR -thresholds th.json [-out evaluation.json] [-recall-k 100] ...
+control from-deal  -workspace DIR -ledger ledger.jsonl -model-version V -policy-version P -occurred-at T
+control append-exposure -ledger L -in exposures.jsonl
+control append-feedback -ledger L -in feedback.jsonl
+control replay     -ledger L -out samples.jsonl [-window 24h] [-negative impressed_no_feed|none]
+control monitor    -ledger L -workspace DIR -window-start T -window-end T [-thresholds th.json] [-triggers tr.json]
+control release    -state release_state.json -action candidate|approve|confirm-promote|observe|retrain|rollback|retire|status
+```
+
+要点：
+
+- `snapshot` 自动对工作区输入文件取 sha256 + 特征指纹（`items.tsv` 推导）；
+- `eval`/`monitor` 的阈值与触发器是 JSON 文件（`eval.Threshold` / `monitor.Trigger` 数组）；
+- `monitor -triggers` 把 `TriggerSet.Evaluate` 结果追加到 `fired.jsonl`，Agent 据此调 `release`；
+- `release` 状态机跨命令持久化于 `release_state.json`（含 evidence + history）；
+  `confirm-promote`/`rollback` 打印 desired-state 请求 JSON；`candidate` 从
+  `evaluation.json` + 模型文件自动组装 evidence（模型 hash 与文件强制一致）；
+- 人工批准默认（`approve -approver` 必填）。
+
+端到端演练：`go test ./recsys/cmd/control -count=1`（TestControlCLIEndToEnd 跑完八段）。
+
+## 12. 边界与非目标
 
 - leaves 不托管：在线 serving、特征库、model registry、消息队列、在线学习。
 - 事件真实采集/推送由应用侧实现；leaves 只定义可离线测试的契约与 adapter 接口。

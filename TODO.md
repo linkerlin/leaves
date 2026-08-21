@@ -48,6 +48,7 @@
 - [x] **RC-10** `skills/recsys-orchestrator` §十·八段剧本 + 三状态口径（离线提升/可推广候选/已上线观察）；镜像已同步
 - [x] **RC-11** `recsys/loop/TestAgenticRecsysLoopDrill`：八步闭环演练（快照→门禁→promoted→账本→健康观察→退化注入→**触发器**回滚指向 last_known_good（含冷却抑制）→replay→retrain）
 - [x] **RC-12** README（RC 控制面小节）/ AGENTS / serving-template 对接说明 / `docs/recsys-loop.md`
+- [x] **RC-CLI**（遗留项之一，2026-08-21）`recsys/cmd/control`：八段剧本 shell 入口（snapshot/split/eval/from-deal/append-*/replay/monitor/release）；`release.MachineState` 导出/重构；退出码 0/1/2；`TestControlCLIEndToEnd` 八段端到端
 
 **验收**：
 
@@ -56,7 +57,7 @@ go test ./recsys/... -count=1        # 含 contract/split/eval/ledger/replay/mon
 go test ./docs -run TestSkillsMirrorSync -count=1
 ```
 
-**遗留（不立项，按需开）**：`recsys/cmd` CLI 化控制面子命令；prep 主线改时间切分（现为 user 切分 + split 包独立提供）；自动推广配置（需应用侧签名/访问控制前提）。
+**遗留（不立项，按需开）**：prep 主线改时间切分（现为 user 切分 + split 包独立提供）；自动推广配置（需应用侧签名/访问控制前提）。
 
 ---
 

@@ -170,6 +170,45 @@ func WriteLog(path string, logs []LogEntry) error {
 	return nil
 }
 
+// ReadLog 读发牌日志 JSONL。
+func ReadLog(path string) ([]LogEntry, error) {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("deal: read log %s: %w", path, err)
+	}
+	var out []LogEntry
+	for i, line := range splitLines(string(b)) {
+		if line == "" {
+			continue
+		}
+		var l LogEntry
+		if err := json.Unmarshal([]byte(line), &l); err != nil {
+			return nil, fmt.Errorf("deal: log line %d: %w", i+1, err)
+		}
+		out = append(out, l)
+	}
+	return out, nil
+}
+
+func splitLines(s string) []string {
+	var out []string
+	start := 0
+	for i := 0; i < len(s); i++ {
+		if s[i] == '\n' {
+			line := s[start:i]
+			if len(line) > 0 && line[len(line)-1] == '\r' {
+				line = line[:len(line)-1]
+			}
+			out = append(out, line)
+			start = i + 1
+		}
+	}
+	if start < len(s) {
+		out = append(out, s[start:])
+	}
+	return out
+}
+
 // Validate 校验发牌结果：无 recent 重复、无 Item 重复、长度 ≤ deckSize。
 // Tag 控重为软约束：候选 Tag 过少时 fillOverflow 可突破 MaxSameTag 以凑满 DeckSize。
 func Validate(rows []recsys.DealRow, recent map[string]map[string]struct{}, maxSameTag, deckSize int) error {

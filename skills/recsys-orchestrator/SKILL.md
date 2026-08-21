@@ -210,10 +210,29 @@ mkdir -p recsys/{raw,clean,catalog,recall,rank,models,deal,meta}
 `evaluation.json`（eval）· `ledger.jsonl`（决策/曝光/反馈）· `monitor_report.json` ·
 `replay_report.json` · `release_evidence.json` + `run_status.jsonl`（release）。
 
+**shell 入口**（`recsys/cmd/control`，零 Go 代码编排八段剧本）：
+
+```text
+control snapshot -workspace DIR -out snapshot.json -snapshot-id S -purpose release
+control split -events events.jsonl -train-end T -val-start T -test-start T -out-dir split/
+control eval -workspace DIR -thresholds th.json -out evaluation.json
+control from-deal -workspace DIR -ledger ledger.jsonl -model-version V -policy-version P -occurred-at T
+control append-exposure -ledger ledger.jsonl -in exposures.jsonl
+control append-feedback -ledger ledger.jsonl -in feedback.jsonl
+control replay -ledger ledger.jsonl -out samples.jsonl -report replay_report.json
+control monitor -ledger ledger.jsonl -workspace DIR -window-start T -window-end T -thresholds th.json -triggers tr.json -fired fired.jsonl
+control release -state release_state.json -action candidate|approve|confirm-promote|observe|retrain|rollback|retire|status
+```
+
+退出码 0/1/2（1=用法/IO，2=校验/内部）；promote/rollback 请求打印到 stdout，
+Agent 把它交给应用侧 adapter（leaves 不执行网络副作用）。回滚决策来自
+`monitor -triggers` 的 `fired.jsonl`（配置驱动），不是 Agent 临场猜测。
+
 **边界**：leaves 只产出 adapter-neutral 的推广/回滚**请求**（`release.Adapter`
 接口 + fake）；真实 registry/serving/CI 由应用仓库实现。初始版本人工批准默认开启。
 
-**回归**：`go test ./recsys/... -count=1`（含 `recsys/loop` 八段演练）。
+**回归**：`go test ./recsys/... -count=1`（含 `recsys/loop` 八段演练与
+`recsys/cmd/control` CLI 端到端）。
 
 ## 附：数据流示意
 
