@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### Added — fuzz 深挖与真实数据时间切分（2026-08-22，测试/CI 级，无生产代码变更）
+
+- **`recsys/ledger` fuzz 目标** `FuzzLedgerOpen`：账本 JSONL 回放不 panic（控制面第四个信任边界）
+- **定时 fuzz workflow**（`.github/workflows/fuzz.yml`）：每周一 03:00 UTC 对 4 个目标各跑 60–90s 战役；crash 即失败（语料由人工收编进 `testdata/fuzz` 作回归种子）
+- **`TestMovieLensTimeSplitFourStage`**：真实 `u.data` 时间戳上的时间切分四段端到端（v2.6.2 `SplitMode="time"` 的真实数据验证）
+- 深挖战役全 PASS（io 120s 38.6k execs / ledger 60s / data 45s / contract 45s）；`toitware/ubjson` 上游无修复可升（@latest==在用版本），recover 防线保留
+
 ---
 
 ## [2.6.2] - 2026-08-22

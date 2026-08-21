@@ -1,0 +1,36 @@
+name: fuzz
+
+# 定时深挖解析面信任边界（FUZZ 第二轮）。种子语料在 push CI 里跑；
+# 这里只做 -fuzztime 预算战役：crash 即 job 失败，语料留在 runner
+# （不回写仓库；发现 crash 后由人工把语料收编进 testdata/fuzz 作回归种子）。
+
+on:
+  schedule:
+    - cron: "0 3 * * 1" # 每周一 03:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fuzz:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.0"
+          cache-dependency-path: go.sum
+
+      - name: io (model loading)
+        run: go test ./io -fuzz FuzzLoadFromFileBytes -fuzztime 90s
+
+      - name: data (format sniffing)
+        run: go test ./data -fuzz FuzzSniffFileFormatBytes -fuzztime 60s
+
+      - name: recsys/contract (event validation)
+        run: go test ./recsys/contract -fuzz FuzzValidateInteractionsJSON -fuzztime 60s
+
+      - name: recsys/ledger (JSONL replay)
+        run: go test ./recsys/ledger -fuzz FuzzLedgerOpen -fuzztime 60s

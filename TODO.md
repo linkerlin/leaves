@@ -31,6 +31,14 @@
 
 > 新工作请在本节追加 `[ ]` 项。开发期默认无打开主线；案例 demo 可并列追加。
 
+### FUZZ-2 / MLTS — fuzz 深挖 + 真实数据时间切分（2026-08-22 完成）
+
+- [x] **F2-01** `recsys/ledger/fuzz_test.go` `FuzzLedgerOpen`：账本 JSONL 回放（ReadJSONL + 三类事件 Unmarshal + 回链校验）不 panic——RC 控制面的第四个 fuzz 信任边界
+- [x] **F2-02** `.github/workflows/fuzz.yml`：每周定时 fuzz 战役（io 90s / data 60s / contract 60s / ledger 60s；crash 即失败，语料人工收编进 testdata/fuzz）
+- [x] **F2-03** 深挖战役全 PASS：io 120s（38.6k execs）/ ledger 60s / data 45s / contract 45s——上轮 ubjson panic 为唯一 bug，recover 防线稳固
+- [x] **MLTS-01** `TestMovieLensTimeSplitFourStage`：真实 `u.data` 时间戳上的时间切分四段 e2e（时间戳非零断言 + SplitMode/行数对账/NDCG/发牌）
+- 上游核对：`toitware/ubjson` @latest==@master==在用版本（2026-01-15），无修复可升，recover 防线保留
+
 ### RC — 推荐生产闭环（演进方案 §十七，2026-08-21）
 
 > 库内可测控制面契约（纯 Go、无运行时依赖）；指南 [`docs/recsys-loop.md`](docs/recsys-loop.md)。

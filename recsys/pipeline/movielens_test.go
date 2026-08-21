@@ -103,6 +103,66 @@ func TestMovieLensFourStage(t *testing.T) {
 	}
 }
 
+// TestMovieLensTimeSplitFourStage 真实数据（u.data 真实时间戳）上的时间切分四段验证。
+func TestMovieLensTimeSplitFourStage(t *testing.T) {
+	if testing.Short() {
+		t.Skip("short")
+	}
+	root := findRepoRoot(t)
+	mlCfg := movielens.DefaultConfig()
+	mlCfg.RepoRoot = root
+	mlCfg.TrainUsers = 20
+	mlCfg.TestUsers = 5
+
+	ds, _, err := movielens.Load(mlCfg)
+	if err != nil {
+		t.Skipf("MovieLens load (need network or .cache/ml-100k.zip): %v", err)
+	}
+	for i, r := range ds.Raw {
+		if r.Time.IsZero() {
+			t.Fatalf("interaction %d missing real timestamp from u.data", i)
+		}
+	}
+
+	dir := t.TempDir()
+	w, err := recsys.NewWorkspace(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg := recsys.DefaultSmokeConfig()
+	cfg.Seed = mlCfg.Seed
+	cfg.RecallSize = 100
+	cfg.TrainRounds = 12
+	cfg.DeckSize = 10
+	cfg.MaxSameTag = 3
+	cfg.NumItems = len(ds.Catalog)
+	cfg.SplitMode = "time"
+
+	res, err := pipeline.RunFromDataset(w, ds, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Prep.SplitMode != "time" {
+		t.Fatalf("split mode: got %q want time", res.Prep.SplitMode)
+	}
+	if res.Prep.TrainRows == 0 || res.Prep.TestRows == 0 {
+		t.Fatalf("empty split: train=%d test=%d", res.Prep.TrainRows, res.Prep.TestRows)
+	}
+	// 行数对账：train+test+重复丢弃+隔离带+val == 全部原始行
+	dup := res.Prep.Dropped["duplicate_user_item_train"] + res.Prep.Dropped["duplicate_user_item_test"]
+	used := res.Prep.TrainRows + res.Prep.TestRows + dup +
+		res.Prep.Dropped["time_isolated"] + res.Prep.Dropped["time_val_unused"]
+	if used != len(ds.Raw) {
+		t.Fatalf("row accounting: used=%d want %d", used, len(ds.Raw))
+	}
+	if res.Eval.TestNDCG <= 0 {
+		t.Fatalf("expected positive test NDCG, got %f", res.Eval.TestNDCG)
+	}
+	if res.DealRows == 0 || res.DealRows > res.Prep.TestUsers*cfg.DeckSize {
+		t.Fatalf("deal rows %d unexpected (test users %d)", res.DealRows, res.Prep.TestUsers)
+	}
+}
+
 func findRepoRoot(t *testing.T) string {
 	t.Helper()
 	cwd, err := os.Getwd()
