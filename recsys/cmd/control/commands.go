@@ -67,6 +67,9 @@ func cmdSnapshot(args []string) error {
 	if *ws == "" {
 		return usageErr("-workspace 必填")
 	}
+	if *start == "" || *end == "" {
+		return usageErr("-time-start 与 -time-end 必填（契约要求快照携带数据时间范围）")
+	}
 	w := recsys.Workspace{Root: *ws}
 	snap := &contract.DatasetSnapshot{SnapshotID: *id, SchemaVersion: contract.SchemaVersion, Purpose: *purpose}
 	if *createdAt != "" {
@@ -79,20 +82,15 @@ func cmdSnapshot(args []string) error {
 		snap.CreatedAt = time.Now().UTC()
 	}
 	snap.LegacySnapshot = *legacy
-	if *start != "" || *end != "" {
-		if *start == "" || *end == "" {
-			return usageErr("-time-start 与 -time-end 必须成对")
-		}
-		ts, err := parseTime("-time-start", *start)
-		if err != nil {
-			return err
-		}
-		te, err := parseTime("-time-end", *end)
-		if err != nil {
-			return err
-		}
-		snap.TimeRange = contract.TimeRange{Start: ts, End: te}
+	ts, err := parseTime("-time-start", *start)
+	if err != nil {
+		return err
 	}
+	te, err := parseTime("-time-end", *end)
+	if err != nil {
+		return err
+	}
+	snap.TimeRange = contract.TimeRange{Start: ts, End: te}
 	for _, p := range []string{w.SamplesTrain(), w.SamplesTest(), w.ItemsCatalog()} {
 		if _, err := os.Stat(p); err != nil {
 			return fmt.Errorf("缺少工作区工件 %s（先跑四段流水线）", p)

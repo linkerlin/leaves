@@ -14,7 +14,7 @@
 
 ### Added — 控制面 CLI（recsys/cmd/control，2026-08-21）
 
-- **`recsys/cmd/control`**：八段剧本的 shell 入口（Agent 零 Go 代码编排）——`snapshot`（工作区文件 sha256 + 特征指纹）、`split`（时间切分 + 泄漏检查）、`eval`（三层门禁）、`from-deal`（deal 终稿→决策账本）、`append-exposure/feedback`（事件摄取校验）、`replay`、`monitor`（阈值 + 触发器 → `fired.jsonl`）、`release`（状态机跨命令持久化，promote/rollback 请求打印 stdout）；退出码 0/1/2；端到端测试 `TestControlCLIEndToEnd` 跑完八段。
+- **`recsys/cmd/control`**：八段剧本的 shell 入口（Agent 零 Go 代码编排）——`snapshot`（工作区文件 sha256 + 特征指纹，`-time-start/-time-end` 必填：契约要求快照携带时间范围）、`split`（时间切分 + 泄漏检查）、`eval`（三层门禁）、`from-deal`（deal 终稿→决策账本）、`append-exposure/feedback`（事件摄取校验）、`replay`、`monitor`（阈值 + 触发器 → `fired.jsonl`）、`release`（状态机跨命令持久化，promote/rollback 请求打印 stdout）；退出码 0/1/2；端到端测试 `TestControlCLIEndToEnd` 跑完八段；`docs/recsys-loop.md` §10.1 实跑演练（2026-08-21 实测数字）。
 - **`recsys/release`**：`MachineState` 导出/重构（`Export`/`FromState`）——CLI 跨命令恢复状态机的前提。
 - **`recsys/eval`**：`RankViews` 从流水线工件构造评估视图（CLI/演练共用）。
 - **`recsys/deal`**：`ReadLog` 读发牌日志 JSONL。

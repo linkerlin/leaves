@@ -143,6 +143,61 @@ control release    -state release_state.json -action candidate|approve|confirm-p
 
 端到端演练：`go test ./recsys/cmd/control -count=1`（TestControlCLIEndToEnd 跑完八段）。
 
+### 10.1 实跑演练（2026-08-21 实测数字，种子 42 合成数据）
+
+```powershell
+# 工作区（四段流水线产物：18 训练用户 / 6 测试用户 / 60 发牌行）
+go run ./recsys/cmd/smoke -workspace rcws
+
+# 1+2. 快照 + 时间切分（snapshot 必填 -time-start/-time-end：契约要求）
+control snapshot -workspace rcws -out snapshot.json -snapshot-id snap-demo -purpose release `
+  -created-at 2026-08-20T12:00:00Z -time-start 2026-08-01T00:00:00Z -time-end 2026-08-20T00:00:00Z
+#   → 「快照 snap-demo 已写（3 输入文件指纹）」
+control split -events events.jsonl -train-end 2026-08-06T00:00:00Z -val-start 2026-08-06T01:00:00Z `
+  -test-start 2026-08-13T00:00:00Z -out-dir split/
+#   → 「train=3 val=2 test=3 gap=0（泄漏检查通过）」（split_report.json: leakage_ok=true）
+
+# 3. 三层门禁 → evaluation.json
+control eval -workspace rcws -thresholds thresholds.json -out evaluation.json -recall-k 100 -event-count 200
+#   → 「purpose=gate status=ok（9 指标, 4 门禁）」
+
+# 4. 决策账本 + 事件摄取
+control from-deal -workspace rcws -ledger ledger.jsonl -model-version m-demo -policy-version deal-v1 -occurred-at 2026-08-20T12:00:00Z
+#   → 「追加 6 条决策（6 用户）」
+control append-exposure -ledger ledger.jsonl -in exposures.jsonl   # 「追加 2 条曝光」
+control append-feedback -ledger ledger.jsonl -in feedback.jsonl    # 「追加 1 条反馈」
+
+# 5. 归因回放
+control replay -ledger ledger.jsonl -out samples.jsonl -report replay_report.json -window 24h
+#   → 「回放: 正=1 负=1（迟到=0 孤立=0）」
+
+# 6. 健康窗口 + 触发器（不触发）
+control monitor -ledger ledger.jsonl -workspace rcws -window-start 2026-08-20T12:00:00Z `
+  -window-end 2026-08-20T14:00:00Z -thresholds mon_thresholds.json -triggers triggers.json `
+  -out monitor_report.json -fired fired.jsonl
+#   → 「overall=ok」「触发器: 0 条触发」
+
+# 7. 发布状态机（人工批准默认；promote 请求打印 stdout 交给你的 adapter）
+control release -state release_state.json -action candidate -release-id rel-demo `
+  -evaluation evaluation.json -model rcws/models/model_rank_ndcg.leaves.json `
+  -run-id run-demo -snapshot-id snap-demo -policy-version deal-v1 -last-known-good rel-0
+control release -state release_state.json -action approve -approver demo-human
+control release -state release_state.json -action confirm-promote -model-version m-demo
+#   → stdout 打印 promote_request JSON（release_id/model_version/model_sha256）
+control release -state release_state.json -action observe     # → observing，锚点 rel-0 不变
+
+# 8. 退化注入 → 触发器 fired → 回滚指向 last_known_good
+#    （deal 每用户只留 1 行 → deck_fill_rate=0.1 < 0.8 → block）
+control monitor -ledger ledger.jsonl -workspace rcws -window-start 2026-08-20T12:00:00Z `
+  -window-end 2026-08-20T15:00:00Z -thresholds mon_thresholds.json -triggers triggers.json `
+  -out monitor_deg.jsonl -fired fired.jsonl
+#   → fired.jsonl: {"rule":"deck-fill-hard","action":"rollback_requested","reason":"deck_fill_rate block ... value 0.1 ..."}
+control release -state release_state.json -action rollback -reason "deck_fill_rate block（触发器 deck-fill-hard）"
+#   → stdout 打印 rollback_request: {"from":"rel-demo","to":"rel-0",...}；state=rollback_requested
+
+# 边界路径：deal 文件缺失/损坏 → 完整性 block（metric_not_computed）同样可触发回滚
+```
+
 ## 12. 边界与非目标
 
 - leaves 不托管：在线 serving、特征库、model registry、消息队列、在线学习。

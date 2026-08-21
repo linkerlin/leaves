@@ -12,7 +12,7 @@ import (
 const usage = `control — recsys 推荐生产闭环控制面 CLI
 
 用法:
-  control snapshot   -workspace DIR -out snapshot.json -snapshot-id ID -purpose train|eval|release [-legacy] [-created-at T] [-time-start T -time-end T]
+  control snapshot   -workspace DIR -out snapshot.json -snapshot-id ID -purpose train|eval|release -time-start T -time-end T [-legacy] [-created-at T]
   control split      -events events.jsonl -train-end T -val-start T -test-start T -out-dir DIR
   control eval       -workspace DIR -thresholds th.json [-out evaluation.json] [-recall-k 100] [-ndcg-k 10] [-deck-size 10] [-max-same-tag 3] [-leak-count 0] [-event-count 0]
   control from-deal  -workspace DIR -ledger ledger.jsonl -model-version V -policy-version P -occurred-at T [-feature-schema-hash H] [-candidate-set-id C]

@@ -415,8 +415,16 @@ func TestControlUsageExitCode(t *testing.T) {
 	if err := cmdSnapshot([]string{"-workspace", "", "-snapshot-id", "", "-purpose", ""}); exitCode(err) != 1 {
 		t.Fatalf("usage error must exit 1, got %d", exitCode(err))
 	}
-	if err := cmdSnapshot([]string{"-workspace", "nope", "-snapshot-id", "x", "-purpose", "train"}); exitCode(err) != 2 {
+	if err := cmdSnapshot([]string{
+		"-workspace", "nope", "-snapshot-id", "x", "-purpose", "train",
+		"-time-start", "2026-08-01T00:00:00Z", "-time-end", "2026-08-20T00:00:00Z",
+	}); exitCode(err) != 2 {
 		t.Fatalf("missing workspace artifacts must exit 2, got %d", exitCode(err))
+	}
+	// 契约要求时间范围：缺失 → 用法错误（exit 1），而非运行时校验失败
+	if err := cmdSnapshot([]string{"-workspace", t.TempDir(), "-snapshot-id", "x", "-purpose", "train"}); exitCode(err) != 1 ||
+		!strings.Contains(err.Error(), "-time-start") {
+		t.Fatalf("snapshot without time range must be usage error, got %v", err)
 	}
 }
 
