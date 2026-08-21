@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+---
+
+## [2.6.0] - 2026-08-21
+
+> **主题**：推荐生产闭环控制面（演进方案 §十七 RC0–RC4）——七包契约 + 八段端到端演练  
+> **Release 正文**：[`docs/release-notes-v2.6.0.md`](docs/release-notes-v2.6.0.md)
+
 ### Added — 推荐生产闭环控制面（演进方案 §十七 RC，2026-08-21）
 
 - **`recsys/contract`**：冻结 schema v1 契约——`DatasetSnapshot`（输入文件 sha256 + `FeatureSchemaHash`，`VerifyFiles` 任一不符即失败）、`InteractionEvent`/`DecisionEvent`/`ExposureEvent`/`FeedbackEvent`（UTC 时间、匿名键绊线、原因码、回链校验：重复 ID / 未知类型 / 反向时间 / 位次不符均失败）、`ReleaseEvidence`；JSONL 泛型读写。
