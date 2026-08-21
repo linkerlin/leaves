@@ -149,8 +149,9 @@ go test ./train/... -run 'TestRank.*TrendVsXGBoost' -count=1
 | leaves.json 训练保存与推理 | 发牌策略（库外实现） |
 | NDCG/MAP 评估 | 分布式训练 / serving 框架 |
 | XGB/LGB 模型加载、XGB JSON 导出 | 协同过滤 / embedding 召回 |
-| Born CPU/WebGPU 训练加速 | |
-| WASM/HTTP embed demo | |
+| Born CPU/WebGPU 训练加速 | 官方 registry / 在线 serving / 实时学习 |
+| WASM/HTTP embed demo | 推广执行（只产出请求，见 §十） |
+| 离线四段 + 控制面契约（§十） | 曝光/点击的真实采集与推送 |
 
 **定位**：leaves 为**精排器**；召回与发牌由本 SKILL 体系在库外补全。
 
@@ -177,6 +178,42 @@ go test ./train/... -run 'TestRank.*TrendVsXGBoost' -count=1
 ```powershell
 mkdir -p recsys/{raw,clean,catalog,recall,rank,models,deal,meta}
 ```
+
+## 十、生产闭环控制面（八段剧本，2026-08 起）
+
+> 四段流水线（§二）产出的是**离线 deal 终稿**，不等于线上推荐决策。
+> 生产闭环需要事件、归因、监控与受控发布；本节是 Agent 的八段剧本。
+> 详见 [`docs/recsys-loop.md`](../../docs/recsys-loop.md) 与演进方案 §十七。
+
+**关键区分**（Agent 汇报时必须使用正确口径）：
+
+| 状态 | 含义 | 判据 |
+|------|------|------|
+| 离线提升 | evaluation.json 指标变好 | 仅离线指标，不得宣称线上收益 |
+| 可推广候选 | release 状态机到 `candidate/approved` | 三层门禁无 block + 人工批准 |
+| 已上线观察 | `promoted/observing` | 外部 adapter 确认；monitor 窗口 ok |
+
+**八段剧本**（Agent 只读结构化 JSON，不解析 stderr，不隐式选最优）：
+
+```text
+1. snapshot + 时间切分    contract.DatasetSnapshot + split.Split/CheckLeakage
+2. recall/rank/deal/eval  pipeline + eval.Evaluate（三层阈值门禁 → evaluation.json）
+3. candidate evidence     release.ToCandidate（三层门禁齐全 + 模型 hash 一致）
+4. decision/exposure/feedback ledger（decision 是审计真源；deal 行仅展示）
+5. monitor 健康窗口       monitor.BuildReport → ok → 保持 observing
+6. 退化注入/真实退化      monitor → block（ok/warn/block + reason code）
+7. 触发器 → rollback_requested  monitor.TriggerSet（连续越界 + 冷却期）→ release.RequestRollback 指向 last_known_good
+8. replay → retrain       replay.BuildSamples 只消费可归因反馈 → 下一轮快照
+```
+
+**结构化信号**（全部 JSON/JSONL，退出码语义同 leaves CLI）：
+`evaluation.json`（eval）· `ledger.jsonl`（决策/曝光/反馈）· `monitor_report.json` ·
+`replay_report.json` · `release_evidence.json` + `run_status.jsonl`（release）。
+
+**边界**：leaves 只产出 adapter-neutral 的推广/回滚**请求**（`release.Adapter`
+接口 + fake）；真实 registry/serving/CI 由应用仓库实现。初始版本人工批准默认开启。
+
+**回归**：`go test ./recsys/... -count=1`（含 `recsys/loop` 八段演练）。
 
 ## 附：数据流示意
 

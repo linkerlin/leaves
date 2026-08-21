@@ -5,6 +5,18 @@
 
 ## [Unreleased]
 
+### Added — 推荐生产闭环控制面（演进方案 §十七 RC，2026-08-21）
+
+- **`recsys/contract`**：冻结 schema v1 契约——`DatasetSnapshot`（输入文件 sha256 + `FeatureSchemaHash`，`VerifyFiles` 任一不符即失败）、`InteractionEvent`/`DecisionEvent`/`ExposureEvent`/`FeedbackEvent`（UTC 时间、匿名键绊线、原因码、回链校验：重复 ID / 未知类型 / 反向时间 / 位次不符均失败）、`ReleaseEvidence`；JSONL 泛型读写。
+- **`recsys/split`**：时间切分（`train_end < val_start < test_start`）+ as-of 泄漏门禁 `CheckLeakage` + cold-start 分层；隔离带事件丢弃。
+- **`recsys/eval`**：三层离线门禁（data / candidate_rank / deal）——Recall@K、coverage、NDCG/MAP、deck 质量（fill/dup/tag overflow/item coverage）、cold/returning 分层；阈值业务配置，缺失时仅 `exploratory`，未知指标 `block`；产出 `evaluation.json`。
+- **`recsys/ledger`**：决策/曝光/反馈 JSONL 账本（append 即校验回链与时间因果）；`DecisionFromDeal` 把发牌终稿映射为审计真源决策（补位条目带 `tag_overflow` 原因码）。
+- **`recsys/replay`**：归因窗样本重建——只有可归因到 shown 曝光的窗内反馈构成正样本；迟到/孤立/抑制反馈计数入 `replay_report.json`；确定性排序。
+- **`recsys/monitor`**：窗口聚合（ctr / orphan_feedback_rate / deck 质量）→ `monitor_report.json`，状态 `ok|warn|block` + reason code；**触发器** `TriggerSet`——指标连续 N 窗口越界（warn/block）→ `retrain/rollback_requested`，带冷却期与恢复重置（§17.6「配置驱动，不是 Agent 临场猜测」）。
+- **`recsys/release`**：发布状态机（`exploratory→candidate→approved→promoted→observing→retrain/rollback_requested/retired`）——evidence 三层门禁齐全 + 模型 hash 一致才可 candidate；人工批准默认；`last_known_good` 只指向已记录证据；`Adapter` 接口 + `FakeAdapter` 只产出推广/回滚请求（无网络副作用）；`run_status.jsonl`。
+- **`recsys/loop`**：八段端到端演练 `TestAgenticRecsysLoopDrill`（快照/切分 → 门禁 evidence → fake adapter promoted → 账本 → 健康观察 → 退化注入 → 回滚指向 last_known_good → replay → retrain）。
+- 文档：`docs/recsys-loop.md`（RC-00 基线 + 控制面指南）；`skills/recsys-orchestrator` §十八段剧本（镜像同步）；README / AGENTS / `examples/serving-template` 对接说明。
+
 ---
 
 ## [2.5.5] - 2026-08-16

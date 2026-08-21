@@ -18,7 +18,7 @@
 - 推理：`leaves.LoadFromFile`（默认开启 `AutoTransform`），或者沿用旧的 `leaves.LGEnsembleFromFile` / `leaves.XGEnsembleFromFile`。
 - 训练：`leaves.NewLearner` / `train.NewLearner`、`leaves.LoadDataAuto` / `data.FromFileAuto`（带内容嗅探），以及便利函数 `leaves.NewLearnerFromModelAndData` —— 它能从参考模型里反推出 objective。
 
-回归矩阵见 [docs/testdata-matrix.md](docs/testdata-matrix.md)；路线图 [演进计划.md](演进计划.md)（v5.4）；Agent 契约 [演进方案.md](演进方案.md)（v2.0）；扩展 objective/metric 见 [docs/extension-points.md](docs/extension-points.md)；backlog [TODO.md](TODO.md)。
+回归矩阵见 [docs/testdata-matrix.md](docs/testdata-matrix.md)；路线图 [演进计划.md](演进计划.md)（v5.4）；Agent 契约 [演进方案.md](演进方案.md)（v2.2）；扩展 objective/metric 见 [docs/extension-points.md](docs/extension-points.md)；backlog [TODO.md](TODO.md)。
 
 ## 特性
 
@@ -430,7 +430,7 @@ model.NewEnsemble(eng) // 替换线上 Ensemble 引擎
 
 ## Agent 自动化（SKILL 驱动，无 MCP）
 
-> **Agentic 契约已达成**（见 [`演进方案.md`](演进方案.md) v2.0 DoD）。  
+> **通用 Agentic 训练契约已达成**（见 [`演进方案.md`](演进方案.md) v2.2 DoD）；推荐生产闭环控制面（§十七 RC）亦已落地，见 [`docs/recsys-loop.md`](docs/recsys-loop.md)。
 > 库整体 12 个月路线图见 [`演进计划.md`](演进计划.md) v5.4 — 二者互补，不互相替代。
 
 Agent 通过 **SKILL + `leaves` CLI + metrics.json** 完成「训练→调参→发布」；**Agent 即优化器**（搜索逻辑在 SKILL，库不内置 HPO）。
@@ -470,6 +470,13 @@ go run ./cmd/leaves publish --model m.leaves.json --out-dir release/ --quantize 
 ```
 `publish --quantize` 会持久化 int8 量化侧车（`model.quant.json`）；`manifest.json` 含 `reproduce` 复现命令与文件 sha256。
 
+### 推荐生产闭环控制面（§十七 RC）
+
+`recsys/` 在离线四段（prep→召回→LTR→发牌）之上提供**可离线测试的控制面契约**（纯 Go，无运行时依赖）：数据快照/指纹（`recsys/contract`）、时间切分防泄漏（`recsys/split`）、三层离线门禁（`recsys/eval`）、决策/曝光/反馈账本（`recsys/ledger`）、归因回放（`recsys/replay`）、窗口监控（`recsys/monitor`）、发布状态机 + adapter 请求（`recsys/release`）。端到端演练见 `recsys/loop`。
+
+- 指南：[`docs/recsys-loop.md`](docs/recsys-loop.md) · 剧本：[`skills/recsys-orchestrator/SKILL.md`](skills/recsys-orchestrator/SKILL.md) §十
+- 边界：离线 `deal` ≠ 线上 decision；leaves 只产出推广/回滚**请求**（fake adapter 可测），不托管 registry/serving/在线学习
+
 ## 文档
 
 | 文档 | 说明 |
@@ -483,7 +490,8 @@ go run ./cmd/leaves publish --model m.leaves.json --out-dir release/ --quantize 
 | [docs/backend-auto.md](docs/backend-auto.md) | BackendAuto 2.0 决策表 |
 | [docs/extension-points.md](docs/extension-points.md) | 自定义 objective/metric |
 | [演进计划.md](演进计划.md) | 库 12 个月路线（v5.4） |
-| [演进方案.md](演进方案.md) | Agent 闭环契约（已达成） |
+| [演进方案.md](演进方案.md) | Agent 闭环契约（已达成）+ §十七 RC |
+| [docs/recsys-loop.md](docs/recsys-loop.md) | 推荐生产闭环控制面（RC） |
 | [TODO.md](TODO.md) | 可执行 backlog |
 | [NOTES.md](NOTES.md) | 仍有效的兼容注记（AutoTransform 等） |
 | [compatibility.md](compatibility.md) | 外部 GBRT 库正确性矩阵 |

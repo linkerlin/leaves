@@ -454,6 +454,11 @@ cd testdata; python gen_rank_movielens.py; cd ..
 | 学召回+发牌（合成） | `recsys/cmd/smoke` + `recsys-orchestrator` |
 | 任意表数据 AutoML 调参 | `leaves-autotrain` |
 
+> **生产闭环提示**：四段产出的是**离线** `deal` 终稿，不等于线上推荐决策。
+> 事件归因、监控告警与受控推广/回滚的控制面契约见
+> [`docs/recsys-loop.md`](../../docs/recsys-loop.md)（`recsys/{contract,split,eval,ledger,replay,monitor,release}`）；
+> MovieLens 只有历史评分、无真实曝光/点击链路，只能做离线验证，不能替代带事件的闭环演练（`recsys/loop`）。
+
 ---
 
 ## 10. 验收清单与排障

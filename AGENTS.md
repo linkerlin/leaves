@@ -29,7 +29,8 @@ Agent 通过 **SKILL 指导 + shell CLI + metrics.json** 完成全自动「训�
 - **通用 SKILL**：[`skills/leaves-autotrain/`](skills/leaves-autotrain/SKILL.md)（任意监督学习任务）
   - 闭环：嗅探数据 → `leaves train`（`--cv`）→ 读 metrics.json → 按 SKILL 决策表调参 → 再训 → 收敛 → `leaves publish`
   - CLI 参考 / metrics.json schema：[`skills/leaves-autotrain/cli.md`](skills/leaves-autotrain/cli.md)
-- **推荐系统 SKILL**：[`skills/recsys-orchestrator/`](skills/recsys-orchestrator/SKILL.md)（召回→排序→发牌四段流水线）
+- **推荐系统 SKILL**：[`skills/recsys-orchestrator/`](skills/recsys-orchestrator/SKILL.md)（召回→排序→发牌四段流水线 + §十生产闭环八段剧本）
+- **推荐控制面包**（§十七 RC）：`recsys/{contract,split,eval,ledger,replay,monitor,release}` —— 快照/事件/决策/曝光/反馈/证据契约、时间切分防泄漏、三层门禁、账本、归因回放、监控、发布状态机 + `release.Adapter`（只产出推广/回滚请求，无网络副作用）；端到端演练 `recsys/loop`；指南 [`docs/recsys-loop.md`](docs/recsys-loop.md)
 - **MovieLens Ranker Agent/MCP**：[`demos/movielens/TUTORIAL.md`](demos/movielens/TUTORIAL.md) · [`skills/recsys-movielens-ranker/`](skills/recsys-movielens-ranker/SKILL.md)
 - **通用 CLI**：`go run ./cmd/leaves <sniff|train|eval|predict|inspect|explain|publish>` —— sniff 自动推荐 objective；train 支持 `--cv`/`--runs`/`--tag`/`--emit-rounds`；explain 输出特征重要性/SHAP；子命令均写 metrics.json
 - **闭环原语**：`train.NewLearner`/`Fit`/`Eval`/`CrossValidate`、`data.FromFileAuto`、`learner.Model()`→`io.SaveLeavesJSONFile`/`ExportXGBoostJSONFile`、`quantize.QuantizeForest`
@@ -37,7 +38,7 @@ Agent 通过 **SKILL 指导 + shell CLI + metrics.json** 完成全自动「训�
 ## 文档
 
 - 战略路线图：[`演进计划.md`](演进计划.md) v5.4（Phase A–E 第一轮已落地）
-- **Agentic 收口方案**：[`演进方案.md`](演进方案.md) v2.0+（Phase 0–5 已达成 + POST 加固 + §十六 EVO 演化搜索）
+- **Agentic 收口方案**：[`演进方案.md`](演进方案.md) v2.2（Phase 0–5 已达成 + POST 加固 + §十六 EVO 演化搜索；§十七 RC 推荐生产闭环已落地）
 - API 分层 / 发版：[`docs/api-surface.md`](docs/api-surface.md)、[`docs/release-checklist.md`](docs/release-checklist.md)、[`docs/versioning.md`](docs/versioning.md)、[`CHANGELOG.md`](CHANGELOG.md)
 - 扩展点：[`docs/extension-points.md`](docs/extension-points.md)
 - BackendAuto：[`docs/backend-auto.md`](docs/backend-auto.md)

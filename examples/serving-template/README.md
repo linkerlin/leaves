@@ -91,3 +91,12 @@ go test ./... -count=1
 - gRPC / 自动扩缩  
 - 模型 registry 拉取（可用 `leaves publish` 本地包 + 你的 CI）  
 - 把本服务并进 `cmd/leaves` 主 CLI  
+
+## 与推荐生产闭环（RC）的对接
+
+本模板**仅是推理演示**，不是推荐决策 API：它不做候选生成、发牌、曝光记账或推广控制。
+生产接入 [`docs/recsys-loop.md`](../../docs/recsys-loop.md) 的控制面时，你的应用侧需要：
+
+- 实现 `recsys/release.Adapter`（接收 Promote/Rollback 请求，对接你的 registry/CI）；
+- 在决策出口写 `recsys/ledger` 决策/曝光/反馈账本（`/admin/reload` 无鉴权，不可作为受控发布通道）；
+- 补齐鉴权、SLA、限流与观测后再谈自动推广（初始版本人工批准默认开启）。

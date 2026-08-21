@@ -96,6 +96,7 @@ m, err = leaves.LoadFromFile("lg.model", &leaves.LoadOptions{AutoTransform: fals
 | `io.LoadONNX` / `.onnx` | 实验 | TreeEnsembleRegressor 子集；复杂图请转 XGB/leaves JSON |
 | 官方 HTTP/gRPC serving | **不做** | 用 [`examples/http`](../examples/http) 或 [`examples/serving-template`](../examples/serving-template) |
 | 自定义 objective/metric | 稳定机制 | 须自行 `Register`；不进默认 CLI 名表除非文档 |
+| `recsys/{contract,split,eval,ledger,replay,monitor,release}` | 实验（契约冻结 schema v1，字段只增不删） | 推荐生产闭环控制面；指南 [recsys-loop.md](recsys-loop.md)；官方 registry / 在线 serving / 实时学习**不做** |
 
 ---
 
@@ -107,6 +108,7 @@ m, err = leaves.LoadFromFile("lg.model", &leaves.LoadOptions{AutoTransform: fals
 | `train` / `data` / `objective` / `metrics` | 训练与扩展点 |
 | `tree` / `model` | 推理 IR、Backend、Ensemble |
 | `cmd/leaves` | Agent CLI |
+| `recsys`（四段 + 控制面包） | 离线推荐流水线与生产闭环契约；`release.Adapter` 只产出请求，无网络副作用 |
 | 根包 `leaves` | 便利别名 + **兼容层** |
 
 `tree/` 不依赖 `train/`（见 AGENTS.md）。

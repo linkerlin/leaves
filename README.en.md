@@ -503,9 +503,26 @@ Pareto parent selection, reflective mutation from `--emit-rounds` curves and
 `publish`es the artifact bundle (model + manifest + reproduce script). No Go
 code is written anywhere in the loop.
 
-Contract details and DoD: [演进方案.md](演进方案.md) (v2.0). CLI flags and
+Contract details and DoD: [演进方案.md](演进方案.md) (v2.2). CLI flags and
 metrics schema: [`skills/leaves-autotrain/cli.md`](skills/leaves-autotrain/cli.md).
 Zero-prep demo: [`examples/autotrain/`](examples/autotrain/README.md).
+
+### Recsys production-loop control plane
+
+On top of the offline four-stage recsys pipeline (prep → recall → LTR → deal),
+`recsys/` ships **offline-testable control-plane contracts** (pure Go, no
+runtime deps): dataset snapshots & fingerprints (`recsys/contract`),
+leakage-proof time splits (`recsys/split`), three-layer offline gates
+(`recsys/eval`), decision/exposure/feedback ledger (`recsys/ledger`),
+attribution replay (`recsys/replay`), window monitoring with configurable
+triggers (`recsys/monitor`), and a release state machine emitting
+adapter-neutral promote/rollback requests (`recsys/release`). End-to-end
+drill: `recsys/loop`.
+
+- Guide: [`docs/recsys-loop.md`](docs/recsys-loop.md) · Playbook: [`skills/recsys-orchestrator/SKILL.md`](skills/recsys-orchestrator/SKILL.md) §10
+- Boundary: an offline `deal` file is **not** a production decision; leaves
+  only emits promote/rollback **requests** (fake adapter for tests) — it hosts
+  no registry, serving, or online learning.
 
 ## Documentation
 
@@ -520,7 +537,8 @@ Zero-prep demo: [`examples/autotrain/`](examples/autotrain/README.md).
 | [docs/extension-points.md](docs/extension-points.md) | Custom objective/metric |
 | [CHANGELOG.md](CHANGELOG.md) | Release history |
 | [演进计划.md](演进计划.md) | Library 12-month roadmap (v5.4) |
-| [演进方案.md](演进方案.md) | Agentic contract (done) |
+| [演进方案.md](演进方案.md) | Agentic contract (done) + §17 RC |
+| [docs/recsys-loop.md](docs/recsys-loop.md) | Recsys production-loop control plane (RC) |
 | [NOTES.md](NOTES.md) | Live compat notes (AutoTransform, etc.) |
 | [compatibility.md](compatibility.md) | External GBRT correctness matrix |
 | [AGENTS.md](AGENTS.md) | Project conventions |

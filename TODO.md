@@ -1,6 +1,6 @@
 # leaves 演进 TODO
 
-> **对齐文档**：[`演进计划.md`](演进计划.md) v5.4（库线）· [`演进方案.md`](演进方案.md) v2.0（Agentic + §十六 演化搜索）  
+> **对齐文档**：[`演进计划.md`](演进计划.md) v5.4（库线）· [`演进方案.md`](演进方案.md) v2.2（Agentic + §十六 演化搜索 + §十七 RC）  
 > **更新**：2026-08-16（开发期；EVO 演化搜索 + AGUX 用户入口 + DOC 模块路径对齐；全量 `go test ./... -count=1` 28 包绿）  
 > **原则**：Native golden 不变；Born 直读 `ForestIR`；不做分布式/serving 框架 / 内置 HPO / 官方 registry。
 
@@ -29,6 +29,35 @@
 ## 后续工作（现行 backlog）
 
 > 新工作请在本节追加 `[ ]` 项。开发期默认无打开主线；案例 demo 可并列追加。
+
+### RC — 推荐生产闭环（演进方案 §十七，2026-08-21）
+
+> 库内可测控制面契约（纯 Go、无运行时依赖）；指南 [`docs/recsys-loop.md`](docs/recsys-loop.md)。
+
+- [x] **RC-00** 现状基线：`docs/recsys-loop.md` §1 精确区分离线 `deal` 与线上 decision
+- [x] **RC-01** `recsys/contract`：事件/快照/策略 schema + 校验（重复 ID / 未知类型 / 反向时间 / 非 UTC / PII 绊线均失败）
+- [x] **RC-02** 文件/特征指纹进 snapshot（`HashFile`/`FeatureSchemaHash`/`VerifyFiles`：任一 hash 不匹配即失败）
+- [x] **RC-03** `recsys/split`：时间切分 + as-of 泄漏门禁（`CheckLeakage`）+ cold-start 分层
+- [x] **RC-04** `recsys/eval`：三层指标（data/candidate_rank/deal）+ 业务可配置阈值；无阈值只能 exploratory
+- [x] **RC-05** `recsys/ledger`：决策/曝光/反馈 JSONL 账本（append 校验回链；`DecisionFromDeal` 原因码映射）
+- [x] **RC-06** `recsys/replay`：归因窗 + 迟到/孤立/抑制排除 + 去重；确定性输出 + `replay_report.json`
+- [x] **RC-07** `recsys/monitor`：窗口聚合（ctr/orphan/deck 质量）+ ok/warn/block + reason code；**触发器 `TriggerSet`**（连续越界 + 冷却期 + 恢复重置 → retrain/rollback_requested，§17.6 配置驱动）
+- [x] **RC-08** `recsys/release`：状态机（exploratory→…→rollback_requested）+ evidence 校验（三层门禁齐全 + 模型 hash 一致）+ last_known_good 不可漂移
+- [x] **RC-09** `release.Adapter` 接口 + `FakeAdapter`（只产出推广/回滚请求，无网络副作用）；真实 adapter 留给应用仓库
+- [x] **RC-10** `skills/recsys-orchestrator` §十·八段剧本 + 三状态口径（离线提升/可推广候选/已上线观察）；镜像已同步
+- [x] **RC-11** `recsys/loop/TestAgenticRecsysLoopDrill`：八步闭环演练（快照→门禁→promoted→账本→健康观察→退化注入→**触发器**回滚指向 last_known_good（含冷却抑制）→replay→retrain）
+- [x] **RC-12** README（RC 控制面小节）/ AGENTS / serving-template 对接说明 / `docs/recsys-loop.md`
+
+**验收**：
+
+```powershell
+go test ./recsys/... -count=1        # 含 contract/split/eval/ledger/replay/monitor/release/loop
+go test ./docs -run TestSkillsMirrorSync -count=1
+```
+
+**遗留（不立项，按需开）**：`recsys/cmd` CLI 化控制面子命令；prep 主线改时间切分（现为 user 切分 + split 包独立提供）；自动推广配置（需应用侧签名/访问控制前提）。
+
+---
 
 ### LINT-DEBT — 渐进式 lint 启用
 
