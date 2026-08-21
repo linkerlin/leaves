@@ -92,7 +92,8 @@ go test ./docs -run TestSkillsMirrorSync -count=1
 
 - [x] **REL-01** CHANGELOG Unreleased 落成 `2.6.2`（控制面 CLI 时间范围修复 + FUZZ + LESSONS + RC-TS）+ `docs/release-notes-v2.6.2.md`
 - [x] **REL-02** TODO 陈旧行清理（「按需可开」中向量叶训练已于 2026-07-11 实现，行 486 已记；另删已完成的「模块路径迁 /v2」陈旧行）
-- [ ] **REL-03** README badge → v2.6.2；tag 前 CI 全绿；tag 后代理 hash + `leaves version` 自检
+- [x] **REL-03** README badge → v2.6.2；tag 前 CI 全绿（7/7 job）；tag 后验证通过：代理 `Origin.Hash == git rev-parse v2.6.2`（833d900）、仓库外 `go install ...@v2.6.2` → `leaves version` 自报 v2.6.2、sniff 用户路径冒烟 OK  
+  → https://github.com/linkerlin/leaves/releases/tag/v2.6.2
 
 ---
 
