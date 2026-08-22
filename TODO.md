@@ -1,7 +1,7 @@
 # leaves 演进 TODO
 
 > **对齐文档**：[`演进计划.md`](演进计划.md) v5.4（库线）· [`演进方案.md`](演进方案.md) v2.2（Agentic + §十六 演化搜索 + §十七 RC）  
-> **更新**：2026-08-22（v2.7.1：born v0.9.23 + BackendAuto 2.1 诚实化——「加速区」实测不可复现，默认 Native；全量 `go test ./... -count=1` 绿）  
+> **更新**：2026-08-22（v2.7.2：GPU-O 全套——profiling 守卫 / WASM 实测反转 / Born 叙事诚实化；全量 `go test ./... -count=1` 绿）  
 > **原则**：Native golden 不变；Born 直读 `ForestIR`；不做分布式/serving 框架 / 内置 HPO / 官方 registry。
 
 **图例**：`[ ]` 待办 · `[~]` 进行中 · `[x]` 完成 · `[-]` 明确不做
@@ -30,6 +30,15 @@
 ## 后续工作（现行 backlog）
 
 > 新工作请在本节追加 `[ ]` 项。开发期默认无打开主线；案例 demo 可并列追加。
+
+### GPU-O — Born/GPU 使用优化（2026-08-22 完成，v2.7.2；路线图 [`GPU优化.md`](GPU优化.md)）
+
+- [x] **GPU-O1** profiling 挂死守卫：单后端 2s 预算 + ns/op 下限 + 总超时 8s（`profile_timeout`→Native）；实测原挂死场景 120s 完整跑完；5 守卫单测
+- [x] **GPU-O2** BornGPU 推理 experimental 降级（godoc + backend-auto 部署表）
+- [x] **GPU-O3** WASM 实测**反转**：batch=8 BornCPU 快 1.6–2.6×（js 解释器拖慢 Native）；决策表拆分 `wasm_born_cpu`（<64）/`wasm_native`（≥64）；`scripts/wasm_backend_bench` 复测工具
+- [x] **GPU-O4** BornCPU walk 诚实路线：godoc 改口 parity/兼容路径（假向量化诊断入 GPU优化.md）
+- [x] **GPU-O5** 月度 `backend-gate` CI job + wgpu 上游 issue 草稿（`docs/upstream-wgpu-issue-draft.md`，待人工最小化后提交）
+- [x] **GPU-O6** README 战略改述「Born = 训练加速器 + ONNX 运行时；推理 golden 永远 Native（桌面端）」+ 训练节 `LEAVES_BORN_GPU=0` 提示
 
 ### BORN-UP / BA-2.1 — born 升级 + 决策表诚实化（2026-08-22 完成，v2.7.1）
 

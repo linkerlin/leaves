@@ -24,8 +24,8 @@
 | 优先级 | 条件 | 后端 | Rule 码 |
 |--------|------|------|---------|
 | 1 | 线性模型 / 无森林 | Native | `linear_or_empty` |
-| 2 | `Target=WASM` 且 Born 支持该森林 | BornCPU | `wasm_born_cpu`（注：WASM 路径未参与本轮实测，保留 2.0 行为） |
-| 3 | `Target=WASM` 且 Born 不支持 | Native | `wasm_native_fallback` |
+| 2 | `Target=WASM` 且 batch&lt;64 且 Born 支持 | BornCPU | `wasm_born_cpu`（GPU-O3 实测：js 小批 BornCPU 快 1.6–2.6×） |
+| 3 | `Target=WASM`（batch≥64 或 Born 不支持） | Native | `wasm_native`（batch≥64 实测打平噪声区，取 golden） |
 | 4 | `0 < SparseDensity < 0.15` | Native | `sparse` |
 | 5 | 非纯数值 / cat-small | Native | `non_numeric_or_unsupported` |
 | 6 | batch≥64（CPU 或 GPU） | Native | `native_batch` |
@@ -106,8 +106,8 @@ opts.Backend = res.Pick                    // 用测量结果替代启发式
 |------|------|
 | 在线单条 / 小批（batch≪64） | **Native**（默认 Auto 即如此） |
 | 大批量离线打分（batch≥64） | **Native**（默认）；实测 Born 更快再 `BackendBornCPU` 或 `LEAVES_BACKEND_PROFILE=1` |
-| Windows + 大批量 + GPU | 显式 `BackendBornGPU`（本仓参考机 wgpu v0.30.x 计时异常，自测后再上） |
-| WASM / js | Auto + `DeployWASM` → BornCPU（若支持），否则 Native；**无 GPU**（未参与本轮实测） |
+| Windows + 大批量 + GPU | **experimental**：显式 `BackendBornGPU`（参考机 wgpu v0.30.x 计时异常/挂起，v2.7.2 起 profiling 有预算+超时守卫；自测后再上） |
+| WASM / js | 小批（<64）→ **BornCPU**（实测快 1.6–2.6×）；大批 → **Native**（打平取 golden） |
 | 高稀疏 CSR | 设 `SparseDensity` 或显式 Native |
 | 含 cat-small 类别分裂 | 强制 Native |
 

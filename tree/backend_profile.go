@@ -35,7 +35,26 @@ type ProfileResult struct {
 //
 // vals/nrows/ncols 为代表性批量输入（与真实预测同形）；iters 计时轮数（≤0 默认 20，建议 ≥10）。
 // 不支持的后端（如 BornGPU 在无 WebGPU 环境）Ok=false 不参与推荐。
+//
+// 测量健全性守卫（GPU-O1，2026-08-22）：
+//   - 单后端计时带预算（默认 2s/后端）；超时该后端按不可用退出推荐——防 wgpu
+//     异常机器上 GPU 计时挂死整个进程。
+//   - NsPerOp 物理下限 1ns；低于下限视为计时器异常（曾实测 BornGPU ≈0ns），
+//     同样按不可用处理。
 func ProfileBackend(caps ModelCaps, vals []float64, nrows, ncols, iters int) ProfileResult {
+	res := ProfileBackendWithBudget(caps, vals, nrows, ncols, iters, DefaultProfileBudget)
+	return res
+}
+
+// DefaultProfileBudget 单后端计时预算（纳秒）。超预算的后端放弃计时（Ok=false）。
+const DefaultProfileBudget = 2 * 1000 * 1000 * 1000 // 2s
+
+// profileMinNsPerOp 计时下限：均值 ns/op 低于此值判定计时器归零类异常
+// （曾实测 BornGPU ≈0ns）。注意合法的小负载单轮可低至亚纳秒，故阈值取 1e-3。
+const profileMinNsPerOp = 1e-3
+
+// ProfileBackendWithBudget 可指定单后端计时预算的 ProfileBackend。
+func ProfileBackendWithBudget(caps ModelCaps, vals []float64, nrows, ncols, iters, budgetNs int) ProfileResult {
 	res := ProfileResult{}
 	if caps.Forest == nil || nrows <= 0 || ncols <= 0 || len(vals) < nrows*ncols {
 		res.Pick = BackendNative
@@ -55,23 +74,23 @@ func ProfileBackend(caps ModelCaps, vals []float64, nrows, ncols, iters int) Pro
 
 	// Native（始终可用）
 	ne := NewNativeEngine(caps.Forest, transform, outType, groups)
-	if ns, err := timePredictDense(ne, vals, nrows, ncols, groups, 0, iters); err == nil {
+	if ns, ok, err := timePredictDenseBounded(ne, vals, nrows, ncols, groups, 0, iters, budgetNs); err == nil && ok {
 		res.Native = BackendTiming{Backend: BackendNative, NsPerOp: ns, Ok: true}
 	}
 
 	// BornCPU（数值树、无 cat-small）
 	if BornSupports(caps.Forest, BackendBornCPU) {
 		if be, err := NewBornEngine(caps.Forest, transform, outType, groups, &BornConfig{UseGPU: false}); err == nil {
-			if ns, err := timePredictDense(be, vals, nrows, ncols, groups, 0, iters); err == nil {
+			if ns, ok, err := timePredictDenseBounded(be, vals, nrows, ncols, groups, 0, iters, budgetNs); err == nil && ok {
 				res.BornCPU = BackendTiming{Backend: BackendBornCPU, NsPerOp: ns, Ok: true}
 			}
 		}
 	}
 
-	// BornGPU（Windows + WebGPU 可用）
+	// BornGPU（Windows + WebGPU 可用；experimental——计时异常环境会被预算/下限守卫拦截）
 	if BornSupports(caps.Forest, BackendBornGPU) {
 		if be, err := NewBornEngine(caps.Forest, transform, outType, groups, &BornConfig{UseGPU: true}); err == nil && be.BornUsingGPU() {
-			if ns, err := timePredictDense(be, vals, nrows, ncols, groups, 0, iters); err == nil {
+			if ns, ok, err := timePredictDenseBounded(be, vals, nrows, ncols, groups, 0, iters, budgetNs); err == nil && ok {
 				res.BornGPU = BackendTiming{Backend: BackendBornGPU, NsPerOp: ns, Ok: true}
 			}
 		}
@@ -81,9 +100,9 @@ func ProfileBackend(caps ModelCaps, vals []float64, nrows, ncols, iters int) Pro
 	return res
 }
 
-// timePredictDense warm-up 后计时 iters 次 PredictDense，返回 ns/op。
-// nEstimators=0 表示全量树（各后端公平）。
-func timePredictDense(eng Engine, vals []float64, nrows, ncols, groups, nEstimators, iters int) (float64, error) {
+// timePredictDenseBounded warm-up 后计时 iters 次 PredictDense，返回 ns/op。
+// 预算与下限守卫：单轮超预算 → ok=false（该后端按不可用退出）；ns/op < 1ns → ok=false。
+func timePredictDenseBounded(eng Engine, vals []float64, nrows, ncols, groups, nEstimators, iters, budgetNs int) (float64, bool, error) {
 	pred := make([]float64, nrows*groups)
 	warmup := 2
 	if iters < warmup {
@@ -91,17 +110,30 @@ func timePredictDense(eng Engine, vals []float64, nrows, ncols, groups, nEstimat
 	}
 	for i := 0; i < warmup; i++ {
 		if err := eng.PredictDense(vals, nrows, ncols, pred, nEstimators); err != nil {
-			return 0, err
+			return 0, false, err
 		}
 	}
+	// 极小负载（如 2 树×8 行）在 Windows 时钟粒度（~100ns）下单轮可能为 0；
+	// 以「批量轮」计时：整批 iters 一次计时，均值 = 批耗时/iters。
 	start := time.Now()
 	for i := 0; i < iters; i++ {
 		if err := eng.PredictDense(vals, nrows, ncols, pred, nEstimators); err != nil {
-			return 0, err
+			return 0, false, err
+		}
+		if budgetNs > 0 && time.Since(start).Nanoseconds() > int64(budgetNs) {
+			return 0, false, nil
 		}
 	}
-	elapsed := time.Since(start).Seconds()
-	return elapsed / float64(iters) * 1e9, nil
+	elapsed := time.Since(start)
+	if elapsed <= 0 {
+		// 时钟粒度兜底：全部 iters 落在同一 tick——按 1 tick 计。
+		elapsed = time.Nanosecond
+	}
+	ns := float64(elapsed.Nanoseconds()) / float64(iters)
+	if ns < profileMinNsPerOp {
+		return 0, false, nil
+	}
+	return ns, true, nil
 }
 
 // pickFastest 选 Ok 中 NsPerOp 最小的；全不可用时回落 Native。
@@ -157,6 +189,8 @@ func profileCacheKey(caps ModelCaps, hint WorkloadHint) string {
 }
 
 // profiledDecision 查缓存或跑一次 ProfileBackend（合成确定性样本）。
+// 整体带 goroutine 超时防护（GPU-O1）：wgpu 异常机器上 BornGPU 可能真挂起
+// （预算守卫只能在轮间检查，无法中断死等）——超时按无 BornGPU 处理，绝不挂死选型。
 func profiledDecision(caps ModelCaps, hint WorkloadHint) BackendDecision {
 	key := profileCacheKey(caps, hint)
 	if d, ok := profileCache.Load(key); ok {
@@ -178,7 +212,7 @@ func profiledDecision(caps ModelCaps, hint WorkloadHint) BackendDecision {
 		}
 	}
 	vals := syntheticBatch(nrows, f.NumFeatures)
-	res := ProfileBackend(caps, vals, nrows, f.NumFeatures, 10)
+	res := profileWithTimeout(caps, vals, nrows, f.NumFeatures, 10)
 
 	// 尊重 hint：无 GPU 意图时把 BornGPU 剔除后重选（次优）。
 	pick, rule, reason := res.Pick, res.Rule, res.Reason
@@ -190,6 +224,29 @@ func profiledDecision(caps ModelCaps, hint WorkloadHint) BackendDecision {
 
 	profileCache.Store(key, dec)
 	return dec
+}
+
+// profileWithTimeout 带总超时跑 ProfileBackend。超时返回仅含 Native 回落的
+// 结果（选型永不挂死；宁可回到默认决策）。
+func profileWithTimeout(caps ModelCaps, vals []float64, nrows, ncols, iters int) ProfileResult {
+	type box struct{ res ProfileResult }
+	done := make(chan box, 1)
+	go func() {
+		done <- box{ProfileBackendWithBudget(caps, vals, nrows, ncols, iters, DefaultProfileBudget)}
+	}()
+	// 三后端各 2s 预算 + 初始化余量。
+	total := time.Duration(3*DefaultProfileBudget + 2*1000*1000*1000)
+	select {
+	case b := <-done:
+		return b.res
+	case <-time.After(total):
+		return ProfileResult{
+			Native: BackendTiming{Backend: BackendNative, Ok: true},
+			Pick:   BackendNative,
+			Rule:   "profile_timeout",
+			Reason: "profiling timed out (suspected hung backend) → Native",
+		}
+	}
 }
 
 // syntheticBatch 确定性合成批量（LCG 均匀 [0,1)；仅用于后端间相对计时）。

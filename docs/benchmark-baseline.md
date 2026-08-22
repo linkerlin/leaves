@@ -96,6 +96,21 @@ go run ./scripts/born_upgrade_gate testdata/lg_breast_cancer.txt
 # LEAVES_BORN_GPU=0 时跳过 GPU 计时
 ```
 
+### WASM 实测（GPU-O3，2026-08-22，node v24 wasm_exec，50 树×31 节点×30 特征）
+
+决策表 2.1 遗留的最后一个未测主张。三轮 `scripts/wasm_backend_bench`（GOOS=js 构建）：
+
+| batch | Native ns/op | BornCPU ns/op | BornCPU 相对 |
+|-------|--------------|---------------|--------------|
+| 8 | 162–289k | ~101–113k | **快 1.6–2.6×**（稳定占优） |
+| 64 | 510–844k | 528–610k | 打平（0.89–1.38×，噪声区） |
+| 256 | 2.1–3.2M | 2.1–2.8M | 打平（1.01–1.12×，噪声区） |
+
+**与桌面端相反**：wasm 解释器拖慢 Native 标量 walk，小批量下 Born 张量路径占优。
+处置（v2.7.2）：`DeployWASM` + batch<64 且 Born 支持 → `wasm_born_cpu`；
+batch≥64 → `wasm_native`（打平区取 golden）。复测：`GOOS=js GOARCH=wasm go build
+-o bench.wasm ./scripts/wasm_backend_bench && node $(go env GOROOT)/lib/wasm/wasm_exec_node.js bench.wasm`。
+
 ### 历史口径（2.0 时代，未复现，仅存档）
 
 | 后端 | batch=1 | batch=64+ | batch=256 |

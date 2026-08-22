@@ -13,6 +13,11 @@ import (
 var _ Engine = (*BornEngine)(nil)
 
 // BornEngine 基于 Born 张量后端的树推理引擎，直接持有 ForestIR。
+//
+// 定位（GPU-O4，2026-08-22 诚实化）：**parity/兼容路径**，非加速路径——
+// 本实现的张量 walk 每步回主机跑 Go 循环且树张量零缓存，实测为 Native 的
+// 0.03–0.16×（见 docs/benchmark-baseline.md §再测量）。Auto 一律 Native；
+// 需要实测对比时用 tree.ProfileBackend（带预算与超时守卫）。
 type BornEngine struct {
 	forest           *ForestIR
 	transform        TransformFn
@@ -26,6 +31,10 @@ type BornEngine struct {
 
 // BornConfig Born 引擎配置。
 type BornConfig struct {
+	// UseGPU 请求 WebGPU 张量后端（仅 Windows）。experimental（GPU-O2，2026-08-22）：
+	// 参考机（wgpu v0.30.x）上 BornGPU 推理计时异常（≈0 或大批量挂起，驱动层
+	// vkMapMemory panic）；Auto 决策表已不再选择 BornGPU（v2.7.1）。显式使用前
+	// 请先以 scripts/born_upgrade_gate 自测；初始化失败自动回落 CPU 张量。
 	UseGPU bool
 }
 

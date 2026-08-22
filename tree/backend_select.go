@@ -81,19 +81,28 @@ func SelectBackendExplained(caps ModelCaps, hint WorkloadHint) BackendDecision {
 		}
 	}
 
-	// —— WASM：永不选 GPU；数值树可 BornCPU ——
+	// —— WASM：永不选 GPU；小批量 BornCPU（实测快 1.6–2.6×），大批量 Native ——
+	// 依据（GPU-O3，2026-08-22，node wasm_exec 实测 50树×31节点×30特征）：
+	// batch=8 BornCPU 快 1.6–2.6×；batch≥64 两后端 ±15% 打平（噪声区），取 golden。
+	// 与桌面端相反：wasm 解释器拖慢 Native 标量 walk，小批量下 Born 张量路径占优。
 	if hint.Target == DeployWASM {
-		if BornSupports(caps.Forest, BackendBornCPU) {
+		batch := hint.BatchSize
+		if batch <= 0 {
+			batch = 1
+		}
+		if batch < AutoBatchCPUThreshold && BornSupports(caps.Forest, BackendBornCPU) {
 			return BackendDecision{
 				Backend: BackendBornCPU,
 				Rule:    "wasm_born_cpu",
-				Reason:  "WASM 部署 + 数值树 → BornCPU",
+				Reason: fmt.Sprintf("WASM 小批（batch=%d<%d）实测 BornCPU 快 1.6–2.6× → BornCPU",
+					batch, AutoBatchCPUThreshold),
 			}
 		}
 		return BackendDecision{
 			Backend: BackendNative,
-			Rule:    "wasm_native_fallback",
-			Reason:  "WASM 部署但森林含 cat-small 等 Born 不支持特性 → Native",
+			Rule:    "wasm_native",
+			Reason: fmt.Sprintf("WASM batch=%d≥%d 打平噪声区或 Born 不支持 → Native golden",
+				batch, AutoBatchCPUThreshold),
 		}
 	}
 

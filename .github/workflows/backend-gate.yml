@@ -1,0 +1,31 @@
+name: backend-gate
+
+# 月度复测 Native vs Born（GPU-O5）：防 born 升级缺口与决策表主张腐烂。
+# 数字与 docs/benchmark-baseline.md §再测量 对照；结果异常（Born 反超）时
+# 人工复核决策表。WASM 复测用 scripts/wasm_backend_bench（本 job 只跑桌面）。
+
+on:
+  schedule:
+    - cron: "0 4 1 * *" # 每月 1 日 04:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    runs-on: [self-hosted, windows] # 需要 GPU 的完整对比；无 self-hosted 时回落 ubuntu（BornGPU off）
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.0"
+          cache-dependency-path: go.sum
+
+      - name: native vs born (lg_breast_cancer)
+        run: go run ./scripts/born_upgrade_gate testdata/lg_breast_cancer.txt
+
+      - name: native vs born (xgboost_smoke)
+        run: go run ./scripts/born_upgrade_gate testdata/xgboost_smoke.json

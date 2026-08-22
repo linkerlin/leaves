@@ -7,6 +7,35 @@
 
 ---
 
+## [2.7.2] - 2026-08-22
+
+> **主题**：GPU/Born 使用优化（GPU-O1..O6）——profiling 挂死守卫 · WASM 实测反转 · 叙事诚实化  
+> **Release 正文**：[`docs/release-notes-v2.7.2.md`](docs/release-notes-v2.7.2.md)  
+> **审计与路线**：[`GPU优化.md`](GPU优化.md)
+
+### Fixed — profiling 挂死守卫（GPU-O1）
+
+- **`tree.ProfileBackend` 三层守卫**：单后端 2s 计时预算（轮间检查，超预算 `Ok=false` 退出推荐）+ 均值 ns/op 下限 1e-3（防计时器归零——曾实测 BornGPU ≈0ns）+ `profileWithTimeout` 总超时 8s（goroutine+select；真挂起时 `profile_timeout` → Native）。**实测**：此前 `LEAVES_BACKEND_PROFILE=1` 下 batch≥256 GPU 挂死的 gate 脚本，现在 120s 内完整跑完。
+- Windows 时钟粒度兜底：全部 iters 落在同一 tick 时按 1 tick 计（极小负载不再误判失败）。5 个守卫单测（`TestProfileBudgetGuard*` / `TestProfileWithTimeoutHang` / `TestProfileMinNsGuardLocked`）。
+
+### Changed — WASM 决策表实测反转（GPU-O3）
+
+- **WASM 上 BornCPU 是真的快（小批）**：node v24 wasm_exec 三轮实测（50 树×31 节点×30 特征），batch=8 BornCPU **快 1.6–2.6×**（wasm 解释器拖慢 Native 标量 walk，与桌面格局相反）；batch≥64 打平噪声区。
+- 决策表 WASM 行拆分：`batch<64 且 Born 支持 → wasm_born_cpu`；`batch≥64 或不支持 → wasm_native`（新 rule；旧 `wasm_native_fallback` 移除）。`TestBackendAutoDecisionTable` 锁定。
+- **`scripts/wasm_backend_bench`**：GOOS=js 常驻复测工具；实测表入 `docs/benchmark-baseline.md` §WASM 实测。
+
+### Changed — 定位与叙事诚实化（GPU-O2/O4/O6）
+
+- `tree.BornEngine`/`BornConfig.UseGPU` godoc：推理 Born = **parity/兼容路径**（张量 walk 每步回主机 + 树张量零缓存，实测 Native 的 0.03–0.16×）；BornGPU = **experimental**（参考机 wgpu v0.30.x 计时异常/挂起，自测后再上）。
+- README 计算底座节改述：**「Born = 训练加速器 + ONNX 运行时；推理 golden 永远 Native（桌面端）」** + WASM 小批例外；训练加速节补 `LEAVES_BORN_GPU=0` 提示；backend-auto.md 部署表同步。
+
+### Added — 治理（GPU-O5）
+
+- **`.github/workflows/backend-gate.yml`**：每月 1 日复测 Native vs Born 双模型报数（防 born 升级缺口与决策表主张腐烂）。
+- **`docs/upstream-wgpu-issue-draft.md`**：wgpu v0.30.x 计时归零/挂起/vkMapMemory panic 上游报告草稿（复现路径+疑点，待人工核对最小化后提交）。
+
+---
+
 ## [2.7.1] - 2026-08-22
 
 > **主题**：born v0.9.23 升级 + BackendAuto 2.1 诚实化（决策表「加速区」不可复现 → 默认 Native）  
