@@ -40,6 +40,8 @@
 - [x] **BU-03** 文档诚实化：`backend-auto.md` 2.1 表 + §2.1 变更说明；`benchmark-baseline.md` §再测量（两版本实测表，复测命令）；README 速查 / AGENTS.md
 - [x] **BU-04** `scripts/born_upgrade_gate` 常驻复测工具（真实模型 Native vs BornCPU/GPU 计时；born 升级与决策表调整前必跑）
 - 遗留观察：born 上游若发布带实测加速声明的版本 → 跑 gate 复测，数字支持再翻回 Born 行
+- 发版验证（v2.7.1）：CI 绿 → tag（506d49b，SSH 通道）→ goproxy.cn 镜像 v2.7.1（info+zip 200）→ 安装版 `leaves version` 自报 v2.7.1；leaves-serving 已同步升 v2.7.1。网络注记：GitHub HTTPS 间歇重置，push 走 SSH；本地 `go install` 需 `GOPRIVATE=none GOPROXY=goproxy.cn` 绕开直连 VCS  
+  → https://github.com/linkerlin/leaves/releases/tag/v2.7.1
 
 ### V270 — 五项按需开发（2026-08-22 立项，用户显式开工）
 
