@@ -41,6 +41,9 @@
 - [x] **LES2-01** lessons 可检索记忆库：`leaves lessons add|search|list`（`~/.leaves/lessons.jsonl`，`LEAVES_LESSONS_PATH` 可覆盖；单行 JSONL 输出；损坏行可行动错误）；SKILL §4.6 升级双层记忆（全局库主存储 + 项目 lessons.md 可选镜像）；速查卡 9→10 命令；cli.md 新节；镜像同步
 - [x] **RAU-01** release 自动批准：`AutoApprovePolicy{Label, RequireAllGatesPass, MaxWarnGates}` + `Machine.AutoApprove`——candidate→approved 等价留痕（`ApprovedBy="auto:<Label>"`，reason 带门禁统计）；warn 门禁可配置拒绝；前提（应用侧签名/访问控制）文档化；人工 Approve 仍为默认。测试覆盖 happy/warn 拒绝/Label 必填/状态守卫
 
+**发版验证（v2.7.0，2026-08-22）**：CI 7/7 绿后打 tag；代理 `Origin.Hash == git rev-parse v2.7.0`（bb0a460）；仓库外 `go install ...@v2.7.0` → `leaves version` 自报 v2.7.0；`leaves lessons add/search` 经安装版二进制冒烟通过。  
+→ https://github.com/linkerlin/leaves/releases/tag/v2.7.0
+
 ### FUZZ-2 / MLTS — fuzz 深挖 + 真实数据时间切分（2026-08-22 完成）
 
 - [x] **F2-01** `recsys/ledger/fuzz_test.go` `FuzzLedgerOpen`：账本 JSONL 回放（ReadJSONL + 三类事件 Unmarshal + 回链校验）不 panic——RC 控制面的第四个 fuzz 信任边界
