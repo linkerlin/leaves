@@ -1,22 +1,22 @@
-# BackendAuto 2.0 决策表
+# BackendAuto 2.1 决策表
 
 > 真源实现：[`tree/backend_select.go`](../tree/backend_select.go)  
 > 回归：`go test ./tree -run 'SelectBackend|BackendAuto|BenchRecord' -count=1`  
-> 对齐：[`演进计划.md`](../演进计划.md) Phase C
+> 对齐：[`演进计划.md`](../演进计划.md) Phase C；2.1 诚实化见 [benchmark-baseline.md](benchmark-baseline.md) §再测量
 
 ## 设计原则
 
 1. **Native 是正确性 golden**；Born 是可选加速。
-2. **小 batch 在线推理优先 Native**（BornCPU 单条显著更慢，见 [benchmark-baseline.md](benchmark-baseline.md)）。
-3. **任何自动选择必须能被规则码解释**（`SelectBackendExplained`）。
+2. **默认 Native**（2.1）：历史 batch 阈值选 Born 的「加速区」在参考机上不可复现（见 §2.1 变更说明与 benchmark-baseline 实测表）；走 Born 的两条路——**显式 `BackendBornCPU`/`BackendBornGPU`**，或 **`LEAVES_BACKEND_PROFILE=1` 实测选型**（测得更快才选）。
+3. **任何自动选择必须能被规则码解释**（`SelectBackendExplained`）；启发式主张必须有可复现测量背书。
 4. **显式 `Backend` 覆盖 Auto**（`ResolveBackend` 非 Auto 直接返回）。
 
 ## 阈值常量
 
 | 常量 | 值 | 含义 |
 |------|-----|------|
-| `AutoBatchCPUThreshold` | **64** | batch ≥ 此值 → 倾向 BornCPU |
-| `AutoBatchGPUThreshold` | **256** | batch ≥ 此值且 HasGPU → 尝试 BornGPU |
+| `AutoBatchCPUThreshold` | **64** | 2.1 起 small_batch / native_batch 规则码分界（选择均为 Native） |
+| `AutoBatchGPUThreshold` | **256** | Deprecated：2.1 起 Auto 不再按 batch 选 BornGPU |
 | `AutoSparseDensityMax` | **0.15** | `0 < SparseDensity < 0.15` → Native |
 
 ## 决策表（按优先级）
@@ -24,14 +24,18 @@
 | 优先级 | 条件 | 后端 | Rule 码 |
 |--------|------|------|---------|
 | 1 | 线性模型 / 无森林 | Native | `linear_or_empty` |
-| 2 | `Target=WASM` 且 Born 支持该森林 | BornCPU | `wasm_born_cpu` |
+| 2 | `Target=WASM` 且 Born 支持该森林 | BornCPU | `wasm_born_cpu`（注：WASM 路径未参与本轮实测，保留 2.0 行为） |
 | 3 | `Target=WASM` 且 Born 不支持 | Native | `wasm_native_fallback` |
 | 4 | `0 < SparseDensity < 0.15` | Native | `sparse` |
 | 5 | 非纯数值 / cat-small | Native | `non_numeric_or_unsupported` |
-| 6 | batch≥256 且 HasGPU 且 WebGPU 可用 | BornGPU | `born_gpu` |
-| 7 | batch≥256 且 HasGPU 但 WebGPU 不可用 | BornCPU | `born_cpu_gpu_unavailable` |
-| 8 | batch≥64 且数值树 | BornCPU | `born_cpu` |
-| 9 | 其余（含默认 batch=1） | Native | `small_batch` |
+| 6 | batch≥64（CPU 或 GPU） | Native | `native_batch` |
+| 7 | 其余（含默认 batch=1） | Native | `small_batch` |
+
+`LEAVES_BACKEND_PROFILE=1` 时优先级 0 为 **实测选型**（`profile_native|profile_born_cpu|profile_born_gpu`，见 §自动接入）；形状类缓存，每形状只测一次。
+
+### 2.1 变更说明（2026-08-22，随 born v0.9.23 升级验证发现）
+
+2.0 决策表的 6–8 行（born_gpu / born_cpu_gpu_unavailable / born_cpu）主张 batch≥64 时 BornCPU 有 2–5× 加速。**再测量不可复现**：lg_breast_cancer（39 树/30 特征/849 节点）与合成森林（100 树×63 节点）上，born **v0.9.1 与 v0.9.23** 的 BornCPU 在 batch 64–4096 全段为 Native 的 0.03–0.16×（慢 6–30×）；BornGPU 计时异常（≈0 或挂起，wgpu v0.30.x）。历史主张可能来自更早 born 版本或不同测量口径。修复原则：**启发式不能宣称未经当前版本复测的加速**——默认 Native，Born 留显式与实测两条门。若你的硬件/模型形状测得 Born 更快：`opts.Backend = tree.BackendBornCPU` 或设 `LEAVES_BACKEND_PROFILE=1`，并把 BenchRecord 数字贡献到 benchmark-baseline。
 
 ## WorkloadHint 字段
 
@@ -96,14 +100,14 @@ opts.Backend = res.Pick                    // 用测量结果替代启发式
 
 原则不变：**任何自动选择必须能被 Rule 码解释**；改决策表须先改本文档 + `TestBackendAutoDecisionTable`。
 
-## 部署建议（写实）
+## 部署建议（写实，2.1）
 
 | 场景 | 建议 |
 |------|------|
 | 在线单条 / 小批（batch≪64） | **Native**（默认 Auto 即如此） |
-| 大批量离线打分（batch≥64） | Auto → **BornCPU**；或显式 `BackendBornCPU` |
-| Windows + 大批量 + GPU | Auto → **BornGPU**（batch≥256 且 HasGPU） |
-| WASM / js | Auto + `DeployWASM` → BornCPU（若支持），否则 Native；**无 GPU** |
+| 大批量离线打分（batch≥64） | **Native**（默认）；实测 Born 更快再 `BackendBornCPU` 或 `LEAVES_BACKEND_PROFILE=1` |
+| Windows + 大批量 + GPU | 显式 `BackendBornGPU`（本仓参考机 wgpu v0.30.x 计时异常，自测后再上） |
+| WASM / js | Auto + `DeployWASM` → BornCPU（若支持），否则 Native；**无 GPU**（未参与本轮实测） |
 | 高稀疏 CSR | 设 `SparseDensity` 或显式 Native |
 | 含 cat-small 类别分裂 | 强制 Native |
 

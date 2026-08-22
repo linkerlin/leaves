@@ -19,7 +19,7 @@
 | `BackendNative` | 纯 Go 标量遍历（golden） |
 | `BackendBornCPU` | Born CPU 后端（SIMD） |
 | `BackendBornGPU` | Born WebGPU 后端（Windows DX12） |
-| `BackendAuto` | 按 workload 选型（2.0：batch≥64 BornCPU；≥256+GPU BornGPU；稀疏/小批 Native）；见 `docs/backend-auto.md` |
+| `BackendAuto` | 默认 **Native**（2.1 诚实化：batch 阈值「加速区」未复现）；Born 走显式指定或 `LEAVES_BACKEND_PROFILE=1` 实测选型；见 `docs/backend-auto.md` |
 
 ## Agent 自动化（SKILL 驱动，无 MCP）
 

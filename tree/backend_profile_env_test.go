@@ -33,7 +33,7 @@ func TestBackendProfileEnvOptIn(t *testing.T) {
 	}
 }
 
-// TestBackendProfileEnvOff 默认（未设 env）决策表 2.0 行为不变。
+// TestBackendProfileEnvOff 默认（未设 env）2.1 决策表行为：任意 batch 均 Native。
 func TestBackendProfileEnvOff(t *testing.T) {
 	f := makeForest()
 	caps := ModelCapsFromForest(f, false, true)
@@ -42,8 +42,8 @@ func TestBackendProfileEnvOff(t *testing.T) {
 		t.Fatalf("rule: got %q want small_batch", d.Rule)
 	}
 	d = SelectBackendExplained(caps, WorkloadHint{BatchSize: 128})
-	if d.Rule != "born_cpu" {
-		t.Fatalf("rule: got %q want born_cpu", d.Rule)
+	if d.Rule != "native_batch" {
+		t.Fatalf("rule: got %q want native_batch", d.Rule)
 	}
 }
 
@@ -53,7 +53,7 @@ func TestBackendProfileEnvOffTruthy(t *testing.T) {
 	f := makeForest()
 	caps := ModelCapsFromForest(f, false, true)
 	d := SelectBackendExplained(caps, WorkloadHint{BatchSize: 128})
-	if d.Rule != "born_cpu" {
-		t.Fatalf("rule: got %q want born_cpu (env garbage must not trigger)", d.Rule)
+	if d.Rule != "native_batch" {
+		t.Fatalf("rule: got %q want native_batch (env garbage must not trigger)", d.Rule)
 	}
 }

@@ -2,7 +2,7 @@
 
 [English](README.en.md) | **中文**
 
-[![版本](https://img.shields.io/badge/版本-v2.7.0-blue.svg)](https://github.com/linkerlin/leaves/releases/tag/v2.7.0)
+[![版本](https://img.shields.io/badge/版本-v2.7.1-blue.svg)](https://github.com/linkerlin/leaves/releases/tag/v2.7.1)
 [![CI](https://github.com/linkerlin/leaves/actions/workflows/ci.yml/badge.svg)](https://github.com/linkerlin/leaves/actions/workflows/ci.yml)
 [![Go 文档](https://pkg.go.dev/badge/github.com/linkerlin/leaves/v2.svg)](https://pkg.go.dev/github.com/linkerlin/leaves/v2)
 [![许可证](https://img.shields.io/badge/许可证-MIT-green.svg)](LICENSE.md)
@@ -246,11 +246,11 @@ _ = learner.Fit(dm)
 
 ## 计算底座 —— [Born](https://github.com/born-ml/born)
 
-推理与训练加速都构建在 [Born](https://github.com/born-ml/born) 之上（CPU SIMD + WebGPU）。`NativeEngine` 是 golden 基准；`BackendAuto`（**2.0**）按 workload 派发 BornCPU / BornGPU。完整决策表：[docs/backend-auto.md](docs/backend-auto.md)。
+推理与训练加速都构建在 [Born](https://github.com/born-ml/born) 之上（CPU SIMD + WebGPU）。`NativeEngine` 是 golden 基准与**默认后端**；`BackendAuto`（**2.1**）不再按 batch 阈值派发 Born（历史「加速区」未在当前版本复现，见 [docs/benchmark-baseline.md](docs/benchmark-baseline.md) §再测量）——需要 Born 时显式指定，或设 `LEAVES_BACKEND_PROFILE=1` 让实测选型。完整决策表：[docs/backend-auto.md](docs/backend-auto.md)。
 
 ```go
 m, _ := leaves.LoadFromFile("model.json", &io.LoadOptions{
-	Backend:  io.BackendAuto,
+	Backend:  io.BackendBornCPU, // 或 BackendAuto + LEAVES_BACKEND_PROFILE=1 实测选型
 	Workload: tree.WorkloadHint{BatchSize: 256, HasGPU: true},
 })
 // 可解释选型：tree.SelectBackendExplained(caps, hint) → Rule / Reason
@@ -258,13 +258,12 @@ m, _ := leaves.LoadFromFile("model.json", &io.LoadOptions{
 
 parity 门禁 `TestBornParityFormatMatrix` 覆盖 LGB text/JSON、XGB bin/json/ubj、scikit-learn pickle × batch `{1, 16, 256}` × `BornCPU` / `BornGPU`，容差 `1e-5`（相对 Native）。
 
-### 后端选型速查（BackendAuto 2.0）
+### 后端选型速查（BackendAuto 2.1）
 
 | 场景 | Auto 结果 | 说明 |
 |------|-----------|------|
-| 在线单条 / batch &lt; 64 | **Native** | 延迟优先；Born 单条更慢 |
-| 批量 ≥ 64，纯数值树 | **BornCPU** | SIMD 批推理 |
-| 批量 ≥ 256 + HasGPU（Windows WebGPU） | **BornGPU** | 不可用则回落 BornCPU |
+| 任意 batch（CPU / GPU） | **Native** | 默认；实测 Born 更快再显式指定或开 profiling |
+| 实测确认 Born 更快 | `BackendBornCPU` / `BackendBornGPU` 显式；或 `LEAVES_BACKEND_PROFILE=1` | 形状类缓存，测得更快才选 |
 | WASM + 数值树 | **BornCPU**（支持时） | 无 GPU；cat-small → Native |
 | 稀疏 `SparseDensity∈(0,0.15)` / cat-small | **Native** | Born 未优化 / 不支持 |
 

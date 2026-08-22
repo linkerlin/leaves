@@ -10,12 +10,12 @@ const (
 	DeployWASM
 )
 
-// BackendAuto 2.0 阈值（可文档化、可单测）。
+// BackendAuto 2.0 阈值（历史文档兼容保留；2.1 起仅 small_batch/native_batch 分界）。
 const (
-	// AutoBatchCPUThreshold：非 WASM 下 batch ≥ 此值时倾向 BornCPU。
-	// 小 batch 在线推理（默认 batch=1）保持 Native golden。
+	// AutoBatchCPUThreshold：batch < 此值 rule=small_batch；≥ 此值 rule=native_batch。
+	// （2.0 曾以此为 BornCPU 选择线；2.1 实测未复现加速区，Born 转为显式/实测选型。）
 	AutoBatchCPUThreshold = 64
-	// AutoBatchGPUThreshold：batch ≥ 此值且 HasGPU 时尝试 BornGPU。
+	// AutoBatchGPUThreshold：Deprecated——2.1 起 Auto 不再据batch 选 BornGPU。
 	AutoBatchGPUThreshold = 256
 	// AutoSparseDensityMax：SparseDensity ∈ (0, 此值) 视为稀疏，走 Native。
 	// SparseDensity=0 表示未知/稠密（不触发稀疏分支）。
@@ -126,31 +126,19 @@ func SelectBackendExplained(caps ModelCaps, hint WorkloadHint) BackendDecision {
 		batch = 1
 	}
 
-	// —— 大 batch + GPU → BornGPU（不可用则落到 BornCPU）——
-	if batch >= AutoBatchGPUThreshold && hint.HasGPU {
-		if BornSupports(caps.Forest, BackendBornGPU) {
-			return BackendDecision{
-				Backend: BackendBornGPU,
-				Rule:    "born_gpu",
-				Reason: fmt.Sprintf("batch=%d≥%d 且 HasGPU → BornGPU",
-					batch, AutoBatchGPUThreshold),
-			}
-		}
-		// GPU 不可用（非 Windows / 驱动）：大 batch 仍可用 BornCPU
-		return BackendDecision{
-			Backend: BackendBornCPU,
-			Rule:    "born_cpu_gpu_unavailable",
-			Reason: fmt.Sprintf("batch=%d≥%d 且 HasGPU 但 WebGPU 不可用 → BornCPU",
-				batch, AutoBatchGPUThreshold),
-		}
-	}
-
-	// —— 中大批量 CPU → BornCPU ——
+	// —— 默认 Native（2.1 诚实化，2026-08-22 实测）——
+	// 历史上 batch≥64 → BornCPU / batch≥256+GPU → BornGPU 的「加速区」
+	// 在参考机上不可复现：lg_breast_cancer（39 树/30 特征/849 节点）与合成
+	// 森林（100×63 节点）上，born v0.9.1 与 v0.9.23 的 BornCPU 在 batch
+	// 64–4096 全段为 Native 的 0.03–0.16×（慢 6–30×）；BornGPU 计时异常
+	// 且 batch≥256 挂起。详见 docs/benchmark-baseline.md §再测量。
+	// 走 Born 的两条路：显式 BackendBornCPU/BornGPU，或
+	// LEAVES_BACKEND_PROFILE=1（实测选型，测得更快才选）。
 	if batch >= AutoBatchCPUThreshold {
 		return BackendDecision{
-			Backend: BackendBornCPU,
-			Rule:    "born_cpu",
-			Reason: fmt.Sprintf("batch=%d≥%d 数值树 → BornCPU",
+			Backend: BackendNative,
+			Rule:    "native_batch",
+			Reason: fmt.Sprintf("batch=%d≥%d → Native（Born 加速区未实测复现；显式指定后端或设 LEAVES_BACKEND_PROFILE=1 实测选型）",
 				batch, AutoBatchCPUThreshold),
 		}
 	}

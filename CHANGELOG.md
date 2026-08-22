@@ -7,6 +7,30 @@
 
 ---
 
+## [2.7.1] - 2026-08-22
+
+> **主题**：born v0.9.23 升级 + BackendAuto 2.1 诚实化（决策表「加速区」不可复现 → 默认 Native）  
+> **Release 正文**：[`docs/release-notes-v2.7.1.md`](docs/release-notes-v2.7.1.md)
+
+### Changed — BackendAuto 2.1（行为变更：Auto 不再按 batch 选 Born）
+
+- **决策表诚实化**：`SelectBackendExplained` 删除 `born_gpu` / `born_cpu_gpu_unavailable` / `born_cpu` 三行，batch≥64 统一 `native_batch` → **Native**。依据：升级 born 时用官方 `tree.ProfileBackend` 计时路径复测 2.0「加速区」主张，**不可复现**——`lg_breast_cancer`（39 树/30 特征/849 节点）与合成森林（100×63 节点）上，born **v0.9.1 与 v0.9.23** 的 BornCPU 在 batch 64–4096 全段为 Native 的 **0.03–0.16×（慢 6–30×）**；BornGPU（wgpu v0.30.x）计时异常（≈0 或 batch≥256 挂起）。实测表入 [`docs/benchmark-baseline.md`](docs/benchmark-baseline.md) §再测量
+- **走 Born 的两条路**（不受影响）：显式 `BackendBornCPU`/`BackendBornGPU`；`LEAVES_BACKEND_PROFILE=1` 实测选型（v2.7.0，测得更快才选）
+- WASM 规则（`wasm_born_cpu`）保留（未参与本轮 CPU 实测，无证据翻转）
+- `AutoBatchCPUThreshold`（64）语义改为 small_batch/native_batch 规则码分界；`AutoBatchGPUThreshold` Deprecated
+- 测试与文档同步：`TestBackendAutoDecisionTable` 新表锁定；`docs/backend-auto.md` 2.1 决策表 + 变更说明；README 速查表；AGENTS.md；`io` 大批量路径测试更新
+
+### Changed — 依赖
+
+- **`github.com/born-ml/born` v0.9.1 → v0.9.23**（计算底座追平 22 个上游版本；编译零断裂，全量测试/parity/wasm 门禁绿；性能中性——见上表，两版本同量级）
+- 传递依赖：`gogpu/wgpu` v0.29.0→v0.30.35、`go-webgpu/webgpu` v0.5.1→v0.5.5、`naga`/`goffi`/`gputypes`/`x/sys` 相应升级
+
+### Added — 复测工具
+
+- **`scripts/born_upgrade_gate`**：真实模型上 Native vs BornCPU/BornGPU 计时门禁（born 升级/决策表调整前必跑；`go run ./scripts/born_upgrade_gate <model>`），数字口径与 `tree.ProfileBackend` 一致
+
+---
+
 ## [2.7.0] - 2026-08-22
 
 > **主题**：ONNX Classifier 子集 · BackendAuto profiling 接线 · 独立 serving 产品仓 · lessons 可检索记忆库 · release 自动批准  

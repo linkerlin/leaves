@@ -1,7 +1,7 @@
 # leaves 演进 TODO
 
 > **对齐文档**：[`演进计划.md`](演进计划.md) v5.4（库线）· [`演进方案.md`](演进方案.md) v2.2（Agentic + §十六 演化搜索 + §十七 RC）  
-> **更新**：2026-08-22（v2.7.0：ONNX Classifier / BackendAuto profiling 接线 / 独立 serving 仓 / lessons 记忆库 / release 自动批准；全量 `go test ./... -count=1` 绿）  
+> **更新**：2026-08-22（v2.7.1：born v0.9.23 + BackendAuto 2.1 诚实化——「加速区」实测不可复现，默认 Native；全量 `go test ./... -count=1` 绿）  
 > **原则**：Native golden 不变；Born 直读 `ForestIR`；不做分布式/serving 框架 / 内置 HPO / 官方 registry。
 
 **图例**：`[ ]` 待办 · `[~]` 进行中 · `[x]` 完成 · `[-]` 明确不做
@@ -30,6 +30,16 @@
 ## 后续工作（现行 backlog）
 
 > 新工作请在本节追加 `[ ]` 项。开发期默认无打开主线；案例 demo 可并列追加。
+
+### BORN-UP / BA-2.1 — born 升级 + 决策表诚实化（2026-08-22 完成，v2.7.1）
+
+> 起点：审计发现 born v0.9.1 落后上游 22 版。升级验证中复测「加速区」主张不可复现，连带修复决策表。
+
+- [x] **BU-01** born v0.9.1 → v0.9.23：编译零断裂；全量测试 GPU on/off 双轮 + parity + wasm（3.47MB）+ lint 全绿；性能中性（两版本 BornCPU 同为 Native 的 0.03–0.16×）
+- [x] **BU-02** 决策表 2.1：删除 `born_gpu`/`born_cpu_gpu_unavailable`/`born_cpu` 行 → batch≥64 统一 `native_batch`（Native）；WASM 规则保留；`TestBackendAutoDecisionTable` 新表锁定；io 大批量测试同步
+- [x] **BU-03** 文档诚实化：`backend-auto.md` 2.1 表 + §2.1 变更说明；`benchmark-baseline.md` §再测量（两版本实测表，复测命令）；README 速查 / AGENTS.md
+- [x] **BU-04** `scripts/born_upgrade_gate` 常驻复测工具（真实模型 Native vs BornCPU/GPU 计时；born 升级与决策表调整前必跑）
+- 遗留观察：born 上游若发布带实测加速声明的版本 → 跑 gate 复测，数字支持再翻回 Born 行
 
 ### V270 — 五项按需开发（2026-08-22 立项，用户显式开工）
 

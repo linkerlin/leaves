@@ -71,21 +71,46 @@ go test ./explain -bench=TreeSHAP -benchmem -count=1
 
 正确性仍由 `go test ./explain -count=1`（可加性 / golden）锁定。
 
-## 参考吞吐（lg_breast_cancer，仅供参考）
+## 参考吞吐
+
+### 再测量（2026-08-22，born v0.9.1 vs v0.9.23，决策表 2.1 依据）
+
+升级 born v0.9.23 验证时用 `tree.ProfileBackend`（官方计时路径）对 2.0 决策表的「加速区」主张复测，**不可复现**：
+
+`testdata/lg_breast_cancer.txt`（39 树 / 30 特征 / 849 节点，`LEAVES_BORN_GPU=0`）：
+
+| batch | Native ns/op | BornCPU ns/op（born v0.9.1） | BornCPU ns/op（v0.9.23） | v0.9.23 相对 Native |
+|-------|--------------|------------------------------|--------------------------|---------------------|
+| 64 | ~99k | ~2.3M（0.04×） | ~3.8M（0.03×） | **慢 ~30×** |
+| 256 | ~333k | ~6.4M（0.05×） | ~10.4M（0.05×） | **慢 ~20×** |
+| 1024 | ~1.1M | ~25.8M（0.04×） | ~27.5M（0.04×） | **慢 ~25×** |
+
+合成森林（100 树 × 63 节点，30 特征）同趋势：batch 64–4096 BornCPU 为 Native 的 0.08–0.16×。**升级本身中性**（两版本同量级，个别点 v0.9.23 略优）。BornGPU（wgpu v0.30.35）在本参考机计时异常（≈0 或 batch≥256 挂起）。
+
+结论与处置见 [backend-auto.md](backend-auto.md) §2.1 变更说明：默认 Native；Born 走显式后端或 `LEAVES_BACKEND_PROFILE=1` 实测选型。**在其它硬件复现出 Born 优势的读者**：请用 `scripts/born_upgrade_gate` 复测并贡献 BenchRecord 数字，附机器/born 版本。
+
+复测命令：
+
+```powershell
+go run ./scripts/born_upgrade_gate testdata/lg_breast_cancer.txt
+# LEAVES_BORN_GPU=0 时跳过 GPU 计时
+```
+
+### 历史口径（2.0 时代，未复现，仅存档）
 
 | 后端 | batch=1 | batch=64+ | batch=256 |
 |------|---------|-----------|-----------|
 | Native | ~1×（基线） | ~1× | ~1× |
-| BornCPU | ~0.05×（慢，勿用于单条） | 加速区 | ~2–8× |
-| BornGPU* | 不选（Auto） | 不选 | ~5–15×（Windows） |
+| BornCPU | ~0.05×（慢，勿用于单条） | 加速区（未复现） | ~2–8×（未复现） |
+| BornGPU* | 不选（Auto） | 不选 | ~5–15×（未复现） |
 
-\* Windows DX12 WebGPU；见 README §计算底座与 [backend-auto.md](backend-auto.md)。
+\* Windows DX12 WebGPU；见 [backend-auto.md](backend-auto.md)。
 
-**BackendAuto 部署摘要**
+**BackendAuto 部署摘要（2.1）**
 
-- 小 batch 在线 → Native  
-- 大 batch 数值树 → BornCPU；Windows+GPU 且 batch≥256 → BornGPU  
-- WASM → BornCPU（支持时）  
+- 默认（任意 batch，CPU/GPU）→ Native  
+- 实测 Born 更快：显式 `BackendBornCPU`/`BackendBornGPU`，或 `LEAVES_BACKEND_PROFILE=1`  
+- WASM → BornCPU（支持时；未参与本轮实测）  
 - 稀疏 / 类别分裂 → Native  
 
 ## WASM vs Native
