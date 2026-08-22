@@ -1,6 +1,7 @@
 # leaves serving 模板（LIB-30）
 
 > **非官方 serving 框架**。本目录是可整包拆出的独立服务脚手架；  
+> **独立产品仓已就绪：[linkerlin/leaves-serving](https://github.com/linkerlin/leaves-serving)**（独立 module + CI + Docker）。  
 > leaves 主库只提供推理 API，官方边界见 [TODO 明确不做](../../TODO.md)。  
 > 仓内最小 embed 演示仍见 [`../http`](../http)。
 

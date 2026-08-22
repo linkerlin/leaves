@@ -256,6 +256,23 @@ leaves version
 → {"go":"go1.26.5","version":"(devel)","commit":"…"}  # 仓库内 go build/run
 ```
 
+## lessons（跨任务记忆库，v2.7+）
+
+存储 `~/.leaves/lessons.jsonl`（JSONL 追加写；`LEAVES_LESSONS_PATH` 可覆盖）。
+策略（何时读/写）见 SKILL §4.6；这里只是存储与检索管道。输出均为单行 JSON（JSONL）。
+
+```
+leaves lessons add --task ml-ctr-v3 --lesson "小数据别上 subsample" [--evidence "0.31->0.34"] [--tag small-data,subsample]
+→ {"ts":"2026-08-22T…","task":"ml-ctr-v3","lesson":"…","evidence":"…","tags":[…]}
+
+leaves lessons search --query "subsample 小数据" [--limit 5]   # 词命中数降序；大小写不敏感
+→ {"ts":…,"task":…,"lesson":…,"hits":2}
+
+leaves lessons list [--task churn]                              # 按任务子串过滤
+```
+
+错误：`--task`/`--lesson`/`--query` 缺失 → exit 1（usage）；库文件损坏 → `data_load` 带修复 hint。
+
 ## publish
 
 把模型打成本地工件包。**不推 registry**（leaves 边界）。

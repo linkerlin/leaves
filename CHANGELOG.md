@@ -5,12 +5,46 @@
 
 ## [Unreleased]
 
-### Added — fuzz 深挖与真实数据时间切分（2026-08-22，测试/CI 级，无生产代码变更）
+---
 
-- **`recsys/ledger` fuzz 目标** `FuzzLedgerOpen`：账本 JSONL 回放不 panic（控制面第四个信任边界）
-- **定时 fuzz workflow**（`.github/workflows/fuzz.yml`）：每周一 03:00 UTC 对 4 个目标各跑 60–90s 战役；crash 即失败（语料由人工收编进 `testdata/fuzz` 作回归种子）
-- **`TestMovieLensTimeSplitFourStage`**：真实 `u.data` 时间戳上的时间切分四段端到端（v2.6.2 `SplitMode="time"` 的真实数据验证）
-- 深挖战役全 PASS（io 120s 38.6k execs / ledger 60s / data 45s / contract 45s）；`toitware/ubjson` 上游无修复可升（@latest==在用版本），recover 防线保留
+## [2.7.0] - 2026-08-22
+
+> **主题**：ONNX Classifier 子集 · BackendAuto profiling 接线 · 独立 serving 产品仓 · lessons 可检索记忆库 · release 自动批准  
+> **Release 正文**：[`docs/release-notes-v2.7.0.md`](docs/release-notes-v2.7.0.md)
+
+### Added — ONNX TreeEnsembleClassifier 子集（ONNX-2）
+
+- **`io/onnx_classifier.go`**：`ai.onnx.ml TreeEnsembleClassifier` 转 ForestIR——aggregate `SUM`/`AVERAGE`（类内树数折算）× post_transform `NONE`/`SOFTMAX`（n 类 n 组概率）/`LOGISTIC`（二类坍缩单输出组，p=sigmoid(raw)）；classlabels_int64s/strings 与按 max(class_id) 推断类数；base_values 按类展开
+- **`parseONNXForest`**（`io/onnx.go`）：统一识别 Regressor/Classifier 节点；错误 hint 更新（提及 `LoadOnnxGraph` 通用图路径）。通用图推理（30+ 算子）仍走 `LoadOnnxGraph`（born 运行时，v2.4 已有）
+- **`io.WriteONNXTreeEnsembleClassifier`**：最小分类器 proto 构造器（测试/样例）；原 Regressor 构造器内部助手重构为共享 `attr*` 写入函数
+- 测试：SOFTMAX 手算对照、二类 LOGISTIC sigmoid、AVERAGE 折算、LOGISTIC+3 类可行动拒绝、回归器路径不回归
+
+### Added — BackendAuto 二轮 profiling 接线（BAP-01）
+
+- **`LEAVES_BACKEND_PROFILE=1|on|true|yes`**：`SelectBackendExplained` 在决策表之前对合成确定性批量实测 Native/BornCPU/BornGPU ns/op，选最快（Rule=`profile_*`，Reason 带实测数字与样本行数）
+- 形状类缓存（batch × features × forest 规模）：每形状只测一次，不重复付首调用延迟；rows·cols ≤ 512k 成本封顶；`HasGPU=false` 时剔除 BornGPU 取次优
+- **默认路径不变**：未设 env 时决策表 2.0 行为原样（`TestBackendProfileEnvOff/OffTruthy` 锁定）；opt-in API `tree.ProfileBackend`（v2.4）继续可用
+
+### Added — 独立 serving 产品仓（SRV-01）
+
+- **新仓库 [linkerlin/leaves-serving](https://github.com/linkerlin/leaves-serving)**：`examples/serving-template` 拆出为独立 module（require `leaves/v2 v2.6.2`、无 replace）、3-OS CI、Docker distroless、独立 README
+- 仓内模板修复：go.mod require 原为 `github.com/linkerlin/leaves v0.0.0`（缺 `/v2`，独立构建坏）→ `leaves/v2 v2.6.2` + replace 对齐；README 指向独立仓
+- 边界不变：仍非官方 serving 框架；鉴权/限流/registry 留给应用侧
+
+### Added — lessons 可检索记忆库（LES2-01）
+
+- **`leaves lessons add|search|list`**：跨任务记忆 CLI——存储 `~/.leaves/lessons.jsonl`（追加写 JSONL；`LEAVES_LESSONS_PATH` 可覆盖）；search 按词命中数降序（大小写不敏感，跨 task/lesson/evidence/tags）；输出单行 JSON（JSONL 语义）；库损坏行返回带修复 hint 的 `data_load` 错误
+- **SKILL §4.6 升级双层记忆**：全局库（CLI）为主存储 + 项目 `lessons.md` 为可选人类可读镜像；核心闭环步骤 -1/8 改用 CLI；速查卡 9→10 命令；cli.md 新节；`.cursor/skills` 镜像同步
+- 定位不变：CLI 只做存储/检索管道，「写什么何时读」策略仍在 SKILL/Agent
+
+### Added — release 自动批准（RAU-01）
+
+- **`recsys/release.AutoApprovePolicy`** + **`Machine.AutoApprove`**：candidate→approved 的策略化自动晋级——`Label` 必填（`ApprovedBy="auto:<Label>"` + 变迁 reason 带门禁统计，审计等价人工路径）；`RequireAllGatesPass`（有 warn 即拒）或 `MaxWarnGates`（显式放宽）
+- 前提文档化：启用方进程须已具备签名/访问控制；状态机仍只产出 desired-state 请求（adapter 执行），无网络副作用；人工 `Approve` 仍为默认必经
+
+### Included — 上轮 Unreleased（fuzz 深挖 + 真实数据时间切分）
+
+- `recsys/ledger` fuzz 目标 `FuzzLedgerOpen`；定时 fuzz workflow（每周一 03:00 UTC，4 目标 60–90s）；`TestMovieLensTimeSplitFourStage` 真实 `u.data` 时间切分四段端到端；深挖战役全 PASS（`toitware/ubjson` 上游无修复可升，recover 防线保留）
 
 ---
 

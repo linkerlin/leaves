@@ -23,7 +23,7 @@ description: >-
 
 ```text
   ┌───────────────────────────────────────────────────────┐
-  │ -1. 读旧教训  工作目录 lessons.md（若有，§4.6 跨任务记忆）│
+  │ -1. 读旧教训  leaves lessons search（全局记忆库，见 §4.6） │
   │  0. 建账本  runs.jsonl（Agent 跨迭代记忆，见 §二.5）     │
   │  1. 嗅探数据  leaves sniff --data X → suggested_objective │
   │              （自动识别二分类/多分类/回归/排序，无需人工告知）│
@@ -33,7 +33,7 @@ description: >-
   │  5. 再训（可 --cv K 取更稳估计）                          │
   │  6. 收敛判据（§五）满足？否 → 回 4                        │
   │  7. 是 → leaves inspect 复核 → leaves publish 出工件包   │
-  │  8. 沉淀教训  收敛/证伪时写 lessons.md（§4.6）            │
+  │  8. 沉淀教训  leaves lessons add（§4.6，反射假设证实时随时写）│
   └───────────────────────────────────────────────────────┘
 ```
 
@@ -187,25 +187,28 @@ leaves publish --model m.leaves.json --out-dir release/v1 `
 
 > 经验：80% 的收益来自前三步（sniff→基线→一次三角调整）。后续走 §4.5 协议做边际优化，达到 §五 收敛判据即停。
 
-### 4.6 跨任务记忆（lessons.md）
+### 4.6 跨任务记忆（双层：全局库 + 项目 lessons.md）
 
-> 目标：把「本任务踩过的坑」变成「下个任务的先验」。`lessons.md` 是 Agent 之间的传承层；**库不读不写该文件**，`runs.jsonl` 仍由 CLI 独占追加。
+> 目标：把「本任务踩过的坑」变成「下个任务的先验」。**全局可检索库**（`leaves lessons` CLI，`~/.leaves/lessons.jsonl`）是主存储；项目内 `lessons.md` 是可选的人类可读镜像。CLI 只做存储与检索管道；`runs.jsonl` 仍由 train 独占追加。
 
-**契约**（与 runs.jsonl 同目录的 `lessons.md`，Markdown 表格，Agent 可读写）：
+**全局库**（JSONL，跨项目持久；`LEAVES_LESSONS_PATH` 可改路径）：
 
-```text
-| date       | task      | lesson                          | evidence              |
-|------------|-----------|---------------------------------|-----------------------|
-| 2026-08-22 | ml-ctr-v3 | 小数据(<1k 行)别上 subsample     | baseline 0.312 → 0.341 |
-| 2026-08-22 | churn-reg | max_bin=64 抗计数特征噪声        | cv_std 0.09 → 0.05     |
+```powershell
+# 沉淀（一行一条；evidence 必带账本 tag / 数字 / 错误码）
+leaves lessons add --task ml-ctr-v3 --lesson "小数据(<1k 行)别上 subsample" --evidence "0.312->0.341" --tag small-data,subsample
+# 检索（词命中数排序；启动步骤 -1 用任务签名关键词查）
+leaves lessons search --query "subsample 小数据" --limit 5
+# 按任务列全部
+leaves lessons list --task churn
 ```
 
-- **何时读**：闭环步骤 -1（sniff 前）。有同任务签名（数据集 + objective 相近）的教训 → 直接并入开局决策（如直接跳过某旋钮）。
+- **何时读**：闭环步骤 -1（sniff 前）。`leaves lessons search --query <数据集特征/任务类型/objective 关键词>`；命中的教训直接并入开局决策（如直接跳过某旋钮）。
 - **何时写**（只在这三处，防膨胀）：
   1. §4.5 ② 反射轮的假设被**证实或证伪**时；
-  2. 出现 lessons 中没有的新失败模式（错误码级：`cv_conflict`、`non_numeric` 等）时；
-  3. 任务收敛后：合并本任务最关键的一条（≤1 条），同时**删除被本任务证伪的旧行**。
-- **纪律**：一行一条、必带 evidence（账本 tag 或数字）；lessons 是**建议不是规则**——与新任务数据冲突时，以新一轮 sniff/baseline 实测为准。
+  2. 出现库中没有的新失败模式（错误码级：`cv_conflict`、`non_numeric` 等）时；
+  3. 任务收敛后：合并本任务最关键的一条（≤1 条）入库。
+- **项目镜像（可选）**：与 runs.jsonl 同目录的 `lessons.md` Markdown 表（`| date | task | lesson | evidence |`），供人阅读；收敛时与全局库同步一次即可。
+- **纪律**：必带 evidence；教训是**建议不是规则**——与新任务数据冲突时，以新一轮 sniff/baseline 实测为准。证伪的旧教训：项目镜像中删除该行，全局库用新条目标注「跨任务复验推翻」。
 
 ---
 
@@ -368,6 +371,7 @@ predict  --model FILE --data FILE       → JSONL 或 --format csv（部署）
 inspect  --model FILE                   → {objective, kind, n_trees, num_features, n_output_groups}
 explain  --model FILE [--type importance] [--data FILE]  → 特征重要性/SHAP
 publish  --model FILE --out-dir DIR     → 本地工件包 + manifest（--quantize --export-xgb --emit-repro-script）
+lessons  add|search|list                → 跨任务记忆库 ~/.leaves/lessons.jsonl（§4.6）
 version                                   → {version, go[, commit]}（排查装的哪个版本）
 
 ⸻ 最常见 flags ⸻

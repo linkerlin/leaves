@@ -1,7 +1,7 @@
 # leaves 演进 TODO
 
 > **对齐文档**：[`演进计划.md`](演进计划.md) v5.4（库线）· [`演进方案.md`](演进方案.md) v2.2（Agentic + §十六 演化搜索 + §十七 RC）  
-> **更新**：2026-08-22（v2.6.2：FUZZ/LESSONS/RC-TS + 控制面 CLI 时间范围修复；全量 `go test ./... -count=1` 绿）  
+> **更新**：2026-08-22（v2.7.0：ONNX Classifier / BackendAuto profiling 接线 / 独立 serving 仓 / lessons 记忆库 / release 自动批准；全量 `go test ./... -count=1` 绿）  
 > **原则**：Native golden 不变；Born 直读 `ForestIR`；不做分布式/serving 框架 / 内置 HPO / 官方 registry。
 
 **图例**：`[ ]` 待办 · `[~]` 进行中 · `[x]` 完成 · `[-]` 明确不做
@@ -30,6 +30,16 @@
 ## 后续工作（现行 backlog）
 
 > 新工作请在本节追加 `[ ]` 项。开发期默认无打开主线；案例 demo 可并列追加。
+
+### V270 — 五项按需开发（2026-08-22 立项，用户显式开工）
+
+> 用户显式开工的五个原「按需可开」项：ONNX Classifier / BackendAuto profiling 接线 / 独立 serving 仓 / lessons 记忆库 / release 自动批准。
+
+- [x] **ONX-01** `io/onnx_classifier.go`：TreeEnsembleClassifier 子集——SUM/AVERAGE × NONE/SOFTMAX（n 类 n 组概率）/ LOGISTIC（二类坍缩单组）；`parseONNXForest` 统一识别 Regressor/Classifier；hint 提及 `LoadOnnxGraph`；`WriteONNXTreeEnsembleClassifier` 导出构造器；测试（SOFTMAX 手算对照 / 二类 sigmoid / AVERAGE 折算 / LOGISTIC+3 类拒绝）。完整通用图仍走 `LoadOnnxGraph`（born 运行时，已有）
+- [x] **BAP-01** BackendAuto 二轮接线：`LEAVES_BACKEND_PROFILE=1|on|true|yes` → `SelectBackendExplained` 在决策表前实测（合成确定性批量，rows·cols≤512k 封顶）；形状类缓存（每 (batch,features,forest 规模) 只测一次）；无 GPU 意图剔除 BornGPU；`profile_*` Rule + 实测 ns/op 进 Reason；默认路径决策表 2.0 不变（`TestBackendProfileEnv*` 锁定）
+- [x] **SRV-01** 独立 serving 产品仓：**https://github.com/linkerlin/leaves-serving**（module `github.com/linkerlin/leaves-serving`，require leaves/v2 v2.6.2 无 replace；3-OS CI 绿；Docker distroless）；仓内模板 require 修为 `/v2`（原 v0.0.0 构建坏）+ README 指向独立仓
+- [x] **LES2-01** lessons 可检索记忆库：`leaves lessons add|search|list`（`~/.leaves/lessons.jsonl`，`LEAVES_LESSONS_PATH` 可覆盖；单行 JSONL 输出；损坏行可行动错误）；SKILL §4.6 升级双层记忆（全局库主存储 + 项目 lessons.md 可选镜像）；速查卡 9→10 命令；cli.md 新节；镜像同步
+- [x] **RAU-01** release 自动批准：`AutoApprovePolicy{Label, RequireAllGatesPass, MaxWarnGates}` + `Machine.AutoApprove`——candidate→approved 等价留痕（`ApprovedBy="auto:<Label>"`，reason 带门禁统计）；warn 门禁可配置拒绝；前提（应用侧签名/访问控制）文档化；人工 Approve 仍为默认。测试覆盖 happy/warn 拒绝/Label 必填/状态守卫
 
 ### FUZZ-2 / MLTS — fuzz 深挖 + 真实数据时间切分（2026-08-22 完成）
 
@@ -547,6 +557,6 @@ go test -run TestBenchGateBornCPUSlowerBatch1 -count=1
 
 ### 按需可开（默认不做，需产品信号）
 
-- 完整 ONNX Graph
-- BackendAuto 第二轮 profiling
-- 独立 serving 产品仓（模板已在 `examples/serving-template`）
+- 完整 ONNX Graph **原生导入**（通用图推理已走 `LoadOnnxGraph`/born；缺的是把任意算子图转 Ensemble——与库身份不符，除非出现明确子集需求）
+- ONNX CATEGORY 分支 / 其余 BRANCH 模式（TreeEnsemble 子集内）
+- leaves-serving 产品化深化（鉴权/限流/Prometheus 等留给应用侧；模板边界不变）

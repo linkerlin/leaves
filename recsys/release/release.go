@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -144,6 +145,51 @@ func (m *Machine) Approve(approver string, at time.Time) error {
 	}
 	m.evidence.ApprovedBy = approver
 	m.transit(StateApproved, at, "approved by "+approver)
+	return nil
+}
+
+// AutoApprovePolicy 自动批准策略（RAUTO）。
+//
+// 前提（启用方责任，文档化不可代码保证）：启用进程自身已具备签名/访问控制——
+// 状态机仍只产出 desired-state 请求（adapter 执行），本包不做网络副作用。
+type AutoApprovePolicy struct {
+	// Label 策略名（必填）；记入 ApprovedBy="auto:<Label>" 与变迁 reason，供审计回溯。
+	Label string
+	// RequireAllGatesPass 要求三层门禁全部 status=ok（出现 warn 即拒绝自动批准）。
+	RequireAllGatesPass bool
+	// MaxWarnGates 允许的 warn 门禁数上限（RequireAllGatesPass=false 时生效；默认 0=零容忍）。
+	MaxWarnGates int
+}
+
+// AutoApprove 按策略把 candidate 自动晋级 approved（RAUTO）。
+// 与人工 Approve 等价留痕；拒绝路径返回可行动错误（不静默放行）。
+func (m *Machine) AutoApprove(policy AutoApprovePolicy, at time.Time) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if err := m.requireState(StateCandidate); err != nil {
+		return err
+	}
+	if strings.TrimSpace(policy.Label) == "" {
+		return fmt.Errorf("release: %s: auto-approve requires policy Label", m.ReleaseID)
+	}
+	nOK, nWarn := 0, 0
+	for _, g := range m.evidence.Gates {
+		switch g.Status {
+		case contract.StatusOK:
+			nOK++
+		case contract.StatusWarn:
+			nWarn++
+		}
+	}
+	if policy.RequireAllGatesPass && nWarn > 0 {
+		return fmt.Errorf("release: %s: auto-approve rejected: %d warn gates (RequireAllGatesPass)", m.ReleaseID, nWarn)
+	}
+	if !policy.RequireAllGatesPass && nWarn > policy.MaxWarnGates {
+		return fmt.Errorf("release: %s: auto-approve rejected: %d warn gates > MaxWarnGates %d", m.ReleaseID, nWarn, policy.MaxWarnGates)
+	}
+	m.evidence.ApprovedBy = "auto:" + policy.Label
+	m.transit(StateApproved, at,
+		fmt.Sprintf("auto-approved by policy %q (gates ok=%d warn=%d)", policy.Label, nOK, nWarn))
 	return nil
 }
 

@@ -77,13 +77,22 @@ opts.Backend = res.Pick                    // 用测量结果替代启发式
 // res.Native.NsPerOp / res.BornCPU.NsPerOp / res.BornGPU.NsPerOp / res.Reason
 ```
 
+### 自动接入（v2.7.0，env opt-in）
+
+`LEAVES_BACKEND_PROFILE=1|on|true|yes` 时，`SelectBackendExplained` 在决策表之前自动实测：
+
+- **合成确定性样本**：rows=batch（`rows·cols ≤ 512k` 封顶）、LCG 均匀 [0,1)；三后端同输入同 warm-up，只用于后端间相对计时。
+- **形状类缓存**：键 `(batch, n_features, trees, nodes)`——每形状只测一次，进程内不重复付首调用延迟（Reason 标注「缓存命中」）。
+- **尊重 hint**：`HasGPU=false` 时剔除 BornGPU 取次优；WASM / 稀疏 / 非数值路径不进 profiling（各自规则优先）。
+- **Rule**：`profile_native | profile_born_cpu | profile_born_gpu`；Reason 携带实测 ns/op 与样本行数。
+- **默认不变**：未设 env 时决策表 2.0 行为原样（`TestBackendProfileEnvOff` 锁定）。
+
 ### 仍默认不做（需产品信号）
 
 | 候选 | 风险 |
 |------|------|
 | 更细 batch 分段（16/32） | 阈值爆炸、文档漂移 |
 | 设备能力细探测（VRAM、DX 版本） | 平台分支增多 |
-| ProfileBackend 自动接入 SelectBackend（Auto 自动跑 profiling） | 首调用延迟、代表性样本来源不明 |
 
 原则不变：**任何自动选择必须能被 Rule 码解释**；改决策表须先改本文档 + `TestBackendAutoDecisionTable`。
 

@@ -26,6 +26,7 @@ const usage = `leaves — Agent 友好的训练/评估/预测/发布 CLI（SKILL
   sniff    --data PATH [--metrics PATH]            数据画像 → 推荐 objective
   explain  --model PATH [--type importance|shap]   特征重要性 / SHAP
   publish  --model PATH --out-dir DIR [flags]      本地工件包（--emit-repro-script）
+  lessons  <add|search|list> [flags]               跨任务记忆库（~/.leaves/lessons.jsonl）
   version                                            版本/构建信息 → JSON
 
 全局:
@@ -64,6 +65,8 @@ func main() {
 		err = cmdExplain(args[1:])
 	case "publish":
 		err = cmdPublish(args[1:])
+	case "lessons":
+		err = cmdLessons(args[1:])
 	case "version":
 		err = writeJSON("", buildVersionDoc())
 	case "-h", "--help", "help":
@@ -71,7 +74,7 @@ func main() {
 		return
 	default:
 		err = errAgent("usage", fmt.Sprintf("未知子命令: %s", args[0]),
-			"合法子命令: train|eval|predict|inspect|sniff|explain|publish|version", false)
+			"合法子命令: train|eval|predict|inspect|sniff|explain|publish|lessons|version", false)
 		os.Exit(writeError(err))
 	}
 	if err != nil {

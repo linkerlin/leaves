@@ -2,6 +2,10 @@ package tree
 
 import (
 	"fmt"
+	"os"
+	"strconv"
+	"strings"
+	"sync"
 	"time"
 )
 
@@ -119,4 +123,82 @@ func pickFastest(timings ...BackendTiming) (pick Backend, rule, reason string) {
 		BackendName(best.Backend), best.NsPerOp,
 		timings[0].NsPerOp, timings[1].NsPerOp, timings[2].NsPerOp)
 	return best.Backend, rule, reason
+}
+
+// —— 二轮 profiling 的 Auto 接线（opt-in；BA-PROF）——
+//
+// LEAVES_BACKEND_PROFILE=1|on|true 时，SelectBackendExplained 在决策表之前
+// 以合成批量样本实测各后端 ns/op，选最快（Rule=profile_*，Reason 携带数字）。
+// 结果按 (batch, nfeatures, 森林规模) 形状类缓存在进程内——profiling 只发生
+// 一次/形状类，不重复付首调用延迟。默认（未设 env）决策表 2.0 行为不变。
+
+var profileCache sync.Map // string → BackendDecision
+
+func backendProfilingEnabled() bool {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("LEAVES_BACKEND_PROFILE"))) {
+	case "1", "on", "true", "yes":
+		return true
+	}
+	return false
+}
+
+// profileCacheKey 形状类键：批量档、特征数、森林规模（trees/nodes）。
+func profileCacheKey(caps ModelCaps, hint WorkloadHint) string {
+	batch := hint.BatchSize
+	if batch <= 0 {
+		batch = 1
+	}
+	f := caps.Forest
+	nodes := 0
+	for i := range f.Trees {
+		nodes += f.Trees[i].NumNodes
+	}
+	return fmt.Sprintf("b=%d,f=%d,t=%d,n=%d", batch, f.NumFeatures, len(f.Trees), nodes)
+}
+
+// profiledDecision 查缓存或跑一次 ProfileBackend（合成确定性样本）。
+func profiledDecision(caps ModelCaps, hint WorkloadHint) BackendDecision {
+	key := profileCacheKey(caps, hint)
+	if d, ok := profileCache.Load(key); ok {
+		dec := d.(BackendDecision)
+		dec.Reason += "（profile 缓存命中）"
+		return dec
+	}
+
+	f := caps.Forest
+	nrows := hint.BatchSize
+	if nrows <= 0 {
+		nrows = 1
+	}
+	// 成本上限：rows*cols ≤ 512k cells（保留大批量档的相对形态）。
+	if f.NumFeatures > 0 && nrows*f.NumFeatures > 512*1024 {
+		nrows = 512 * 1024 / f.NumFeatures
+		if nrows < 8 {
+			nrows = 8
+		}
+	}
+	vals := syntheticBatch(nrows, f.NumFeatures)
+	res := ProfileBackend(caps, vals, nrows, f.NumFeatures, 10)
+
+	// 尊重 hint：无 GPU 意图时把 BornGPU 剔除后重选（次优）。
+	pick, rule, reason := res.Pick, res.Rule, res.Reason
+	if pick == BackendBornGPU && !hint.HasGPU {
+		pick, rule, reason = pickFastest(res.Native, res.BornCPU, BackendTiming{})
+	}
+	dec := BackendDecision{Backend: pick, Rule: rule,
+		Reason: reason + "（LEAVES_BACKEND_PROFILE=1 实测；合成样本 rows=" + strconv.Itoa(nrows) + "）"}
+
+	profileCache.Store(key, dec)
+	return dec
+}
+
+// syntheticBatch 确定性合成批量（LCG 均匀 [0,1)；仅用于后端间相对计时）。
+func syntheticBatch(nrows, ncols int) []float64 {
+	vals := make([]float64, nrows*ncols)
+	x := uint64(0x9E3779B97F4A7C15)
+	for i := range vals {
+		x = x*6364136223846793005 + 1442695040888963407
+		vals[i] = float64(x>>11) / (1 << 53)
+	}
+	return vals
 }

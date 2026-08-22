@@ -116,6 +116,11 @@ func SelectBackendExplained(caps ModelCaps, hint WorkloadHint) BackendDecision {
 		}
 	}
 
+	// —— 二轮 profiling（opt-in）：LEAVES_BACKEND_PROFILE=1 时以实测替代阈值 ——
+	if backendProfilingEnabled() {
+		return profiledDecision(caps, hint)
+	}
+
 	batch := hint.BatchSize
 	if batch <= 0 {
 		batch = 1

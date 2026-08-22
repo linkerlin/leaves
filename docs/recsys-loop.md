@@ -95,6 +95,9 @@ Agent/编排层拿 `Evaluate` 返回的 `Fired` 去调 `release.Machine` 的
 
 - `ToCandidate`：evidence 完整 + 三层门禁齐全无 block + 模型文件 hash 与记录一致；
 - `Approve`：人工批准默认必经；
+- `AutoApprove`（v2.7）：策略化自动晋级——`AutoApprovePolicy{Label, RequireAllGatesPass, MaxWarnGates}`；
+  `ApprovedBy="auto:<Label>"` + reason 带门禁统计（审计等价人工）；warn 门禁默认零容忍可显式放宽。
+  **前提**：启用方进程已具备签名/访问控制（状态机仍只产出请求，无网络副作用）；
 - `Observe`：promoted 版本成为 `last_known_good` 锚点（或显式 `SetLastKnownGood`，
   必须指向已记录证据，不可隐式漂移、不可指向自身）；
 - `RequestRollback`：只指向锚点；产出 adapter-neutral 请求；
