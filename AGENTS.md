@@ -44,7 +44,7 @@ Agent 通过 **SKILL 指导 + shell CLI + metrics.json** 完成全自动「训�
 - 扩展点：[`docs/extension-points.md`](docs/extension-points.md)
 - BackendAuto：[`docs/backend-auto.md`](docs/backend-auto.md)
 - 互操作等级：[`docs/interop-matrix.md`](docs/interop-matrix.md)
-- backlog / 维护状态：[`TODO.md`](TODO.md)（**v2.7.2 维护期**；新工作先写入 TODO 再实现）
+- backlog / 维护状态：[`TODO.md`](TODO.md)（**v2.8.0 维护期**；新工作先写入 TODO 再实现）
 - 回归矩阵：[`docs/testdata-matrix.md`](docs/testdata-matrix.md)
 - Serving 模板（非官方框架）：[`examples/serving-template/`](examples/serving-template/)
 

@@ -23,7 +23,7 @@ m, err := leaves.LoadFromFile(path, &leaves.LoadOptions{AutoTransform: false})
 
 `contrib` / SHAP **始终在 margin 空间**，与 `AutoTransform` 无关（比较 additivity 请用 `predict.OutputMargin`，不要拿 `Predict`/`PredictSingle` 的变换后值）。
 
-**LGB**：`io.LoadFromFile` 现与 XGB 一样遵守 AutoTransform（v2.7.2 后）。RF（`average_output`）仍不套 logistic。遗留 `LGEnsembleFromFile(path, loadTransformation)` 第二参数语义不变。
+**LGB**：`io.LoadFromFile` 现与 XGB 一样遵守 AutoTransform（v2.8.0 后）。RF（`average_output`）仍不套 logistic。遗留 `LGEnsembleFromFile(path, loadTransformation)` 第二参数语义不变。
 
 ---
 

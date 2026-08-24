@@ -1,14 +1,14 @@
 # leaves 演进 TODO
 
 > **对齐文档**：[`演进计划.md`](演进计划.md) v5.4（库线）· [`演进方案.md`](演进方案.md) v2.2（Agentic + §十六 演化搜索 + §十七 RC）  
-> **更新**：2026-08-22（v2.7.2：GPU-O 全套——profiling 守卫 / WASM 实测反转 / Born 叙事诚实化；全量 `go test ./... -count=1` 绿）  
+> **更新**：2026-08-24（v2.8.0：全面 Agentic 收口 REV-01..09——io 自足加载 / WASM 决策收敛 Native / 文档-代码对齐；全量 `go test ./... -count=1` 绿）  
 > **原则**：Native golden 不变；Born 直读 `ForestIR`；不做分布式/serving 框架 / 内置 HPO / 官方 registry。
 
 **图例**：`[ ]` 待办 · `[~]` 进行中 · `[x]` 完成 · `[-]` 明确不做
 
 ---
 
-## 现状快照（2026-08-22 · v2.7.2 维护期）
+## 现状快照（2026-08-24 · v2.8.0 维护期）
 
 | 线 | 方案状态 | 代码/发布 | 结论 |
 |----|----------|-----------|------|
@@ -23,7 +23,7 @@
 
 **对照结论**：可执行 backlog **已清空**；Unreleased 已落盘。默认 **维护 + 按需开新项**；新需求先写进本文件再实现。发版走 [`docs/release-checklist.md`](docs/release-checklist.md)。
 
-**最新 tag**：https://github.com/linkerlin/leaves/releases/tag/v2.7.2
+**最新 tag**：https://github.com/linkerlin/leaves/releases/tag/v2.8.0
 
 ---
 

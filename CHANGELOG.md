@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+---
+
+## [2.8.0] - 2026-08-24
+
+> **主题**：全面 Agentic 收口（REV-01..09）——io 包自足加载（LGB 解析迁移 + SK pickle）· WASM 决策收敛 Native · 文档-代码对齐  
+> **Release 正文**：[`docs/release-notes-v2.8.0.md`](docs/release-notes-v2.8.0.md)
+
 ### Added
 
 - **sklearn pickle → ForestIR**（REV-01 收口）：`io.ParseSklearnPickleFile`；`LoadFromFile` 对实验 SK 路径也不再依赖根包 init。`SKEnsembleFromFile` 兼容入口保留；`TestSKIoLoadMatchesLegacy` 对照黄金预测。
