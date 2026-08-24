@@ -51,7 +51,7 @@ curl -s http://localhost:8080/predict -H "Content-Type: application/json" `
 2. 编辑 go.mod：
    - module 改成你的路径
    - 删除 replace 行
-   - require github.com/linkerlin/leaves/v2 v2.1.1  （或更新版本）
+   - require github.com/linkerlin/leaves/v2 v2.7.2  （或当前最新 tag / @latest）
 3. go mod tidy && go test ./...
 4. 生产：加鉴权、TLS、限流、结构化日志、Prometheus
 ```

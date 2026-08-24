@@ -310,7 +310,7 @@ leaves publish --model PATH --out-dir DIR
 | `metrics` | 训练 metrics 快照（若 `--metrics`） |
 | `reproduce` | 由 metrics.params 拼出的 `leaves train ...` 复现命令 |
 | `schema_version` | manifest 契约版本（当前 1） |
-| `leaves_cli` | CLI 契约锚点（当前 `agentic-1`） |
+| `leaves_cli` | 生成该工件包的 CLI 版本（`vX.Y.Z` 或 `(devel)+<短commit>`，同 `leaves version`） |
 | `publish_note` | 明确：本地包；registry 推送在库外 CI |
 | `created_at` | UTC 时间 |
 

@@ -8,14 +8,14 @@
 
 ```go
 import (
-    "github.com/linkerlin/leaves/v2/v2"
+    "github.com/linkerlin/leaves/v2"
     "github.com/linkerlin/leaves/v2/io"
 )
 
 m, err := leaves.LoadFromFile("model.json", leaves.DefaultLoadOptions())
-// 或 io.LoadFromFile + io.DefaultLoadOptions()
+// 或 io.LoadFromFile（LGB/XGB/leaves.json/ONNX/sklearn pickle 均无需根包 init）
 // 默认 AutoTransform=true，Backend=Auto
-p, err := m.PredictSingle(features, 0)
+p := m.PredictSingle(features, 0) // 返回 float64；多类/特征不足时静默 0（兼容层语义）
 ```
 
 | 能力 | 入口 |
@@ -47,6 +47,7 @@ _ = learner.Save("out.leaves.json")
 
 ```text
 leaves sniff → train (--cv/--runs/--from-run) → eval → inspect → explain → publish
+         辅助：lessons (add|search|list) · version
 ```
 
 - SKILL：`skills/leaves-autotrain/`  
@@ -93,8 +94,8 @@ m, err = leaves.LoadFromFile("lg.model", &leaves.LoadOptions{AutoTransform: fals
 | 入口 | 等级 | 说明 |
 |------|------|------|
 | scikit-learn `.pkl`/`.joblib` | 实验 | 窄协议；失败见 `LoadError.Hint` |
-| `io.LoadONNX` / `.onnx` | 实验 | TreeEnsembleRegressor 子集；复杂图请转 XGB/leaves JSON |
-| 官方 HTTP/gRPC serving | **不做** | 用 [`examples/http`](../examples/http) 或 [`examples/serving-template`](../examples/serving-template) |
+| `io.LoadONNX` / `.onnx` | 实验 | TreeEnsemble **Regressor + Classifier** 子集（SUM/AVERAGE × NONE/SOFTMAX/LOGISTIC-二类）；复杂图走 `io.LoadOnnxGraph`（born 运行时，非 wasm）或转 XGB/leaves JSON |
+| 官方 HTTP/gRPC serving | **不做** | 用 [`examples/http`](../examples/http)、仓内 [`examples/serving-template`](../examples/serving-template)，或独立仓 [leaves-serving](https://github.com/linkerlin/leaves-serving) |
 | 自定义 objective/metric | 稳定机制 | 须自行 `Register`；不进默认 CLI 名表除非文档 |
 | `recsys/{contract,split,eval,ledger,replay,monitor,release}` | 实验（契约冻结 schema v1，字段只增不删） | 推荐生产闭环控制面；指南 [recsys-loop.md](recsys-loop.md)；官方 registry / 在线 serving / 实时学习**不做** |
 

@@ -71,6 +71,13 @@ func Run(
 	return out, nil
 }
 
+func featAt(it recsys.CatalogItem, i int) float64 {
+	if i >= 0 && i < len(it.Feats) {
+		return it.Feats[i]
+	}
+	return 0
+}
+
 func usersForSplit(qids []recsys.UserQID, split string) map[string]int {
 	m := map[string]int{}
 	for _, r := range qids {
@@ -129,7 +136,7 @@ func buildTagIndex(catalog []recsys.CatalogItem) map[string][]recsys.CatalogItem
 	}
 	for tag := range idx {
 		sort.Slice(idx[tag], func(i, j int) bool {
-			return idx[tag][i].Feats[0] > idx[tag][j].Feats[0]
+			return featAt(idx[tag][i], 0) > featAt(idx[tag][j], 0)
 		})
 	}
 	return idx
@@ -137,7 +144,7 @@ func buildTagIndex(catalog []recsys.CatalogItem) map[string][]recsys.CatalogItem
 
 func sortedByPop(catalog []recsys.CatalogItem) []recsys.CatalogItem {
 	out := append([]recsys.CatalogItem(nil), catalog...)
-	sort.Slice(out, func(i, j int) bool { return out[i].Feats[0] > out[j].Feats[0] })
+	sort.Slice(out, func(i, j int) bool { return featAt(out[i], 0) > featAt(out[j], 0) })
 	return out
 }
 
@@ -194,7 +201,7 @@ func recallOneUser(
 		// 召回分：偏好标签 + 星级
 		rs := 1.0 + 0.2*k.score
 		if len(it.Feats) > 0 {
-			rs += 0.1 * it.Feats[0]
+			rs += 0.1 * featAt(it, 0)
 		}
 		pick(it, rs)
 		nKnown++
@@ -212,7 +219,7 @@ func recallOneUser(
 				if _, ok := seen[it.Item]; ok {
 					continue
 				}
-				rs := 0.5*tr.score + 0.3*it.Feats[0] + 0.2*it.Feats[1]
+				rs := 0.5*tr.score + 0.3*featAt(it, 0) + 0.2*featAt(it, 1)
 				pick(it, rs)
 				progress = true
 				if len(out) >= need {
@@ -232,7 +239,7 @@ func recallOneUser(
 		if _, ok := seen[it.Item]; ok {
 			continue
 		}
-		rs := 0.3*it.Feats[0] + 0.2*it.Feats[1]
+		rs := 0.3*featAt(it, 0) + 0.2*featAt(it, 1)
 		pick(it, rs)
 	}
 	if len(out) != need {

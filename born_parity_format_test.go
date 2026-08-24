@@ -201,7 +201,8 @@ func TestEnsembleDelegatePredictDense(t *testing.T) {
 	assertSlicesClose(t, want, got, bornParityTol, "delegate vs direct")
 }
 
-// runSKParityMatrix SK joblib 模型不经 io.DetectFormat，走遗留 SKEnsembleFromFile。
+// runSKParityMatrix SK 实验模型：经遗留 SKEnsembleFromFile 建引擎，再对 Born 做 parity。
+// io.LoadFromFile 的 ForestIR 路径另由 TestSKIoLoadMatchesLegacy 对照。
 func runSKParityMatrix(t *testing.T, tc formatParityCase, backends []struct {
 	name    string
 	backend tree.Backend

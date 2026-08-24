@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/linkerlin/leaves/v2/io"
 	"github.com/linkerlin/leaves/v2/mat"
 	"github.com/linkerlin/leaves/v2/transformation"
 	"github.com/linkerlin/leaves/v2/util"
@@ -307,6 +308,33 @@ func TestSKGradientBoostingClassifier(t *testing.T) {
 	const tolerance = 1e-6
 	if err := util.AlmostEqualFloat64Slices(truePredictions.Values, predictions, tolerance); err != nil {
 		t.Errorf("different predictions: %s", err.Error())
+	}
+}
+
+func TestSKIoLoadMatchesLegacy(t *testing.T) {
+	testPath := filepath.Join("testdata", "sk_gradient_boosting_classifier_test.libsvm")
+	modelPath := filepath.Join("testdata", "sk_gradient_boosting_classifier.model")
+	csr, err := mat.CSRMatFromLibsvmFile(testPath, 0, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	legacy, err := SKEnsembleFromFile(modelPath, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fresh, err := io.LoadFromFile(modelPath, &io.LoadOptions{AutoTransform: false, Backend: io.BackendNative})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer fresh.Close()
+	want := make([]float64, csr.Rows()*legacy.NOutputGroups())
+	legacy.PredictCSR(csr.RowHeaders, csr.ColIndexes, csr.Values, want, 0, 1)
+	got := make([]float64, csr.Rows()*fresh.NOutputGroups())
+	if err := fresh.PredictCSR(csr.RowHeaders, csr.ColIndexes, csr.Values, got, 0, 1); err != nil {
+		t.Fatal(err)
+	}
+	if err := util.AlmostEqualFloat64Slices(want, got, 1e-6); err != nil {
+		t.Errorf("io ForestIR vs legacy SK: %s", err.Error())
 	}
 }
 

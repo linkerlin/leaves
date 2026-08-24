@@ -360,7 +360,7 @@ CLI flag 全表与 metrics.json schema 见 [`cli.md`](cli.md)。零代码 demo �
 ## 速查卡（Agent 缓存用）
 
 ```
-⸻ 9 命令速查 ⸻
+⸻ 10 命令速查 ⸻
 
 sniff    --data FILE                    → suggested_objective / feature_names / label stats
 train    --data FILE --objective OBJ    → metrics.json + --out-model + --emit-rounds + --runs/--tag

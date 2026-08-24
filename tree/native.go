@@ -11,7 +11,7 @@ import (
 var _ predict.Engine = (*NativeEngine)(nil)
 
 // NativeEngine 纯 Go 实现的树推理引擎，封装当前 leaves 的全部预测逻辑。
-// 零外部依赖，作为 GoMLX 及其他后端的回退路径。
+// 零外部依赖，作为正确性 golden 与其他后端的回退路径。
 type NativeEngine struct {
 	forest     *ForestIR
 	transform  TransformFn

@@ -21,9 +21,9 @@ m, err := leaves.LoadFromFile(path, &leaves.LoadOptions{AutoTransform: false})
 // 或 predict.Request{Output: predict.OutputMargin}
 ```
 
-`contrib` / SHAP **始终在 margin 空间**，与 `AutoTransform` 无关。
+`contrib` / SHAP **始终在 margin 空间**，与 `AutoTransform` 无关（比较 additivity 请用 `predict.OutputMargin`，不要拿 `Predict`/`PredictSingle` 的变换后值）。
 
-遗留 `LGEnsembleFromFile(path, loadTransformation)` 第二参数语义不变；新代码请用 `LoadOptions`。
+**LGB**：`io.LoadFromFile` 现与 XGB 一样遵守 AutoTransform（v2.7.2 后）。RF（`average_output`）仍不套 logistic。遗留 `LGEnsembleFromFile(path, loadTransformation)` 第二参数语义不变。
 
 ---
 
@@ -31,7 +31,7 @@ m, err := leaves.LoadFromFile(path, &leaves.LoadOptions{AutoTransform: false})
 
 - **已废弃**：GoMLX、`born_train` build tag、gogpu 直连推理。  
 - **现用**：[Born](https://github.com/born-ml/born)；`NativeEngine` = 正确性 golden。  
-- **BackendAuto 2.0**（**推理**选型）：见 [`docs/backend-auto.md`](docs/backend-auto.md)。  
+- **BackendAuto 2.1**（**推理**选型，默认 Native）：见 [`docs/backend-auto.md`](docs/backend-auto.md)。  
 - **训练加速**（独立）：`LEAVES_TRAIN_ACCEL` / `train.Config.AccelMode`——**不会**改推理 BackendAuto；交叉说明见 backend-auto §训练 vs 推理。
 
 ---

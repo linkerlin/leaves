@@ -51,7 +51,7 @@ func (m *ModelIR) IsLinear() bool {
 	return m.Linear != nil
 }
 
-// IsNumericOnly 是否仅含数值分裂（GoMLX 后端选型用）。
+// IsNumericOnly 是否仅含数值分裂（BackendAuto / Born 选型用）。
 func (m *ModelIR) IsNumericOnly() bool {
 	if m.Linear != nil {
 		return true

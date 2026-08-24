@@ -9,6 +9,7 @@ import (
 	"github.com/linkerlin/leaves/v2/explain"
 	"github.com/linkerlin/leaves/v2/io"
 	leafmodel "github.com/linkerlin/leaves/v2/model"
+	"github.com/linkerlin/leaves/v2/predict"
 )
 
 func TestTreeSHAPAdditivity(t *testing.T) {
@@ -102,8 +103,11 @@ func TestTreeSHAPXGBoostSmoke(t *testing.T) {
 }
 
 func marginFromModel(m *leafmodel.Ensemble, x []float64) float64 {
-	eng := m.Engine()
+	// SHAP 在 margin 空间；与 AutoTransform 无关（LGB 默认 Auto 会把 Predict 变成概率）。
 	raw := make([]float64, m.NRawOutputGroups())
-	_ = eng.Predict(x, 0, raw)
+	_ = m.PredictWithRequest(predict.Request{
+		Matrix: predict.DenseMatrix{Values: x, Rows: 1, Cols: len(x)},
+		Output: predict.OutputMargin,
+	}, raw)
 	return raw[0]
 }

@@ -114,9 +114,9 @@ func SupportOf(f Format) FormatSupport {
 			Format:  f,
 			Level:   SupportExperimental,
 			Name:    "ONNX",
-			Summary: "实验：仅 TreeEnsembleRegressor（BRANCH_LEQ/SUM/NONE）；非完整 Graph",
-			Hint:    "复杂 ONNX 请外部转 XGB JSON / leaves.json；子集见 docs/interop-matrix.md",
-			Matrix:  "io/onnx_test.go TestONNXTreeEnsembleStump",
+			Summary: "实验：TreeEnsembleRegressor（BRANCH_LEQ/SUM/NONE）与 Classifier（SUM/AVERAGE × NONE/SOFTMAX/LOGISTIC-二类）；完整 Graph 走 LoadOnnxGraph",
+			Hint:    "复杂 ONNX 用 LoadOnnxGraph（非 wasm）或转 XGB JSON / leaves.json；子集见 docs/interop-matrix.md",
+			Matrix:  "io/onnx_test.go TestONNXTreeEnsembleStump · io/onnx_classifier_test.go",
 		}
 	default:
 		return FormatSupport{

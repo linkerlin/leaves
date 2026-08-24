@@ -1,7 +1,8 @@
 # wgpu v0.30.x 计时异常上游报告（草稿，待提交）
 
-> 环境：Windows 11 / leaves v2.7.1 / born v0.9.23（gogpu/wgpu v0.30.35，goffi v0.5.2）
-> 复现仓库：github.com/linkerlin/leaves `scripts/born_upgrade_gate`
+> 环境：Windows 11 / leaves v2.7.2+ / born v0.9.23（gogpu/wgpu v0.30.35）
+> 最小复现：`go run ./scripts/wgpu_repro`（Windows；`LEAVES_BORN_GPU=0` 应 exit 2）
+> 完整模型计时：`go run ./scripts/born_upgrade_gate testdata/lg_breast_cancer.txt`
 
 ## 现象
 
@@ -15,8 +16,8 @@
 
 ## 最小化方向
 
-born `backend/webgpu`：小 tensor（Shape{64} float32）反复 `tensor.FromSlice` +
-`Gather` + `.Data()` 往返，~40 轮内可复现 1/2。
+`scripts/wgpu_repro`：Shape{64} float32 反复 `tensor.FromSlice` + `Gather` + `.Data()`，
+默认 80 轮。参考机曾在 ~40 轮内出现计时归零或挂起。
 
 ## 疑点
 

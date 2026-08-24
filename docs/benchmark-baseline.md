@@ -1,6 +1,6 @@
 # Benchmark 基线
 
-> BackendAuto 决策表见 **[backend-auto.md](backend-auto.md)**（2.0）。  
+> BackendAuto 决策表见 **[backend-auto.md](backend-auto.md)**（2.1）。  
 > 统一记录类型：`tree.BenchRecord`（`schema_version=1`）。
 
 ## CI 门禁
@@ -107,8 +107,7 @@ go run ./scripts/born_upgrade_gate testdata/lg_breast_cancer.txt
 | 256 | 2.1–3.2M | 2.1–2.8M | 打平（1.01–1.12×，噪声区） |
 
 **与桌面端相反**：wasm 解释器拖慢 Native 标量 walk，小批量下 Born 张量路径占优。
-处置（v2.7.2）：`DeployWASM` + batch<64 且 Born 支持 → `wasm_born_cpu`；
-batch≥64 → `wasm_native`（打平区取 golden）。复测：`GOOS=js GOARCH=wasm go build
+处置（v2.7.2 当时按该表选 BornCPU）。**REV-04（后续）**：`GOOS=js` 上 `BornEngine` 委托 Native，与该加速主张冲突，BackendAuto WASM 一律 `wasm_native`。复测：`GOOS=js GOARCH=wasm go build
 -o bench.wasm ./scripts/wasm_backend_bench && node $(go env GOROOT)/lib/wasm/wasm_exec_node.js bench.wasm`。
 
 ### 历史口径（2.0 时代，未复现，仅存档）
@@ -125,7 +124,7 @@ batch≥64 → `wasm_native`（打平区取 golden）。复测：`GOOS=js GOARCH
 
 - 默认（任意 batch，CPU/GPU）→ Native  
 - 实测 Born 更快：显式 `BackendBornCPU`/`BackendBornGPU`，或 `LEAVES_BACKEND_PROFILE=1`  
-- WASM → BornCPU（支持时；未参与本轮实测）  
+- WASM → Native（`wasm_native`；js 上 BornEngine 委托 Native）  
 - 稀疏 / 类别分裂 → Native  
 
 ## WASM vs Native

@@ -26,17 +26,11 @@ func TestSelectBackendDefaultNumeric(t *testing.T) {
 func TestSelectBackendWASM(t *testing.T) {
 	forest := makeForest()
 	caps := ModelCapsFromForest(forest, false, true)
-	// 小批（默认/1/63）→ BornCPU（GPU-O3 实测快 1.6–2.6×）
-	for _, batch := range []int{0, 1, 63} {
+	for _, batch := range []int{0, 1, 63, 64, 512} {
 		d := SelectBackendExplained(caps, WorkloadHint{Target: DeployWASM, BatchSize: batch})
-		if d.Backend != BackendBornCPU || d.Rule != "wasm_born_cpu" {
-			t.Errorf("WASM small batch=%d: got %+v", batch, d)
+		if d.Backend != BackendNative || d.Rule != "wasm_native" {
+			t.Errorf("WASM batch=%d: got %+v want Native/wasm_native", batch, d)
 		}
-	}
-	// 大批量 → Native（打平噪声区取 golden）
-	d := SelectBackendExplained(caps, WorkloadHint{Target: DeployWASM, BatchSize: 64})
-	if d.Backend != BackendNative || d.Rule != "wasm_native" {
-		t.Errorf("WASM large batch: got %+v", d)
 	}
 }
 
@@ -127,8 +121,8 @@ func TestResolveBackendAuto(t *testing.T) {
 	forest := makeForest()
 	caps := ModelCapsFromForest(forest, false, true)
 	got := ResolveBackend(BackendAuto, caps, WorkloadHint{Target: DeployWASM})
-	if got != BackendBornCPU {
-		t.Errorf("auto WASM: got %v want BornCPU", got)
+	if got != BackendNative {
+		t.Errorf("auto WASM: got %v want Native", got)
 	}
 }
 
@@ -174,7 +168,7 @@ func TestBackendAutoDecisionTable(t *testing.T) {
 		{WorkloadHint{BatchSize: 255, HasGPU: true}, BackendNative, "native_batch"},
 		{WorkloadHint{BatchSize: 256, HasGPU: false}, BackendNative, "native_batch"},
 		{WorkloadHint{BatchSize: 4096, HasGPU: true}, BackendNative, "native_batch"},
-		{WorkloadHint{Target: DeployWASM, BatchSize: 1}, BackendBornCPU, "wasm_born_cpu"},
+		{WorkloadHint{Target: DeployWASM, BatchSize: 1}, BackendNative, "wasm_native"},
 		{WorkloadHint{Target: DeployWASM, BatchSize: 512}, BackendNative, "wasm_native"},
 		{WorkloadHint{BatchSize: 1000, SparseDensity: 0.1}, BackendNative, "sparse"},
 	}

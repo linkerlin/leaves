@@ -213,7 +213,7 @@ mkdir -p recsys/{raw,clean,catalog,recall,rank,models,deal,meta}
 **shell 入口**（`recsys/cmd/control`，零 Go 代码编排八段剧本）：
 
 ```text
-control snapshot -workspace DIR -out snapshot.json -snapshot-id S -purpose release
+control snapshot -workspace DIR -out snapshot.json -snapshot-id S -purpose release -time-start T -time-end T
 control split -events events.jsonl -train-end T -val-start T -test-start T -out-dir split/
 control eval -workspace DIR -thresholds th.json -out evaluation.json
 control from-deal -workspace DIR -ledger ledger.jsonl -model-version V -policy-version P -occurred-at T

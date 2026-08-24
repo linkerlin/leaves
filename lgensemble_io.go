@@ -20,9 +20,9 @@ type lgEnsembleJSON struct {
 	NumTreesPerIteration int               `json:"num_tree_per_iteration"`
 	MaxFeatureIdx        int               `json:"max_feature_idx"`
 	Trees                []json.RawMessage `json:"tree_info"`
-	// TODO: lightgbm should support the next fields
-	// AverageOutput bool   `json:"average_output"`
-	// Objective     string `json:"objective"`
+	// io.ParseLightGBMJSON 已解析 average_output / objective。此处保留兼容 JSON 形状。
+	AverageOutput bool   `json:"average_output"`
+	Objective     string `json:"objective"`
 }
 
 type lgTreeJSON struct {
@@ -651,6 +651,10 @@ func LGEnsembleFromJSON(reader io.Reader, loadTransformation bool) (*Ensemble, e
 	}
 	e.nRawOutputGroups = data.NumClasses
 	e.MaxFeatureIdx = data.MaxFeatureIdx
+	if data.AverageOutput {
+		e.name = "lightgbm.rf"
+		e.averageOutput = true
+	}
 
 	nTrees := len(data.Trees)
 	if nTrees == 0 {

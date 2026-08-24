@@ -1,37 +1,17 @@
 package rankutil
 
 import (
-	"fmt"
-
 	"github.com/linkerlin/leaves/v2/data"
-	"github.com/linkerlin/leaves/v2/metrics"
+	recrank "github.com/linkerlin/leaves/v2/recsys/rankutil"
 	"github.com/linkerlin/leaves/v2/train"
 )
 
-// NDCGAtK 在带 groups 的矩阵上计算 NDCG@k。
+// NDCGAtK 委托 recsys/rankutil。
 func NDCGAtK(dm data.Matrix, preds []float64, k int) (float64, error) {
-	groups, err := data.GroupsFromRanking(dm)
-	if err != nil {
-		return 0, err
-	}
-	name := "ndcg"
-	opt := metrics.Options{Groups: groups}
-	if k > 0 {
-		name = fmt.Sprintf("ndcg@%d", k)
-		opt.NDCGK = k
-	}
-	m, err := metrics.Resolve(name, opt)
-	if err != nil {
-		return 0, err
-	}
-	return m.Evaluate(dm.Labels(), preds)
+	return recrank.NDCGAtK(dm, preds, k)
 }
 
-// PredictMargins 用已训练 Learner 在矩阵上预测 margin。
+// PredictMargins 委托 recsys/rankutil。
 func PredictMargins(learner *train.Learner, dm data.Matrix) ([]float64, error) {
-	out := make([]float64, dm.NumRow())
-	if err := learner.PredictMargins(dm, out); err != nil {
-		return nil, err
-	}
-	return out, nil
+	return recrank.PredictMargins(learner, dm)
 }

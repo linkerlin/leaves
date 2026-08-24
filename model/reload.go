@@ -13,7 +13,7 @@ func RegisterReloadLoader(fn ReloadLoader) {
 }
 
 // Reload 从 path 热加载模型并替换当前引擎；opts 类型由注册的 loader 定义（通常为 *io.LoadOptions）。
-// 须 import github.com/linkerlin/leaves 以注册 loader。
+// 须 import github.com/linkerlin/leaves/v2 以注册 loader。
 func (e *Ensemble) Reload(path string, opts any) error {
 	if e == nil {
 		return fmt.Errorf("model: nil ensemble")

@@ -5,6 +5,41 @@
 
 ## [Unreleased]
 
+### Added
+
+- **sklearn pickle → ForestIR**（REV-01 收口）：`io.ParseSklearnPickleFile`；`LoadFromFile` 对实验 SK 路径也不再依赖根包 init。`SKEnsembleFromFile` 兼容入口保留；`TestSKIoLoadMatchesLegacy` 对照黄金预测。
+- **`scripts/wgpu_repro`**：Windows 上 FromSlice+Gather+.Data 最小复现（REV-10 草稿指向此脚本）
+- recsys `synth` / `tsvio` / `movielens` titles 包级单测
+
+### Fixed
+
+- **SHAP additivity vs LGB AutoTransform**：`explain.TestTreeSHAPAdditivity` 在 LGB 走 `DefaultLoadOptions`（现会套 logistic）时拿 `Predict` 当 margin；改为 `predict.OutputMargin`（SHAP 本就在 margin 空间）
+
+### Changed — REV-09 godoc 与注释
+
+- 根包 `doc.go` 示例改为 `LoadFromFile`；LightGBM JSON 兼容层读取 `average_output`
+- 代码注释去掉过时 GoMLX 选型用语；`compatibility.md` 标明为 2019 历史表
+- 删除恒返回 nil 的 `tree.LgTreeToTreeIR`；serving-template 间接依赖对齐 born v0.9.23
+
+### Changed — REV-04…08 审阅落地
+
+- **WASM Auto 一律 Native**（REV-04）：`GOOS=js` 上 `BornEngine` 委托 Native，作废 `wasm_born_cpu` / GPU-O3 1.6–2.6× 主张；规则码仅 `wasm_native`
+- **`io.LoadFromFile` 不再需要根包 init**（REV-01/02）加载 LGB text/JSON、XGB JSON/UBJ/bin、leaves.json、ONNX、sklearn pickle
+- **LGB 解析进 `io/` → ForestIR**；`LoadFromFile` 对 LGB 现遵循 `AutoTransform`（与 XGB/leaves.json 一致；raw 请设 `AutoTransform: false`）。`LGEnsembleFromFile` 仍为兼容入口（布尔参数语义不变）
+- **`recsys/trainrank` 不再 import `demos/`**（REV-03）：评估工具迁 `recsys/rankutil`
+- **backend-gate**（REV-05）：默认 `windows-latest` + `LEAVES_BORN_GPU=0`；self-hosted GPU 仅 `workflow_dispatch`+仓库变量
+- **Born 守卫**（REV-08）：cat-small walk 回落标量而非 panic；显式 GPU Predict 8s 超时转错误
+- deal/recall/rankconv 包级单测；io fuzz 增加 LGB 种子（REV-07）
+- README/AGENTS **CLI 入口表**（REV-06）
+
+### Changed — 文档与代码对齐
+
+- **推荐 import**：示例从无法编译的 `github.com/linkerlin/leaves/v2/v2` 改为 `github.com/linkerlin/leaves/v2`；`PredictSingle` 示例改为真实签名（返回 `float64`，无 error）
+- **ONNX**：interop-matrix / `SupportOf` / README 写上 TreeEnsembleClassifier 子集与 `LoadOnnxGraph`；不再声称 Classifier 不支持
+- **BackendAuto 2.1**：英文 README 决策表与中文一致（桌面 Auto = Native）；`docs/bench/sample_benchrecords.jsonl` 规则码改为 `native_batch`
+- **CLI**：api-surface / AGENTS 补 `lessons`/`version`；cli.md `leaves_cli` 改为真实版本标签；控制面 `snapshot` 用法补必填 `-time-start/-time-end`
+- **门禁**：`TestReleaseDocsPresent` 改为 glob 全部 `release-notes-v*.md`；新增 `TestNoDoubleV2Import`
+
 ---
 
 ## [2.7.2] - 2026-08-22

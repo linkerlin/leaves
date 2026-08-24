@@ -129,7 +129,7 @@ func walkTreeBatchF32(b *bornwebgpu.Backend, features *tensor.Tensor[float32, *b
 		return tensor.Zeros[int32](tensor.Shape{batch}, b)
 	}
 	if treeNeedsBornWalk(t) {
-		panic("tree: walkTreeBatchF32 on tree requiring scalar walk")
+		return walkTreeBatchF32ViaScalar(b, features, t)
 	}
 
 	batch := features.Shape()[0]
@@ -180,6 +180,30 @@ func walkTreeBatchF32(b *bornwebgpu.Backend, features *tensor.Tensor[float32, *b
 		}
 	}
 	return current
+}
+
+func walkTreeBatchF32ViaScalar(b *bornwebgpu.Backend, features *tensor.Tensor[float32, *bornwebgpu.Backend], t *TreeIR) *tensor.Tensor[int32, *bornwebgpu.Backend] {
+	shp := features.Shape()
+	batch := shp[0]
+	cols := 1
+	if len(shp) > 1 {
+		cols = shp[1]
+	}
+	data := features.Data()
+	out := make([]int32, batch)
+	for i := 0; i < batch; i++ {
+		fv := make([]float64, cols)
+		start := i * cols
+		for j := 0; j < cols && start+j < len(data); j++ {
+			fv[j] = float64(data[start+j])
+		}
+		out[i] = walkTree(t, fv)
+	}
+	ten, err := tensor.FromSlice(out, tensor.Shape{batch}, b)
+	if err != nil {
+		return tensor.Zeros[int32](tensor.Shape{batch}, b)
+	}
+	return ten
 }
 
 func i32SliceToF32Tensor(b *bornwebgpu.Backend, nodes []int32) *tensor.Tensor[float32, *bornwebgpu.Backend] {

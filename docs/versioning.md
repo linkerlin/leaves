@@ -10,7 +10,7 @@
 | **推荐 API** | 文档与示例主推；优先修 bug、加能力 | `LoadFromFile`、`train.NewLearner`、`cmd/leaves` |
 | **兼容 API** | 保留至少整个 v2.x；新能力不首发于此 | `LGEnsembleFromFile`、`XGEnsembleFromFile`、根包旧 Ensemble 方法 |
 | **实验 API** | 可改语义/收窄；README 标明 experimental | scikit-learn pickle 加载 |
-| **占位 API** | 调用失败并 hint；不保证实现时间表 | （历史）完整 ONNX Graph |
+| **占位 API** | 调用失败并 hint；不保证实现时间表 | （当前无；完整 ONNX Graph 已走 `io.LoadOnnxGraph`） |
 
 详见 [api-surface.md](api-surface.md)。
 
@@ -30,7 +30,7 @@
 1. 删除或重命名 **推荐/兼容** 导出符号而无弃用期。
 2. 改变 **默认** 推理数值语义且无法用选项恢复（例如默认 AutoTransform 再改回 raw 而不提供 flag）。
 3. 破坏 **稳定** 格式的加载往返（leaves.json / 承诺的 XGB·LGB 子集）导致无法加载旧模型。
-4. 将 **稳定** 格式降为实验，或移除 CLI 子命令 `sniff|train|eval|predict|inspect|explain|publish`。
+4. 将 **稳定** 格式降为实验，或移除 CLI 子命令 `sniff|train|eval|predict|inspect|explain|publish|lessons|version`。
 5. 改变 metrics.json **已有字段含义**（可增字段；改义须升 major 或新 schema 并行）。
 
 ## 弃用流程（兼容 API）

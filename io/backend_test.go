@@ -31,7 +31,7 @@ func TestSelectBackendFromIR(t *testing.T) {
 		{
 			name: "wasm numeric",
 			hint: tree.WorkloadHint{Target: tree.DeployWASM},
-			want: tree.BackendBornCPU,
+			want: tree.BackendNative,
 		},
 		{
 			name: "large batch no gpu → native (2.1 诚实化)",
@@ -103,23 +103,23 @@ func TestLoadFromFileBackendAutoWASM(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadFromFile auto: %v", err)
 	}
-	bornCPU, err := io.LoadFromFile(path, &io.LoadOptions{
+	native, err := io.LoadFromFile(path, &io.LoadOptions{
 		LoadTransformation: true,
-		Backend:            io.BackendBornCPU,
+		Backend:            io.BackendNative,
 	})
 	if err != nil {
-		t.Fatalf("LoadFromFile born cpu: %v", err)
+		t.Fatalf("LoadFromFile native: %v", err)
 	}
 
-	if _, ok := auto.Engine().(*tree.BornEngine); !ok {
-		t.Fatalf("expected BornEngine, got %T", auto.Engine())
+	if _, ok := auto.Engine().(*tree.NativeEngine); !ok {
+		t.Fatalf("expected NativeEngine, got %T", auto.Engine())
 	}
 
 	fvals := make([]float64, auto.NFeatures())
 	got := auto.PredictSingle(fvals, 0)
-	want := bornCPU.PredictSingle(fvals, 0)
+	want := native.PredictSingle(fvals, 0)
 	if math.Abs(got-want) > 1e-5 {
-		t.Errorf("predictions differ: auto=%v born=%v", got, want)
+		t.Errorf("predictions differ: auto=%v native=%v", got, want)
 	}
 }
 

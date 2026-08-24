@@ -1,7 +1,6 @@
 package leaves
 
 import (
-	"os"
 	"strings"
 
 	"github.com/linkerlin/leaves/v2/io"
@@ -26,18 +25,11 @@ func legacyLoadFromFile(filename string, opts *io.LoadOptions) (interface{}, err
 		return nil, err
 	}
 
-	loadTransform := opts != nil && opts.LoadTransformation
-
 	switch format {
 	case io.FormatLightGBM:
-		return LGEnsembleFromFile(filename, loadTransform)
+		return io.ParseLightGBMTextFile(filename)
 	case io.FormatLightGBMJSON:
-		f, err := os.Open(filename)
-		if err != nil {
-			return nil, err
-		}
-		defer f.Close()
-		return LGEnsembleFromJSON(f, loadTransform)
+		return io.ParseLightGBMJSONFile(filename)
 	case io.FormatXGBoost:
 		return io.ParseXGBoostBinaryFile(filename)
 	case io.FormatXGBoostJSON:
@@ -47,15 +39,10 @@ func legacyLoadFromFile(filename string, opts *io.LoadOptions) (interface{}, err
 	case io.FormatLeavesJSON:
 		return io.LoadLeavesJSONFile(filename)
 	case io.FormatSklearn:
-		return SKEnsembleFromFile(filename, loadTransform)
+		return io.ParseSklearnPickleFile(filename)
 	default:
 		if strings.HasSuffix(strings.ToLower(filename), ".json") {
-			f, err := os.Open(filename)
-			if err != nil {
-				return nil, err
-			}
-			defer f.Close()
-			return LGEnsembleFromJSON(f, loadTransform)
+			return io.ParseLightGBMJSONFile(filename)
 		}
 		return nil, io.ErrFormatNotImplemented("unknown format")
 	}

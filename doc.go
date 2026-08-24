@@ -6,7 +6,7 @@ Recommended API (v2.x) — see docs/api-surface.md
 
 	m, err := leaves.LoadFromFile("model.json", leaves.DefaultLoadOptions())
 	// DefaultLoadOptions: AutoTransform=true, Backend=Auto
-	p, err := m.PredictSingle(features, 0)
+	p := m.PredictSingle(features, 0) // float64; multiclass/short features quietly return 0
 
 Training: leaves.NewLearner / train.NewLearner, Fit, Save, ResumeFit.
 Data: leaves.LoadDataAuto / data.FromFileAuto.
@@ -69,8 +69,8 @@ predict_breast_cancer_model.go:
 			panic(err)
 		}
 
-		// loading model
-		model, err := leaves.LGEnsembleFromFile("lg_breast_cancer.model", true)
+		// recommended loader (AutoTransform=true → logistic probabilities)
+		model, err := leaves.LoadFromFile("lg_breast_cancer.model", leaves.DefaultLoadOptions())
 		if err != nil {
 			panic(err)
 		}
@@ -101,7 +101,10 @@ predict_breast_cancer_model.go:
 		}
 
 		// compare raw predictions (before transformation function)
-		rawModel := model.EnsembleWithRawPredictions()
+		rawModel, err := leaves.LoadFromFile("lg_breast_cancer.model", &leaves.LoadOptions{AutoTransform: false})
+		if err != nil {
+			panic(err)
+		}
 		rawModel.PredictDense(test.Values, test.Rows, test.Cols, predictions, 0, 1)
 		if err := util.AlmostEqualFloat64Slices(truePredictionsRaw.Values, predictions, tolerance); err != nil {
 			panic(fmt.Errorf("different raw predictions: %s", err.Error()))
@@ -167,8 +170,8 @@ predict_iris_model.go:
 			panic(err)
 		}
 
-		// loading model
-		model, err := leaves.XGEnsembleFromFile("xg_iris.model", false)
+		// recommended loader; AutoTransform false because the Python dump used output_margin=True
+		model, err := leaves.LoadFromFile("xg_iris.model", &leaves.LoadOptions{AutoTransform: false})
 		if err != nil {
 			panic(err)
 		}
@@ -215,7 +218,7 @@ Please note that one must not provide nEstimators = 0 when predict with DART mod
 
 # Notes on LightGBM DART support
 
-Models trained with 'boosting_type': 'dart' options can be loaded with func `leaves.LGEnsembleFromFile`.
-But the name of the model (given by `Name()` method) will be 'lightgbm.gbdt', because LightGBM model format doesn't distinguish 'gbdt' and 'dart' models.
+Models trained with 'boosting_type': 'dart' can be loaded with `leaves.LoadFromFile` (or the compat `LGEnsembleFromFile`).
+The name from `Name()` is still 'lightgbm.gbdt', because the LightGBM file format does not distinguish gbdt and dart.
 */
 package leaves

@@ -24,16 +24,16 @@
 | **LightGBM text** | 稳定 | `tree=` / `version=` | text model | 勿把数值 TSV 当模型 | `lg_breast_cancer.txt` |
 | **LightGBM JSON** | 稳定 | `tree_info` | LGB JSON | 与 text 同源导出 | `lg_dart_*.json` |
 | **scikit-learn** | **实验** | `.pkl` / `.joblib` / pickle 魔数 | 窄协议 GB 历史 pickle | **优先转 XGB JSON / leaves.json** | `sk_*.model`（实验） |
-| **ONNX** | **实验**（子集）/**可用**（Graph） | `.onnx` | `LoadONNX`：TreeEnsembleRegressor 子集（BRANCH_LEQ/SUM/NONE）；`LoadOnnxGraph`：完整 Graph（born 运行时，30+ 算子，非 wasm） | TreeEnsembleClassifier / 类别分裂仍不支持 | `io/onnx_test.go`, `io/onnx_graph_native_test.go` |
+| **ONNX** | **实验**（子集）/**可用**（Graph） | `.onnx` | `LoadONNX`：TreeEnsemble **Regressor + Classifier** 子集；`LoadOnnxGraph`：完整 Graph（born 运行时，30+ 算子，非 wasm） | CATEGORY 分裂 / 其余 BRANCH 模式 / 多标签仍不支持 | `io/onnx_test.go`, `io/onnx_classifier_test.go`, `io/onnx_graph_native_test.go` |
 
 ## ONNX 策略
 
 两条路径：
 
-1. **TreeEnsemble 子集**（`LoadONNX`，LIB-10，wasm 可用）：仅 `ai.onnx.ml` **TreeEnsembleRegressor**；`BRANCH_LEQ` + `LEAF`；`aggregate=SUM`；`post_transform=NONE`。转 ForestIR 走 Native/Born 树引擎。
+1. **TreeEnsemble 子集**（`LoadONNX`，wasm 可用）：`ai.onnx.ml` **TreeEnsembleRegressor**（`BRANCH_LEQ` + `LEAF`，`aggregate=SUM`，`post_transform=NONE`）与 **TreeEnsembleClassifier**（`BRANCH_LEQ` + `LEAF`；`aggregate=SUM/AVERAGE`；`post_transform=NONE/SOFTMAX`，或二类 `LOGISTIC`）。转 ForestIR 走 Native/Born 树引擎。
 2. **完整 Graph**（`LoadOnnxGraph`，born 运行时，**非 wasm**）：任意算子（30+，opset 1–21），通用 NN/图推理；返回 `OnnxModel.Predict`。复用 `github.com/born-ml/born/onnx` 运行时，不在 leaves 内重实现算子。
 
-仍不支持：TreeEnsembleClassifier 后处理、类别分裂、向量叶多目标单树（子集内）。失败时 `*LoadError`（子集，level=`experimental`）或 `LoadOnnxGraph` 错误带可操作 hint。
+仍不支持（子集内）：CATEGORY 分裂、其余 BRANCH 模式、Classifier 多标签、向量叶多目标单树。失败时 `*LoadError`（子集，level=`experimental`）或 `LoadOnnxGraph` 错误带可操作 hint。
 
 ## scikit-learn 策略（LIB-11 收窄）
 

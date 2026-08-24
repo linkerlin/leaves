@@ -1,61 +1,24 @@
 package rankutil
 
 import (
-	"fmt"
-	"sort"
-
 	"github.com/linkerlin/leaves/v2/data"
+	recrank "github.com/linkerlin/leaves/v2/recsys/rankutil"
 )
 
-// RankedItem 单条候选（组内一行）。
-type RankedItem struct {
-	RowInGroup int
-	Label      float64
-	Score      float64
-}
+// RankedItem 组内候选（与 recsys/rankutil 同形）。
+type RankedItem = recrank.RankedItem
 
-// GroupSlice 取出第 groupIdx 个 query 的特征行、标签与全局行偏移。
+// GroupSlice 委托 recsys/rankutil。
 func GroupSlice(dm *data.DenseWithGroups, groupIdx int) (start, count int, err error) {
-	if dm == nil {
-		return 0, 0, fmt.Errorf("nil matrix")
-	}
-	g := dm.Groups()
-	if groupIdx < 0 || groupIdx >= len(g) {
-		return 0, 0, fmt.Errorf("group %d out of range [0,%d)", groupIdx, len(g))
-	}
-	start = 0
-	for i := 0; i < groupIdx; i++ {
-		start += g[i]
-	}
-	return start, g[groupIdx], nil
+	return recrank.GroupSlice(dm, groupIdx)
 }
 
-// RankGroup 对组内样本按预测分降序排列。
+// RankGroup 委托 recsys/rankutil。
 func RankGroup(dm *data.DenseWithGroups, preds []float64, groupIdx int, topK int) ([]RankedItem, error) {
-	start, count, err := GroupSlice(dm, groupIdx)
-	if err != nil {
-		return nil, err
-	}
-	labels := dm.Labels()
-	items := make([]RankedItem, count)
-	for i := 0; i < count; i++ {
-		row := start + i
-		items[i] = RankedItem{
-			RowInGroup: i,
-			Label:      labels[row],
-			Score:      preds[row],
-		}
-	}
-	sort.Slice(items, func(i, j int) bool {
-		return items[i].Score > items[j].Score
-	})
-	if topK > 0 && topK < len(items) {
-		items = items[:topK]
-	}
-	return items, nil
+	return recrank.RankGroup(dm, preds, groupIdx, topK)
 }
 
-// GroupQID 返回组在 TSV 中的 qid（等于训练集内顺序下标；测试集从 train_users 起）。
+// GroupQID 委托 recsys/rankutil。
 func GroupQID(groupIdx int, trainUserCount int) int {
-	return trainUserCount + groupIdx
+	return recrank.GroupQID(groupIdx, trainUserCount)
 }

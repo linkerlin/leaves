@@ -16,6 +16,8 @@
 
 ## 二、合理性分项判定
 
+> **审计快照**（2026-08-22 上午，GPU-O 开工前）。§三 已处置：GPU-O1 给 profiling 加了超时守卫；GPU-O3 实测了 WASM 并改了决策表；GPU-O4 把推理 Born 改口为 parity 路径。下表保留开工前判断，勿与 §三 完成后状态混读。
+
 | 用途 | 判定 | 依据 |
 |------|------|------|
 | 训练 WebGPU hist（scatter-add + 增益扫描） | ✅ 合理 | 直方图累加是真张量友好负载；`sync.Once` 惰性初始化 + panic→会话级降级，防御好 |
@@ -35,6 +37,7 @@
 ### P1 — 收口最后的诚实缺口
 
 - [x] **GPU-O3** WASM 规则实测（**结果反转预期**）：node v24 wasm_exec 三轮实测（50树×31节点×30特征）——batch=8 BornCPU **快 1.6–2.6×**（稳定，wasm 解释器拖慢 Native 标量 walk，与桌面相反）；batch≥64 打平噪声区。处置：决策表 WASM 行拆分——`batch<64 且支持 → wasm_born_cpu`；`batch≥64 或不支持 → wasm_native`（新增 rule，旧 `wasm_native_fallback` 移除）。`scripts/wasm_backend_bench` 常驻复测工具（GOOS=js）+ benchmark-baseline §WASM 实测表。
+  - **REV-04 更正**：`born_js.go` 上 BornEngine 委托 Native，与 GPU-O3 加速主张冲突；BackendAuto WASM 改为一律 `wasm_native`。
 - [x] **GPU-O4** BornCPU walk 诚实路线：`BornEngine` godoc 改口为「parity/兼容路径，非加速路径」（假向量化：每步回主机 Go 循环 + 树张量零缓存，实测 0.03–0.16×）；激进重写路线明确不采纳（无用户需求）。
 
 ### P2 — 治理

@@ -30,7 +30,7 @@ func walkTreeBatch[B tensor.Backend](b B, features *tensor.Tensor[float64, B], t
 		return tensor.Zeros[int32](tensor.Shape{batch}, b)
 	}
 	if treeNeedsBornWalk(t) {
-		panic("tree: walkTreeBatch on tree requiring scalar walk")
+		return walkTreeBatchViaScalar(b, features, t)
 	}
 
 	batch := features.Shape()[0]
@@ -172,11 +172,39 @@ func bornMergeWalkStep[B tensor.Backend](
 			next[i] = right[i]
 		}
 	}
-	t, err := tensor.FromSlice(next, tensor.Shape{batch}, b)
+	ten, err := tensor.FromSlice(next, tensor.Shape{batch}, b)
 	if err != nil {
-		panic(err)
+		return tensor.Zeros[int32](tensor.Shape{batch}, b)
 	}
-	return t
+	return ten
+}
+
+func walkTreeBatchViaScalar[B tensor.Backend](b B, features *tensor.Tensor[float64, B], t *TreeIR) *tensor.Tensor[int32, B] {
+	shp := features.Shape()
+	batch := shp[0]
+	cols := 1
+	if len(shp) > 1 {
+		cols = shp[1]
+	}
+	data := features.Data()
+	out := make([]int32, batch)
+	for i := 0; i < batch; i++ {
+		start := i * cols
+		end := start + cols
+		if start >= len(data) {
+			out[i] = walkTree(t, nil)
+			continue
+		}
+		if end > len(data) {
+			end = len(data)
+		}
+		out[i] = walkTree(t, data[start:end])
+	}
+	ten, err := tensor.FromSlice(out, tensor.Shape{batch}, b)
+	if err != nil {
+		return tensor.Zeros[int32](tensor.Shape{batch}, b)
+	}
+	return ten
 }
 
 func treeScalarBatch[B tensor.Backend](b B, features *tensor.Tensor[float64, B], t *TreeIR) []float64 {

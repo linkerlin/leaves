@@ -105,7 +105,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/linkerlin/leaves/v2/v2"
+	"github.com/linkerlin/leaves/v2"
 )
 
 func main() {
@@ -115,10 +115,7 @@ func main() {
 	}
 
 	fvals := []float64{1.0, 2.0, 3.0}
-	p, err := m.PredictSingle(fvals, 0)
-	if err != nil {
-		panic(err)
-	}
+	p := m.PredictSingle(fvals, 0)
 	fmt.Printf("prediction for %v: %f\n", fvals, p)
 }
 ```
@@ -139,7 +136,7 @@ tiers (stable / experimental / placeholder): [docs/interop-matrix.md](docs/inter
 | XGBoost binary | **stable** | `binf` / header | Prefer JSON/UBJ for new work |
 | LightGBM text/JSON | **stable** | `tree=` / `tree_info` | Both text and JSON |
 | scikit-learn | **experimental** | `.pkl` / `.joblib` | Narrow protocol; export to XGB/leaves JSON for production |
-| ONNX | **experimental** | `.onnx` | TreeEnsembleRegressor subset; convert complex graphs first |
+| ONNX | **experimental** | `.onnx` | TreeEnsemble Regressor/Classifier subset; full graphs via `LoadOnnxGraph` or convert first |
 
 Load failures return `*io.LoadError` with an actionable `hint:`. Numeric tables
 misnamed as `.txt` models point you to `data.FromFile`.
@@ -275,14 +272,17 @@ Environment override: `LEAVES_TRAIN_ACCEL=auto|webgpu|born_cpu|cpu`.
 
 ## Compute backend — [Born](https://github.com/born-ml/born)
 
-Inference and training acceleration sit on
-[Born](https://github.com/born-ml/born) (CPU SIMD + WebGPU). `NativeEngine`
-is the golden reference; **BackendAuto 2.0** dispatches BornCPU / BornGPU by
-workload. Full decision table: [docs/backend-auto.md](docs/backend-auto.md).
+**Born = training accelerator + ONNX runtime; inference golden is always Native on desktop.**
+Training-side WebGPU hist / CPU gain scan sit on Born; the inference Born
+engine is a parity/compat path (and a WASM small-batch rule). **BackendAuto 2.1**
+picks Native on desktop — the historical batch “speedup zone” did not
+reproduce ([docs/benchmark-baseline.md](docs/benchmark-baseline.md)). Use an
+explicit backend, or set `LEAVES_BACKEND_PROFILE=1` for measured selection
+(with budget/timeout guards). Full table: [docs/backend-auto.md](docs/backend-auto.md).
 
 ```go
 m, _ := leaves.LoadFromFile("model.json", &io.LoadOptions{
-	Backend:  io.BackendAuto,
+	Backend:  io.BackendBornCPU, // or BackendAuto + LEAVES_BACKEND_PROFILE=1
 	Workload: tree.WorkloadHint{BatchSize: 256, HasGPU: true},
 })
 // Explained: tree.SelectBackendExplained(caps, hint) → Rule / Reason
@@ -292,14 +292,13 @@ The parity gate `TestBornParityFormatMatrix` covers LGB text/JSON, XGB
 bin/json/ubj, scikit-learn pickle × batch `{1, 16, 256}` × `BornCPU` /
 `BornGPU` at tolerance `1e-5` relative to Native.
 
-### Backend selection cheat sheet (BackendAuto 2.0)
+### Backend selection cheat sheet (BackendAuto 2.1)
 
 | Scenario | Auto result | Notes |
 | -------- | ----------- | ----- |
-| Online / batch &lt; 64 | **Native** | Latency-first; Born is slow at batch=1 |
-| Batch ≥ 64, pure numeric | **BornCPU** | SIMD batch path |
-| Batch ≥ 256 + HasGPU (Windows WebGPU) | **BornGPU** | Falls back to BornCPU if unavailable |
-| WASM + numeric | **BornCPU** when supported | No GPU; cat-small → Native |
+| Desktop, any batch (CPU / GPU) | **Native** | Default; pick Born only after a measured win |
+| Measured Born win | explicit `BackendBornCPU` / `BackendBornGPU`, or `LEAVES_BACKEND_PROFILE=1` | Shape-class cache; pick only if faster |
+| WASM | **Native** | `BornEngine` on js delegates Native; explicit BornCPU is the same walk |
 | Sparse (`SparseDensity∈(0,0.15)`) / cat-small | **Native** | Not Born-optimized / unsupported |
 
 ## Tree SHAP and explainability
@@ -312,7 +311,7 @@ space.
 
 ```go
 import (
-	"github.com/linkerlin/leaves/v2/v2"
+	"github.com/linkerlin/leaves/v2"
 	"github.com/linkerlin/leaves/v2/explain"
 )
 
@@ -507,6 +506,18 @@ Contract details and DoD: [演进方案.md](演进方案.md) (v2.2). CLI flags a
 metrics schema: [`skills/leaves-autotrain/cli.md`](skills/leaves-autotrain/cli.md).
 Zero-prep demo: [`examples/autotrain/`](examples/autotrain/README.md).
 
+### CLI entry points
+
+| Job | Command |
+| --- | ------- |
+| Train / eval / publish / lessons | `go run ./cmd/leaves …` |
+| Recsys eight-stage control plane | `go run ./recsys/cmd/control …` (`snapshot` requires `-time-start/-time-end`) |
+| Offline four-stage smoke | `go run ./recsys/cmd/smoke` |
+| MovieLens four-stage | `go run ./recsys/cmd/movielens` |
+| MovieLens ranker demo | `go run ./demos/movielens/cmd/{train,recommend,agent}` (`cmd/mcp` optional) |
+
+Recsys is **not** folded into `cmd/leaves`.
+
 ### Recsys production-loop control plane
 
 On top of the offline four-stage recsys pipeline (prep → recall → LTR → deal),
@@ -533,7 +544,7 @@ drill: `recsys/loop`.
 | [docs/versioning.md](docs/versioning.md) | What can change in v2.x |
 | [docs/release-checklist.md](docs/release-checklist.md) | Pre-tag release checklist |
 | [docs/interop-matrix.md](docs/interop-matrix.md) | Format support tiers |
-| [docs/backend-auto.md](docs/backend-auto.md) | BackendAuto 2.0 decision table |
+| [docs/backend-auto.md](docs/backend-auto.md) | BackendAuto 2.1 decision table |
 | [docs/extension-points.md](docs/extension-points.md) | Custom objective/metric |
 | [CHANGELOG.md](CHANGELOG.md) | Release history |
 | [演进计划.md](演进计划.md) | Library 12-month roadmap (v5.4) |

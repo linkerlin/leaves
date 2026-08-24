@@ -13,8 +13,8 @@
 | **Objective** | `objective.Register` | ✅ 全量注册（含 multi / rank） | [`objective/registry.go`](../objective/registry.go)、[`objective/builtins.go`](../objective/builtins.go) |
 | **Metric** | `metrics.Register` | ✅ 全量注册（含 mlogloss / ndcg@K） | [`metrics/register.go`](../metrics/register.go)、[`metrics/builtins.go`](../metrics/builtins.go) |
 | **Booster** | 无 registry | 🔒 边界固定 | `train` 内 `gbtree` / `dart` / `gblinear` 三选一 |
-| **Tree method** | 无 registry | 🔒 边界固定 | `hist` / `exact` / `auto`（+ 训练 hist 加速） |
-| **IO 格式** | `io` 探测链 | 实验性扩展需改 `io/` | 稳定：leaves.json / XGB JSON；实验：SK / ONNX TreeEnsemble 子集 |
+| **Tree method** | 无 registry | 🔒 边界固定 | `hist` / `exact` / `gpu_hist` / `auto`（+ 训练 hist 加速） |
+| **IO 格式** | `io` 探测链 | 实验性扩展需改 `io/` | 稳定：leaves.json / XGB JSON·UBJ·bin / LGB；实验：SK / ONNX TreeEnsemble 子集（Regressor+Classifier）；Graph 走 `LoadOnnxGraph` |
 
 **设计说明（booster / tree method 为何不做 registry）**
 

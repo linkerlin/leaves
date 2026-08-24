@@ -62,7 +62,7 @@
 - int8 阈值量化（带 parity 门禁）
 - `Ensemble.Reload` 线上热更新；按 batch 维度的推理 profiling
 - [WASM demo](examples/wasm/README.md)、[HTTP embed](examples/http/README.md)、[serving 模板](examples/serving-template/README.md)、[train-from-model](examples/train_from_model/README.md)、[扩展 objective/metric](examples/extension/README.md)、[多目标回归](examples/multitarget/README.md)
-- [MovieLens Ranker + Agent/MCP 教程](demos/movielens/TUTORIAL.md)（精排全流程案例）
+- [MovieLens Ranker 教程](demos/movielens/TUTORIAL.md)（精排全流程；demo 另有可选 MCP 入口，主闭环仍是 SKILL + CLI）
 
 ## 安装
 
@@ -82,7 +82,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/linkerlin/leaves/v2/v2"
+	"github.com/linkerlin/leaves/v2"
 )
 
 func main() {
@@ -92,10 +92,7 @@ func main() {
 	}
 
 	fvals := []float64{1.0, 2.0, 3.0}
-	p, err := m.PredictSingle(fvals, 0)
-	if err != nil {
-		panic(err)
-	}
+	p := m.PredictSingle(fvals, 0)
 	fmt.Printf("对 %v 的预测: %f\n", fvals, p)
 }
 ```
@@ -114,7 +111,7 @@ func main() {
 | XGBoost binary | **稳定** | `binf` / header | 经典 Booster；优先改用 JSON |
 | LightGBM text/JSON | **稳定** | `tree=` / `tree_info` | text 与 JSON |
 | scikit-learn | **实验** | `.pkl` / `.joblib` | 窄协议；生产请转 XGB/leaves JSON |
-| ONNX | **实验** | `.onnx` | TreeEnsembleRegressor 子集；复杂图请先转 JSON/leaves |
+| ONNX | **实验** | `.onnx` | TreeEnsemble Regressor/Classifier 子集；复杂图走 `LoadOnnxGraph` 或先转 JSON/leaves |
 
 加载失败返回 `*io.LoadError`（含 `hint:` 下一步）。数值表误用 `.txt` 会提示改用 `data.FromFile`。
 
@@ -246,7 +243,7 @@ _ = learner.Fit(dm)
 
 ## 计算底座 —— [Born](https://github.com/born-ml/born)
 
-**Born = 训练加速器 + ONNX 运行时；推理 golden 永远 Native（桌面端）**。训练侧 WebGPU hist / CPU 增益扫描构建在 Born 之上；推理侧 Born 引擎保留为 parity/兼容路径与 WASM 小批量加速（实测 js 环境 batch<64 BornCPU 快 1.6–2.6×，与桌面相反）。`BackendAuto`（**2.1**）桌面端一律 Native——历史 batch 阈值「加速区」未复现（[docs/benchmark-baseline.md](docs/benchmark-baseline.md) §再测量）；需要 Born 时显式指定，或设 `LEAVES_BACKEND_PROFILE=1` 实测选型（带预算/超时守卫）。完整决策表：[docs/backend-auto.md](docs/backend-auto.md)。
+**Born = 训练加速器 + ONNX 运行时；推理 golden 永远 Native（桌面与 WASM）**。训练侧 WebGPU hist / CPU 增益扫描构建在 Born 之上；推理侧 Born 引擎是 parity/兼容路径（桌面实测慢 6–30×）。`GOOS=js` 上 `BornEngine` 委托 Native。`BackendAuto`（**2.1**）一律 Native——历史 batch 阈值「加速区」未复现（[docs/benchmark-baseline.md](docs/benchmark-baseline.md) §再测量）；需要 Born 时显式指定，或设 `LEAVES_BACKEND_PROFILE=1` 实测选型（带预算/超时守卫）。完整决策表：[docs/backend-auto.md](docs/backend-auto.md)。
 
 ```go
 m, _ := leaves.LoadFromFile("model.json", &io.LoadOptions{
@@ -264,7 +261,7 @@ parity 门禁 `TestBornParityFormatMatrix` 覆盖 LGB text/JSON、XGB bin/json/u
 |------|-----------|------|
 | 桌面任意 batch（CPU / GPU） | **Native** | 默认；实测 Born 更快再显式指定或开 profiling |
 | 实测确认 Born 更快 | `BackendBornCPU` / `BackendBornGPU` 显式；或 `LEAVES_BACKEND_PROFILE=1` | 形状类缓存，测得更快才选 |
-| WASM 小批（<64）+ 数值树 | **BornCPU**（支持时） | 实测快 1.6–2.6×；batch≥64 → Native；cat-small → Native |
+| WASM | **Native** | js 上 BornEngine 委托 Native；显式 BornCPU 也是同一 walk |
 | 稀疏 `SparseDensity∈(0,0.15)` / cat-small | **Native** | Born 未优化 / 不支持 |
 
 ## Tree SHAP 与可解释性
@@ -273,7 +270,7 @@ parity 门禁 `TestBornParityFormatMatrix` 覆盖 LGB text/JSON、XGB bin/json/u
 
 ```go
 import (
-	"github.com/linkerlin/leaves/v2/v2"
+	"github.com/linkerlin/leaves/v2"
 	"github.com/linkerlin/leaves/v2/explain"
 )
 
@@ -469,6 +466,18 @@ go run ./cmd/leaves publish --model m.leaves.json --out-dir release/ --quantize 
 ```
 `publish --quantize` 会持久化 int8 量化侧车（`model.quant.json`）；`manifest.json` 含 `reproduce` 复现命令与文件 sha256。
 
+### CLI 入口（用哪条命令）
+
+| 要做什么 | 命令 | 说明 |
+|----------|------|------|
+| 训练 / 评估 / 发布 / lessons | `go run ./cmd/leaves <sniff\|train\|eval\|predict\|inspect\|explain\|publish\|lessons\|version>` | Agent 主闭环；SKILL `leaves-autotrain` |
+| 推荐生产闭环八段 | `go run ./recsys/cmd/control <snapshot\|split\|eval\|…>` | 控制面；`snapshot` 必填 `-time-start/-time-end` |
+| 离线四段 smoke | `go run ./recsys/cmd/smoke` | 合成数据 prep→召回→LTR→发牌 |
+| MovieLens 四段 | `go run ./recsys/cmd/movielens` | 真实 `u.data` |
+| MovieLens 精排 demo | `go run ./demos/movielens/cmd/{train,recommend,agent}` | 案例；`cmd/mcp` 为可选 demo，不是主闭环 |
+
+不把 recsys 并进 `cmd/leaves`（见 TODO 明确不做）。
+
 ### 推荐生产闭环控制面（§十七 RC）
 
 `recsys/` 在离线四段（prep→召回→LTR→发牌）之上提供**可离线测试的控制面契约**（纯 Go，无运行时依赖）：数据快照/指纹（`recsys/contract`）、时间切分防泄漏（`recsys/split`）、三层离线门禁（`recsys/eval`）、决策/曝光/反馈账本（`recsys/ledger`）、归因回放（`recsys/replay`）、窗口监控（`recsys/monitor`）、发布状态机 + adapter 请求（`recsys/release`）。端到端演练见 `recsys/loop`。
@@ -483,10 +492,10 @@ go run ./cmd/leaves publish --model m.leaves.json --out-dir release/ --quantize 
 | [godoc](https://pkg.go.dev/github.com/linkerlin/leaves/v2) | API 参考 |
 | [docs/api-surface.md](docs/api-surface.md) | **推荐 / 兼容 / 实验** API 分层与迁移 |
 | [docs/versioning.md](docs/versioning.md) | v2.x 允许改什么 |
-| [docs/release-checklist.md](docs/release-checklist.md) | **v2.1 发版检查表** |
+| [docs/release-checklist.md](docs/release-checklist.md) | **v2.x 发版检查表** |
 | [CHANGELOG.md](CHANGELOG.md) | 面向用户的变更记录（Unreleased → tag） |
 | [docs/interop-matrix.md](docs/interop-matrix.md) | 格式支持等级 |
-| [docs/backend-auto.md](docs/backend-auto.md) | BackendAuto 2.0 决策表 |
+| [docs/backend-auto.md](docs/backend-auto.md) | BackendAuto 2.1 决策表 |
 | [docs/extension-points.md](docs/extension-points.md) | 自定义 objective/metric |
 | [演进计划.md](演进计划.md) | 库 12 个月路线（v5.4） |
 | [演进方案.md](演进方案.md) | Agent 闭环契约（已达成）+ §十七 RC |

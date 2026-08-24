@@ -33,7 +33,7 @@
 
 | API | 包 | 用途 |
 |-----|-----|------|
-| `rankutil.GroupSlice(dm, idx)` | `demos/movielens/rankutil` | 取组偏移 |
+| `rankutil.GroupSlice(dm, idx)` | `recsys/rankutil` | 取组偏移 |
 | `rankutil.RankGroup(dm, preds, idx, topK)` | 同上 | 组内 Top-K |
 | `rankutil.NDCGAtK(dm, preds, k)` | 同上 | NDCG 评估 |
 | `rankutil.PredictMargins(learner, dm)` | 同上 | 训练后 margin |
@@ -56,7 +56,7 @@
 ## 便利入口（根包）
 
 ```go
-import "github.com/linkerlin/leaves/v2/v2"
+import "github.com/linkerlin/leaves/v2"
 dm, _ := leaves.LoadDataAuto(path)
 learner, _ := leaves.NewLearner(cfg)
 ```

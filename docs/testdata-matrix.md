@@ -1,6 +1,6 @@
 # testdata 回归矩阵
 
-> 格式 × 后端 × batch 门禁一览（2026-06-15，**v4.3** 嗅探/AutoTransform）。  
+> 格式 × 后端 × batch 门禁一览（2026-08-22 对齐 v2.7.2；嗅探/AutoTransform 自 v4.3）。  
 > **支持等级**（稳定/实验/占位）见 [`interop-matrix.md`](interop-matrix.md)。  
 > 运行：`go test ./... -count=1`；Born 矩阵见 `born_parity_format_test.go`。
 
@@ -25,7 +25,7 @@
 | XGB 二进制 | `xgagaricus.model` | 内嵌 | `io/xgb_bin.go` + `io/xgb_interop_test.go` | 同上 | 同上 |
 | SK pickle（**实验**） | `sk_gradient_boosting_classifier.model` | `sk_gradient_boosting_classifier_test.libsvm` | 同上 + `TestSklearnGoldenLoads` | 同上 | 同上 |
 | SK iris（**实验**） | `sk_iris.model` | `iris_test.libsvm` | `TestSKIris` | Native | — |
-| ONNX（**实验**） | 内存 `SampleONNXStump` | — | `TestONNXTreeEnsembleStump` | Native margin | 不进 Born parity |
+| ONNX（**实验**） | 内存 `SampleONNXStump` / Classifier 构造器 | — | `TestONNXTreeEnsembleStump` · `io/onnx_classifier_test.go` | Native margin | 不进 Born parity |
 
 \* BornGPU 仅在 Windows WebGPU 可用时运行；不可用时跳过。
 
@@ -68,6 +68,10 @@
 
 | Job | 命令 | 覆盖 |
 |-----|------|------|
-| test (3 OS) | `go test ./...` | 全矩阵 + 训练 |
+| test (3 OS) | `go test ./...`（`LEAVES_BORN_GPU=0`） | 全矩阵 + 训练 |
+| lint | golangci-lint（`GOOS=windows` 分析） | govet/unused/staticcheck/errcheck/gofmt |
+| race | `go test -race -short ./...` | 数据竞争 |
 | wasm | `go build` + `TestWasmBinarySizeGate` | js/wasm 编译 + 体积 ≤16 MiB |
 | bench-gate (Windows) | `TestBenchGateBornCPUSlowerBatch1` | batch=1 BornCPU ≥20× Native |
+| backend-gate（月度） | `scripts/born_upgrade_gate` | Native vs Born 复测（self-hosted Windows） |
+| fuzz（周度） | `go test -fuzz` 四目标 | io / data / contract / ledger 不 panic |

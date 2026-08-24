@@ -123,7 +123,7 @@ go test ./recsys/... -count=1
 全部输出为结构化文件；promote/rollback 请求打印到 stdout 由调用方转发给应用侧 adapter。
 
 ```text
-control snapshot   -workspace DIR -out snapshot.json -snapshot-id ID -purpose train|eval|release
+control snapshot   -workspace DIR -out snapshot.json -snapshot-id ID -purpose train|eval|release -time-start T -time-end T
 control split      -events events.jsonl -train-end T -val-start T -test-start T -out-dir DIR
 control eval       -workspace DIR -thresholds th.json [-out evaluation.json] [-recall-k 100] ...
 control from-deal  -workspace DIR -ledger ledger.jsonl -model-version V -policy-version P -occurred-at T
@@ -136,7 +136,7 @@ control release    -state release_state.json -action candidate|approve|confirm-p
 
 要点：
 
-- `snapshot` 自动对工作区输入文件取 sha256 + 特征指纹（`items.tsv` 推导）；
+- `snapshot` 自动对工作区输入文件取 sha256 + 特征指纹（`items.tsv` 推导）；**`-time-start/-time-end` 必填**（契约要求快照携带时间范围，缺则 exit 1）；
 - `eval`/`monitor` 的阈值与触发器是 JSON 文件（`eval.Threshold` / `monitor.Trigger` 数组）；
 - `monitor -triggers` 把 `TriggerSet.Evaluate` 结果追加到 `fired.jsonl`，Agent 据此调 `release`；
 - `release` 状态机跨命令持久化于 `release_state.json`（含 evidence + history）；

@@ -1,8 +1,9 @@
 // Package io 提供 GBRT 模型的加载函数。
-// 支持 LightGBM（文本/JSON 格式）、XGBoost（二进制格式）和 scikit-learn（pickle 格式）。
+// 支持 LightGBM（文本/JSON）、XGBoost（二进制/JSON/UBJSON）、leaves.json、
+// ONNX TreeEnsemble 子集，以及实验性 scikit-learn pickle。
 //
-// Phase 0 中此为兼容桥——内部委托给根包的现有 IO 实现。
-// Phase 1 起，加载函数将直接生成 tree.ForestIR。
+// 推荐路径 LoadFromFile 对 LGB/XGB/leaves.json/ONNX/sklearn pickle 直接生成 ForestIR，
+// 不依赖根包 init。
 package io
 
 import (
@@ -30,7 +31,7 @@ const (
 	FormatSklearn
 	// FormatLeavesJSON leaves 训练产出 JSON。
 	FormatLeavesJSON
-	// FormatONNX ONNX（实验：TreeEnsembleRegressor 子集；见 SupportOf）。
+	// FormatONNX ONNX（实验：TreeEnsemble Regressor/Classifier 子集；见 SupportOf）。
 	FormatONNX
 )
 

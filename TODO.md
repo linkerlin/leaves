@@ -8,7 +8,7 @@
 
 ---
 
-## 现状快照（2026-08-21 · 开发期）
+## 现状快照（2026-08-22 · v2.7.2 维护期）
 
 | 线 | 方案状态 | 代码/发布 | 结论 |
 |----|----------|-----------|------|
@@ -23,13 +23,38 @@
 
 **对照结论**：可执行 backlog **已清空**；Unreleased 已落盘。默认 **维护 + 按需开新项**；新需求先写进本文件再实现。发版走 [`docs/release-checklist.md`](docs/release-checklist.md)。
 
-**最新 tag**：https://github.com/linkerlin/leaves/releases/tag/v2.6.1
+**最新 tag**：https://github.com/linkerlin/leaves/releases/tag/v2.7.2
 
 ---
 
 ## 后续工作（现行 backlog）
 
 > 新工作请在本节追加 `[ ]` 项。开发期默认无打开主线；案例 demo 可并列追加。
+
+### DOC-ALIGN — 文档对齐代码（2026-08-22 审阅已落地文档层）
+
+- [x] 修正 `github.com/linkerlin/leaves/v2/v2` 错误 import（README 中英、api-surface、recsys-rank leaves-api）；`PredictSingle` 示例对齐真实签名
+- [x] ONNX Classifier + Graph 写进 interop-matrix / SupportOf / README；TODO「明确不做 Graph」改为已落地
+- [x] 英文 README BackendAuto 2.1；BenchRecord 样例 `native_batch`；backend-auto / NOTES / versioning / release-checklist 去「2.0 默认选 Born / Graph 占位」
+- [x] CLI 文档补 `lessons`/`version`；cli.md `leaves_cli`；控制面 snapshot 时间范围；SKILL 10 命令
+- [x] 门禁：release-notes glob + 禁止 `v2/v2`；WASM `wasm_exec.js` 路径；serving-template 复制说明版本
+- [x] AGENTS / 演进计划 / 演进方案 / GPU优化.md 审计快照盖章；js BornEngine 委托 Native 写实
+
+### REV — 2026-08-22 全仓审阅待讨论（未开工）
+
+> 优先级与实施切面见对话审阅报告。新工作需产品信号后再把 `[ ]` 提成独立 WP。
+
+- [x] **REV-01** `io.LoadFromFile` 对 LGB/XGB/leaves.json/ONNX/**sklearn pickle** 不依赖根包 init
+- [x] **REV-02** LGB text/JSON + sklearn pickle 解析迁到 `io/` → ForestIR（`LGEnsembleFromFile` / `SKEnsembleFromFile` 兼容入口保留）
+- [x] **REV-03** `recsys/trainrank` 改用 `recsys/rankutil`；demo 包作 facade
+- [x] **REV-04** WASM Auto 一律 `wasm_native`（js BornEngine=Native 委托；GPU-O3 主张作废）
+- [x] **REV-05** `backend-gate` 默认 `windows-latest`+`LEAVES_BORN_GPU=0`；GPU self-hosted 仅 dispatch+变量
+- [x] **REV-06** README / AGENTS CLI 入口表
+- [x] **REV-07** deal/recall/rankconv 包级单测；io fuzz 增加 LGB text/JSON 种子
+- [x] **REV-08** cat-small Born walk 回落标量；GPU Predict 8s 超时 + panic→error
+- [x] **REV-09** 根包 `doc.go` 示例改为 `LoadFromFile`；LGB JSON `average_output`/`objective` 已在 io 解析；兼容层 JSON 读 `average_output`
+- [~] **REV-10** wgpu 上游 issue：最小复现已落 `scripts/wgpu_repro`，草稿指向该脚本；**仍待人工核对后提交上游**
+- [x] **REV-11** 删 `LgTreeToTreeIR` 死代码；synth/tsvio/movielens titles 单测；serving-template born 间接依赖对齐 v0.9.23
 
 ### GPU-O — Born/GPU 使用优化（2026-08-22 完成，v2.7.2；路线图 [`GPU优化.md`](GPU优化.md)）
 
@@ -559,7 +584,7 @@ go test -run TestBenchGateBornCPUSlowerBatch1 -count=1
 - [-] 官方 model registry / 云端实验板 / OCI 推送（publish = 本地工件包）
 - [-] 分布式训练（Spark / Dask / Ray / Federated / Rabit）
 - [-] 官方 HTTP/gRPC serving 框架（`examples/http` 仅为 embed demo）
-- [-] 完整 ONNX Graph 导入（LIB-10 仅为 TreeEnsembleRegressor 子集）
+- [x] 完整 ONNX Graph 导入（`io.LoadOnnxGraph`，born 运行时，非 wasm；v2.3.0）· TreeEnsemble Classifier 子集（v2.7.0）。子集内仍不做：CATEGORY 分裂 / 其余 BRANCH / 多标签
 - [-] 根包 IO 物理迁移进 `io/`（兼容层保留）
 - [x] Multi-output **向量叶** 训练（`multi_output_tree` / `OutputDim>1` 生长）：**已实现 2026-07-11**（原列「明确不做」，A+B 落地。treebuilder 统一 k 维数学 + leaf-major flatten；booster `MultiOutputTree` 跳过 demux 建向量叶树；accel 对 k>1 回退 CPU。详见 CHANGELOG [Unreleased]）
 - [-] CUDA 直连推理（GPU 路线 = Born WebGPU / Windows）

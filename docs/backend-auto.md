@@ -6,7 +6,7 @@
 
 ## 设计原则
 
-1. **Native 是正确性 golden**；Born 是可选加速。
+1. **Native 是正确性 golden**；Born 推理是 parity/兼容路径（训练加速与 ONNX Graph 另算）。
 2. **默认 Native**（2.1）：历史 batch 阈值选 Born 的「加速区」在参考机上不可复现（见 §2.1 变更说明与 benchmark-baseline 实测表）；走 Born 的两条路——**显式 `BackendBornCPU`/`BackendBornGPU`**，或 **`LEAVES_BACKEND_PROFILE=1` 实测选型**（测得更快才选）。
 3. **任何自动选择必须能被规则码解释**（`SelectBackendExplained`）；启发式主张必须有可复现测量背书。
 4. **显式 `Backend` 覆盖 Auto**（`ResolveBackend` 非 Auto 直接返回）。
@@ -24,12 +24,11 @@
 | 优先级 | 条件 | 后端 | Rule 码 |
 |--------|------|------|---------|
 | 1 | 线性模型 / 无森林 | Native | `linear_or_empty` |
-| 2 | `Target=WASM` 且 batch&lt;64 且 Born 支持 | BornCPU | `wasm_born_cpu`（GPU-O3 实测：js 小批 BornCPU 快 1.6–2.6×） |
-| 3 | `Target=WASM`（batch≥64 或 Born 不支持） | Native | `wasm_native`（batch≥64 实测打平噪声区，取 golden） |
-| 4 | `0 < SparseDensity < 0.15` | Native | `sparse` |
-| 5 | 非纯数值 / cat-small | Native | `non_numeric_or_unsupported` |
-| 6 | batch≥64（CPU 或 GPU） | Native | `native_batch` |
-| 7 | 其余（含默认 batch=1） | Native | `small_batch` |
+| 2 | `Target=WASM` | Native | `wasm_native`（js 上 BornEngine 委托 Native，无独立 walk） |
+| 3 | `0 < SparseDensity < 0.15` | Native | `sparse` |
+| 4 | 非纯数值 / cat-small | Native | `non_numeric_or_unsupported` |
+| 5 | batch≥64（CPU 或 GPU） | Native | `native_batch` |
+| 6 | 其余（含默认 batch=1） | Native | `small_batch` |
 
 `LEAVES_BACKEND_PROFILE=1` 时优先级 0 为 **实测选型**（`profile_native|profile_born_cpu|profile_born_gpu`，见 §自动接入）；形状类缓存，每形状只测一次。
 
@@ -66,11 +65,11 @@ type WorkloadHint struct {
 
 ## 第二轮：opt-in profiling（`tree.ProfileBackend`）
 
-**已交付**（v2.3.0 之后）——数据驱动选型，**不破坏 2.0 默认决策表**：
+**已交付**（v2.3.0 之后，v2.7.0 自动接入）——数据驱动选型，**不破坏 2.1 默认决策表**（桌面 Auto = Native）：
 
 `ProfileBackend(caps, vals, nrows, ncols, iters) ProfileResult` 对实际 workload warm-up + 计时 Native / BornCPU / BornGPU，返回各后端 ns/op 与最快推荐。
 
-- **opt-in**：默认 `SelectBackendExplained`（2.0 决策表）行为不变；需要测量证据时显式调用 `ProfileBackend`。
+- **opt-in**：默认 `SelectBackendExplained`（2.1 决策表）行为不变；需要测量证据时显式调用 `ProfileBackend`。
 - **可解释**：`ProfileResult.Pick / Rule / Reason`；Rule 码 `profile_native | profile_born_cpu | profile_born_gpu | profile_none_ok | profile_invalid`，Reason 含各后端实测 ns/op。
 - **不破坏 golden**：Native 始终参与计时；不支持的后端（cat-small 森林 / 无 WebGPU）`Ok=false` 不参与推荐。
 - **公平**：各后端 nEstimators=0（全量树）、同输入、同 warm-up。
@@ -89,7 +88,9 @@ opts.Backend = res.Pick                    // 用测量结果替代启发式
 - **形状类缓存**：键 `(batch, n_features, trees, nodes)`——每形状只测一次，进程内不重复付首调用延迟（Reason 标注「缓存命中」）。
 - **尊重 hint**：`HasGPU=false` 时剔除 BornGPU 取次优；WASM / 稀疏 / 非数值路径不进 profiling（各自规则优先）。
 - **Rule**：`profile_native | profile_born_cpu | profile_born_gpu`；Reason 携带实测 ns/op 与样本行数。
-- **默认不变**：未设 env 时决策表 2.0 行为原样（`TestBackendProfileEnvOff` 锁定）。
+- **默认不变**：未设 env 时决策表 2.1 行为原样（桌面 Native；`TestBackendProfileEnvOff` 锁定）。
+
+**WASM / js**：`GOOS=js` 下 `tree.BornEngine` 委托 `NativeEngine`（`tree/born_js.go`）。BackendAuto 一律 `wasm_native` → Native。显式 `BackendBornCPU` 在 js 上仍是 Native 包装。
 
 ### 仍默认不做（需产品信号）
 
@@ -107,7 +108,7 @@ opts.Backend = res.Pick                    // 用测量结果替代启发式
 | 在线单条 / 小批（batch≪64） | **Native**（默认 Auto 即如此） |
 | 大批量离线打分（batch≥64） | **Native**（默认）；实测 Born 更快再 `BackendBornCPU` 或 `LEAVES_BACKEND_PROFILE=1` |
 | Windows + 大批量 + GPU | **experimental**：显式 `BackendBornGPU`（参考机 wgpu v0.30.x 计时异常/挂起，v2.7.2 起 profiling 有预算+超时守卫；自测后再上） |
-| WASM / js | 小批（<64）→ **BornCPU**（实测快 1.6–2.6×）；大批 → **Native**（打平取 golden） |
+| WASM / js | **Native**（BornEngine 在 js 上委托 Native） |
 | 高稀疏 CSR | 设 `SparseDensity` 或显式 Native |
 | 含 cat-small 类别分裂 | 强制 Native |
 

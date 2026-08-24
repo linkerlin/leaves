@@ -24,18 +24,6 @@ func TestReleaseDocsPresent(t *testing.T) {
 
 	required := []string{
 		filepath.Join(docsDir, "release-checklist.md"),
-		filepath.Join(docsDir, "release-notes-v2.1.0.md"),
-		filepath.Join(docsDir, "release-notes-v2.1.1.md"),
-		filepath.Join(docsDir, "release-notes-v2.1.2.md"),
-		filepath.Join(docsDir, "release-notes-v2.1.3.md"),
-		filepath.Join(docsDir, "release-notes-v2.1.4.md"),
-		filepath.Join(docsDir, "release-notes-v2.1.5.md"),
-		filepath.Join(docsDir, "release-notes-v2.1.6.md"),
-		filepath.Join(docsDir, "release-notes-v2.2.0.md"),
-		filepath.Join(docsDir, "release-notes-v2.3.0.md"),
-		filepath.Join(docsDir, "release-notes-v2.4.0.md"),
-		filepath.Join(docsDir, "release-notes-v2.6.0.md"),
-		filepath.Join(docsDir, "release-notes-v2.6.1.md"),
 		filepath.Join(docsDir, "versioning.md"),
 		filepath.Join(docsDir, "api-surface.md"),
 		filepath.Join(docsDir, "interop-matrix.md"),
@@ -53,11 +41,54 @@ func TestReleaseDocsPresent(t *testing.T) {
 		filepath.Join(root, "演进方案.md"),
 		filepath.Join(root, "TODO.md"),
 	}
+	notes, err := filepath.Glob(filepath.Join(docsDir, "release-notes-v*.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(notes) < 20 {
+		t.Errorf("expected ≥20 release-notes-v*.md, got %d", len(notes))
+	}
+	required = append(required, notes...)
 	for _, p := range required {
 		st, err := os.Stat(p)
 		if err != nil || st.IsDir() {
 			t.Errorf("missing required doc: %s (%v)", p, err)
 		}
+	}
+}
+
+// TestNoDoubleV2Import 根包模块路径是 github.com/linkerlin/leaves/v2（package leaves），
+// 禁止文档/代码写成 .../v2/v2（会无法编译）。
+func TestNoDoubleV2Import(t *testing.T) {
+	root := repoRoot(t)
+	// 拼接以免本测试文件命中自己。
+	quoted := `"` + "github.com/linkerlin/leaves/v2" + "/v2" + `"`
+	err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			switch d.Name() {
+			case ".git", "vendor", "bin":
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if !strings.HasSuffix(path, ".md") && !strings.HasSuffix(path, ".go") {
+			return nil
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		if strings.Contains(string(data), quoted) {
+			rel, _ := filepath.Rel(root, path)
+			t.Errorf("%s: forbidden import %s (root package is github.com/linkerlin/leaves/v2)", rel, quoted)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 

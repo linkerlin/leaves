@@ -5,7 +5,7 @@
 ## 构建
 
 ```bash
-cp "$(go env GOROOT)/misc/wasm/wasm_exec.js" examples/wasm/
+cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" examples/wasm/
 GOOS=js GOARCH=wasm go build -o examples/wasm/leaves.wasm ./examples/wasm
 ```
 

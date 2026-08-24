@@ -45,7 +45,7 @@ go test ./cmd/leaves ./tree ./io ./objective ./metrics -count=1
 
 | 文档 | 检查 |
 |------|------|
-| [README.md](../README.md) / [README.en.md](../README.en.md) | 推荐入口、支持等级、BackendAuto 2.0 一致 |
+| [README.md](../README.md) / [README.en.md](../README.en.md) | 推荐入口、支持等级、BackendAuto 2.1 一致 |
 | [docs/api-surface.md](api-surface.md) | 推荐 / 兼容 / 实验分层无过期 API |
 | [docs/versioning.md](versioning.md) | v2.x 允许变更边界 |
 | [docs/interop-matrix.md](interop-matrix.md) | 与 `io.SupportOf` 一致 |
@@ -75,7 +75,7 @@ go test ./cmd/leaves ./tree ./io ./objective ./metrics -count=1
 ## 4. 兼容与互操作
 
 - [ ] 稳定格式加载路径未回归（LGB / XGB JSON·UBJ·bin / leaves.json）
-- [ ] SK 仍标 **实验**；ONNX 为 **实验子集**（非完整 Graph）
+- [ ] SK 仍标 **实验**；ONNX TreeEnsemble 为 **实验子集**（Regressor + Classifier）；完整 Graph 走 `LoadOnnxGraph`（非 wasm）
 - [ ] `DefaultLoadOptions().AutoTransform == true` 行为有 NOTES/README 说明
 - [ ] 根包 `LGEnsembleFromFile` / `XGEnsembleFromFile` 仍委托可用（兼容层）
 - [ ] 无「静默破坏」metrics/CLI schema（升 `schema_version` 须记 versioning）
@@ -89,7 +89,7 @@ go test ./cmd/leaves ./tree ./io ./objective ./metrics -count=1
 
 对照 [演进计划 §七](../演进计划.md) / [演进方案 非目标](../演进方案.md)：
 
-- 无内置 HPO / 官方 registry / 分布式训练 / 完整 ONNX Graph
+- 无内置 HPO / 官方 registry / 分布式训练 / 官方 serving 框架
 
 ## 建议 Release Notes 骨架
 

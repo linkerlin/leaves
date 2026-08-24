@@ -2,7 +2,7 @@
 // Engine 为树模型与线性模型的统一推理接口。
 package predict
 
-// Engine 是可插拔推理后端（树模型、线性模型、GoMLX 等）。
+// Engine 是可插拔推理后端（Native / Born 树引擎、线性模型等）。
 type Engine interface {
 	PredictDense(
 		vals []float64, nrows int, ncols int,

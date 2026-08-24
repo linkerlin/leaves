@@ -210,27 +210,35 @@ func probeXGBBinaryHeader(f *os.File) bool {
 
 // LoadFromFile 从文件自动检测格式并加载模型。
 // 失败时返回 *LoadError（含 support level 与 hint），便于 Agent/人类排障。
+//
+// XGB JSON/UBJ/bin、leaves.json、LightGBM text/JSON、ONNX、sklearn pickle
+// 在 io 内直接转 ForestIR，不需要 blank import 根包。
 func LoadFromFile(filename string, opts *LoadOptions) (*model.Ensemble, error) {
 	if opts == nil {
 		opts = DefaultLoadOptions()
 	}
-	if registeredLoader == nil || registeredBuilder == nil {
-		return nil, fmt.Errorf("io loader not registered: import github.com/linkerlin/leaves to enable")
-	}
 
-	// 先探测：ONNX 等占位格式直接可操作失败，不进入遗留 loader。
 	format, derr := DetectFormat(filename)
 	if derr != nil {
 		return nil, wrapDetectError(filename, derr)
 	}
 	if format == FormatONNX {
-		// LIB-10：TreeEnsembleRegressor 极小子集；失败带 experimental hint。
 		return LoadONNX(filename, opts)
 	}
 
+	ens, err := loadIRFormat(filename, format, opts)
+	if err == nil {
+		return ens, nil
+	}
+	if err != errNeedLegacyLoader {
+		return nil, wrapLoadError(filename, format, err)
+	}
+
+	if registeredLoader == nil || registeredBuilder == nil {
+		return nil, wrapLoadError(filename, format, fmt.Errorf("io loader not registered: import github.com/linkerlin/leaves/v2 to enable"))
+	}
 	legacy, err := registeredLoader(filename, opts)
 	if err != nil {
-		// 探测与 loader 可能不一致时，以探测结果标注等级；未知则再探测一次。
 		if format == FormatUnknown {
 			if f2, e2 := DetectFormat(filename); e2 == nil {
 				format = f2
@@ -241,9 +249,60 @@ func LoadFromFile(filename string, opts *LoadOptions) (*model.Ensemble, error) {
 	if legacy == nil {
 		return nil, wrapLoadError(filename, format, fmt.Errorf("loader returned nil model"))
 	}
-	ens, err := registeredBuilder(legacy, opts)
+	ens, err = registeredBuilder(legacy, opts)
 	if err != nil {
 		return nil, wrapLoadError(filename, format, err)
 	}
 	return ens, nil
+}
+
+var errNeedLegacyLoader = fmt.Errorf("need legacy loader")
+
+func loadIRFormat(filename string, format Format, opts *LoadOptions) (*model.Ensemble, error) {
+	switch format {
+	case FormatXGBoostJSON:
+		r, err := ParseXGBoostJSONFile(filename)
+		if err != nil {
+			return nil, err
+		}
+		return ensembleFromIR(r.IR, r.Objective, opts)
+	case FormatXGBoostUBJSON:
+		r, err := ParseXGBoostUBJSONFile(filename)
+		if err != nil {
+			return nil, err
+		}
+		return ensembleFromIR(r.IR, r.Objective, opts)
+	case FormatXGBoost:
+		r, err := ParseXGBoostBinaryFile(filename)
+		if err != nil {
+			return nil, err
+		}
+		return ensembleFromIR(r.IR, r.Objective, opts)
+	case FormatLeavesJSON:
+		r, err := LoadLeavesJSONFile(filename)
+		if err != nil {
+			return nil, err
+		}
+		return ensembleFromIR(r.IR, r.Objective, opts)
+	case FormatLightGBM:
+		r, err := ParseLightGBMTextFile(filename)
+		if err != nil {
+			return nil, err
+		}
+		return ensembleFromIR(r.IR, r.Objective, opts)
+	case FormatLightGBMJSON:
+		r, err := ParseLightGBMJSONFile(filename)
+		if err != nil {
+			return nil, err
+		}
+		return ensembleFromIR(r.IR, r.Objective, opts)
+	case FormatSklearn:
+		r, err := ParseSklearnPickleFile(filename)
+		if err != nil {
+			return nil, err
+		}
+		return ensembleFromIR(r.IR, r.Objective, opts)
+	default:
+		return nil, errNeedLegacyLoader
+	}
 }

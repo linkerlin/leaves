@@ -17,6 +17,9 @@ func FuzzLoadFromFileBytes(f *testing.F) {
 	for _, seed := range []string{
 		"../testdata/breast_cancer_xgb_baseline.json",
 		"../testdata/_v.json",
+		"../testdata/lg_breast_cancer.txt",
+		"../testdata/lg_dart_breast_cancer.json",
+		"../testdata/sk_gradient_boosting_classifier.model",
 	} {
 		if b, err := os.ReadFile(seed); err == nil {
 			f.Add(b)

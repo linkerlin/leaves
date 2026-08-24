@@ -4,18 +4,6 @@ import (
 	"math"
 )
 
-// LgTreeToTreeIR 将现有的 lgTree 结构转换为通用 TreeIR。
-// 这是 Phase 0 的兼容桥——后续 IO 层会直接生成 TreeIR 而无需此转换。
-func LgTreeToTreeIR(tree interface{}, useXGBoostStyle bool) *TreeIR {
-	// 使用反射或类型断言来处理 lgTree
-	// 当前 lgTree 的定义在 leaves 包中（未导出），这里通过接口抽象
-	// 实际转换由调用方完成。此处提供基于接口的版本。
-
-	// 由于 lgTree 是未导出类型，此处仅保留接口占位。
-	// 实际转换逻辑放在根包或 io 包中。
-	return nil
-}
-
 // BuildTreeIR 将 LeafNode/DecisionNode 风格的数据转为 TreeIR。
 // nodes: 节点数组，叶子值数组分开存储。
 // 这是通用的转换函数，与具体框架无关。

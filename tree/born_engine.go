@@ -6,9 +6,13 @@ package tree
 import (
 	"fmt"
 	"math"
+	"time"
 
 	borncpu "github.com/born-ml/born/backend/cpu"
 )
+
+// GPUPredictTimeout 显式 BornGPU Predict* 超时（与 profiling 总超时同量级）。
+const GPUPredictTimeout = 8 * time.Second
 
 var _ Engine = (*BornEngine)(nil)
 
@@ -100,26 +104,42 @@ func (e *BornEngine) PredictSingle(fvals []float64, nEstimators int) float64 {
 }
 
 func (e *BornEngine) Predict(fvals []float64, nEstimators int, predictions []float64) error {
-	if len(predictions) < e.NOutputGroups() {
-		return fmt.Errorf("predictions slice too short")
-	}
-	if e.NFeatures() > len(fvals) {
-		return fmt.Errorf("incorrect number of features")
-	}
-	nEst := e.adjNEst(nEstimators)
-	if e.outputType == TransformLeafIndex {
-		return e.predictLeafIndicesRow(fvals, nEst, predictions, 0)
-	}
-	m, err := e.bornMargins(fvals, 1, len(fvals), nEst)
-	if err != nil || len(m) == 0 {
-		return err
-	}
-	copy(predictions, m[0])
-	e.applyTransform(predictions, 0)
-	return nil
+	return e.PredictDense(fvals, 1, len(fvals), predictions, nEstimators)
 }
 
 func (e *BornEngine) PredictDense(vals []float64, nrows, ncols int, predictions []float64, nEstimators int) error {
+	return e.predictGuarded(func() error {
+		return e.predictDenseInner(vals, nrows, ncols, predictions, nEstimators)
+	})
+}
+
+func (e *BornEngine) predictGuarded(fn func() error) (err error) {
+	defer func() {
+		if rec := recover(); rec != nil {
+			err = fmt.Errorf("born: walk panic: %v", rec)
+		}
+	}()
+	if !e.usingGPU {
+		return fn()
+	}
+	done := make(chan error, 1)
+	go func() {
+		defer func() {
+			if rec := recover(); rec != nil {
+				done <- fmt.Errorf("born: GPU walk panic: %v", rec)
+			}
+		}()
+		done <- fn()
+	}()
+	select {
+	case err := <-done:
+		return err
+	case <-time.After(GPUPredictTimeout):
+		return fmt.Errorf("born: GPU predict timed out after %s; use BackendNative or set LEAVES_BORN_GPU=0", GPUPredictTimeout)
+	}
+}
+
+func (e *BornEngine) predictDenseInner(vals []float64, nrows, ncols int, predictions []float64, nEstimators int) error {
 	if len(predictions) < e.NOutputGroups()*nrows {
 		return fmt.Errorf("predictions slice too short")
 	}
