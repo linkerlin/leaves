@@ -29,6 +29,7 @@ type ModelIR struct {
 	Name             string
 	FeatureNames     []string
 	FeatureTypes     []string // XGBoost："float" / "c"
+	CategoryMaps     map[string]map[string]float64
 
 	// XGBoost 3.x 元数据（round-trip）
 	XGBVersion          []int

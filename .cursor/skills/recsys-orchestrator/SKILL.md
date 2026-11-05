@@ -210,9 +210,10 @@ mkdir -p recsys/{raw,clean,catalog,recall,rank,models,deal,meta}
 `evaluation.json`（eval）· `ledger.jsonl`（决策/曝光/反馈）· `monitor_report.json` ·
 `replay_report.json` · `release_evidence.json` + `run_status.jsonl`（release）。
 
-**shell 入口**（`recsys/cmd/control`，零 Go 代码编排八段剧本）：
+**shell 入口**（`recsys/cmd/control`，零 Go 代码编排四段生产流水线与八段控制面剧本；支持全局 `--error-format json` 或 `-json` 保证纯 JSON stdout/stderr）：
 
 ```text
+control pipeline -workspace DIR [-interactions raw.tsv -catalog items.tsv | -movielens-dir DIR | -synth] -out pipe_report.json
 control snapshot -workspace DIR -out snapshot.json -snapshot-id S -purpose release -time-start T -time-end T
 control split -events events.jsonl -train-end T -val-start T -test-start T -out-dir split/
 control eval -workspace DIR -thresholds th.json -out evaluation.json
@@ -221,7 +222,7 @@ control append-exposure -ledger ledger.jsonl -in exposures.jsonl
 control append-feedback -ledger ledger.jsonl -in feedback.jsonl
 control replay -ledger ledger.jsonl -out samples.jsonl -report replay_report.json
 control monitor -ledger ledger.jsonl -workspace DIR -window-start T -window-end T -thresholds th.json -triggers tr.json -fired fired.jsonl
-control release -state release_state.json -action candidate|approve|confirm-promote|observe|retrain|rollback|retire|status
+control release [--error-format json] -state release_state.json -action candidate|approve|confirm-promote|observe|retrain|rollback|retire|status
 ```
 
 退出码 0/1/2（1=用法/IO，2=校验/内部）；promote/rollback 请求打印到 stdout，

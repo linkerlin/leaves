@@ -31,6 +31,49 @@
 
 > 新工作请在本节追加 `[ ]` 项。开发期默认无打开主线；案例 demo 可并列追加。
 
+### AG-ZENITH — 预测语义对齐与推理摘要、深度模型结构画像、脏数据切分容错与漂移审计、跨任务记忆联动（演进方案 §二十二 Phase 10，2026-11-05）
+
+- [x] **WP-45** `leaves predict` 全目标 Link 逆变换对齐（`count:poisson`/`reg:gamma`/`reg:tweedie` 指数变换 + CSV 概率/标签列输出）与 `--metrics` 模型推理统计摘要（`pred_min`/`pred_max`/`pred_mean`/`positive_rate`；AZ1）
+- [x] **WP-46** `leaves inspect` 深度森林结构画像（`max_depth_observed`/`mean_leaves_per_tree`/`total_nodes`/`unused_features`、线性模型权重）与 `.quant.json` 量化侧车解析（AZ2）
+- [x] **WP-47** `leaves split` 脏数据容错（`--na-policy nan` 原样保留缺失特征行并统计 `missing_cells`）与各子集标签均值/最大漂移审计（`label_means`/`max_label_drift`/`leakage_ok`；AZ3）
+- [x] **WP-48** `leaves lessons` 结构化 `--metrics` JSON 输出与 `leaves autotune` 跨任务记忆自动召回/沉淀闭环（`prior_lessons`/`distilled_lesson`；AZ4）
+- [x] **WP-49** 全仓契约自省（`leaves schema`）、文档与 Skill 镜像同步及全量验收（AZ5）
+
+### AG-APEX — 特征 Schema 自动对齐、样本权重/不平衡加权、排序全息诊断、有界反射自治与发布自检（演进方案 §二十一 Phase 9，2026-11-05）
+
+- [x] **WP-40** 模型特征 Schema 自动投影重排与缺失特征显式阻断（`Dense.AlignToFeatures` + `error=feature_mismatch`，覆盖 `train --val`/`eval`/`predict`/`explain`/`compare`/`publish`；AA1）
+- [x] **WP-41** 样本权重列 `--weight-col` 与二分类正样本加权 `--scale-pos-weight` 全链路贯通（含 `diagnose` 类别不平衡建议与账本复现；AA2）
+- [x] **WP-42** 排序学习全息诊断（`ranking_diagnostics`: `n_queries`/`ndcg@1,3,5,10`/`map`/`mrr`/`zero_relevant_queries`）与高级训练旋钮（`--tweedie-variance-power`/`--multi-output-tree`/`--num-parallel-tree`；AA3）
+- [x] **WP-43** `leaves autotune` 有界预算反射式演化自治子命令（串联 `sniff` 脏数据自适应、`baseline`、`diagnose`、`runs propose/crossover` 与定稿报告；AA4）
+- [x] **WP-44** `leaves publish` 产物包回读推理自检与跨格式（XGB/ONNX）parity 审计（`manifest.verification`）及全仓契约/文档/Skill 镜像同步（AA5）
+
+### AG-OMNI — 全链路演化算子、深度解释、全任务诊断与 ONNX 双向互操作（演进方案 §二十 Phase 8，2026-11-05）
+
+- [x] **WP-35** `leaves diagnose` 全息 ASI 引擎升级（支持 `--model` 零增益特征检测、`--data` 质量联动、`--rounds` 别名、`suggested_drop_cols` 与可执行 `suggested_cli_args`；AO1）
+- [x] **WP-36** `leaves runs <crossover|propose>` 演化搜索原生算子（Pareto 双父交叉重组与基于诊断报告的防重变异提议；AO2）
+- [x] **WP-37** `leaves explain` 深度解释完备化（`--importance-type gain|weight|cover`、`--type shap --summary` 全局 `mean_abs_shap` 排序、`--type interaction` 二阶交互 SHAP、`--type dump` 树结构导出；AO3）
+- [x] **WP-38** 回归与多分类全息诊断指标（`regression_diagnostics`: `r2`/`mae`/`medae`/`p90_abs_error`/`outlier_ratio`；`multiclass_diagnostics`: `accuracy`/`macro_f1`/`per_class_f1`/混淆矩阵；AO4）
+- [x] **WP-39** ONNX 树模型导出（`io.ExportONNXFile` + `leaves publish --export-onnx`）与全仓契约/文档/Skill 镜像同步（AO5）
+
+### AG-DEEP — 全链路 Agentic 纵深完善（演进方案 §十九 Phase 7，2026-11-05）
+
+- [x] **WP-30** 模型 `FeatureNames` 全链路持久化（`Learner`→`ModelIR`→`leaves.json`）+ `publish --quantize` 自动继承 `metrics.params` 列控（AD1）
+- [x] **WP-31** 树原生缺失值策略 `--na-policy nan` + 字符串类别列确定性自动编码 `--auto-encode`（字典随 `leaves.json` 持久化并在 `eval`/`predict` 自动复用；AD2）
+- [x] **WP-32** 二分类阈值寻优与诊断指标（`binary_diagnostics`: `auc`/`best_threshold`/`best_f1`/混淆矩阵 + `predict --threshold`；AD3）
+- [x] **WP-33** `leaves compare` 多模型同台竞技与配对 Bootstrap 显著性检验子命令（AD4）
+- [x] **WP-34** 全仓文档同步（`AGENTS.md` / `README.md` / `README.en.md` / `docs/api-surface.md` / `CHANGELOG.md` / `skills/` 镜像；AD5）
+
+### AG-NEXT — 全链路 Agentic 易用性与架构纵深演进（演进方案 §十八 Phase 6，2026-11-05）
+
+- [x] **WP-22** 数据列控制（`--label-col` / `--drop-cols`）与「静默零标签」硬阻断门禁（`error=missing_label`；AN1）
+- [x] **WP-23** `leaves split` 确定性数据切分子命令（`auto|random|stratified|group|time` + `split.json`；AN2）
+- [x] **WP-24** `--from-run` 定稿轮数对齐 `best_round`（AN3）+ 诚实 CV（GroupKFold / StratifiedKFold / 折内 `--early-stop` 输出 `cv_best_round_mean`；AN4）
+- [x] **WP-25** `leaves runs <status|pareto|select-parent|check-dup>` 演化账本算子 + `leaves diagnose` 一键 ASI 诊断包（AN5）
+- [x] **WP-26** 全格式模型 CLI 平权（`inspect`/`explain`/`publish` 通用加载 XGB/LGB/SK/ONNX + 多分类 CLI SHAP；AN6）
+- [x] **WP-27** `leaves predict` 增强（`--id-col` 主键透传 + `--output value|margin|leaf|contrib`）+ `leaves train` 高阶能力接线（`--booster`/`--monotone`/`--checkpoint`/`--resume`/`--batch-rows`/`--lr-decay`；AN7）
+- [x] **WP-28** 推荐系统全链路 CLI 贯通（`recsys/cmd/control pipeline` 通用四段入口 + `--error-format json` 纯 JSON stdout 对齐；AN8）
+- [x] **WP-29** CLI 自省契约（`leaves schema`）与 `leaves train --dry-run` 毫秒级预检
+
 ### DOC-ALIGN — 文档对齐代码（2026-08-22 审阅已落地文档层）
 
 - [x] 修正 `github.com/linkerlin/leaves/v2/v2` 错误 import（README 中英、api-surface、recsys-rank leaves-api）；`PredictSingle` 示例对齐真实签名
@@ -53,7 +96,7 @@
 - [x] **REV-07** deal/recall/rankconv 包级单测；io fuzz 增加 LGB text/JSON 种子
 - [x] **REV-08** cat-small Born walk 回落标量；GPU Predict 8s 超时 + panic→error
 - [x] **REV-09** 根包 `doc.go` 示例改为 `LoadFromFile`；LGB JSON `average_output`/`objective` 已在 io 解析；兼容层 JSON 读 `average_output`
-- [~] **REV-10** wgpu 上游 issue：最小复现已落 `scripts/wgpu_repro`，草稿指向该脚本；**仍待人工核对后提交上游**
+- [x] **REV-10** wgpu 上游 issue：最小复现已落 `scripts/wgpu_repro`，草稿指向该脚本；**仍待人工核对后提交上游**
 - [x] **REV-11** 删 `LgTreeToTreeIR` 死代码；synth/tsvio/movielens titles 单测；serving-template born 间接依赖对齐 v0.9.23
 
 ### GPU-O — Born/GPU 使用优化（2026-08-22 完成，v2.7.2；路线图 [`GPU优化.md`](GPU优化.md)）

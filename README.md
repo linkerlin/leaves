@@ -452,11 +452,11 @@ Agent 会自动：嗅探数据定任务类型 → CV 基线 → 按 SKILL §4.5 
 | [`examples/autotrain/`](examples/autotrain/README.md) | 零准备 demo |
 
 ```
-sniff → train(--cv --runs --tag [--early-stop 默认 save-best] [--from-run])
-  → 读 metrics/runs → 决策表调参 → 收敛 → inspect → publish(--emit-repro-script)
+sniff → [split] → train(--cv --runs --tag [--early-stop 默认 save-best] [--from-run])
+  → runs/diagnose 读账本与 ASI 诊断 → 决策表调参 → 收敛 → compare/inspect → publish(--emit-repro-script)
 ```
 
-边界：**本地工件包**（非 registry）；不内置 HPO；CSV 默认无缺失（`--na-policy skip-row` 可丢行，不做插补）。
+边界：**本地工件包**（非 registry）；不内置 HPO；CSV 默认无缺失（`--na-policy skip-row` 可丢行，`--na-policy nan` 保留 NaN 走树默认方向；`--auto-encode` 可自动字典序编码类别列并持久化至模型）。
 
 ```powershell
 go run ./cmd/leaves --error-format json sniff --data train.csv
@@ -470,8 +470,8 @@ go run ./cmd/leaves publish --model m.leaves.json --out-dir release/ --quantize 
 
 | 要做什么 | 命令 | 说明 |
 |----------|------|------|
-| 训练 / 评估 / 发布 / lessons | `go run ./cmd/leaves <sniff\|train\|eval\|predict\|inspect\|explain\|publish\|lessons\|version>` | Agent 主闭环；SKILL `leaves-autotrain` |
-| 推荐生产闭环八段 | `go run ./recsys/cmd/control <snapshot\|split\|eval\|…>` | 控制面；`snapshot` 必填 `-time-start/-time-end` |
+| 训练 / 评估 / 对比 / 发布 / lessons | `go run ./cmd/leaves <sniff\|split\|train\|runs\|diagnose\|eval\|compare\|predict\|inspect\|explain\|publish\|lessons\|schema\|version>` | Agent 主闭环；SKILL `leaves-autotrain` |
+| 推荐生产闭环八段 | `go run ./recsys/cmd/control <pipeline\|snapshot\|split\|eval\|…>` | 控制面；支持 `pipeline` 一键闭环与纯 JSON stdout |
 | 离线四段 smoke | `go run ./recsys/cmd/smoke` | 合成数据 prep→召回→LTR→发牌 |
 | MovieLens 四段 | `go run ./recsys/cmd/movielens` | 真实 `u.data` |
 | MovieLens 精排 demo | `go run ./demos/movielens/cmd/{train,recommend,agent}` | 案例；`cmd/mcp` 为可选 demo，不是主闭环 |

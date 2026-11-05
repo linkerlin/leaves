@@ -32,8 +32,8 @@ Agent 通过 **SKILL 指导 + shell CLI + metrics.json** 完成全自动「训�
 - **推荐系统 SKILL**：[`skills/recsys-orchestrator/`](skills/recsys-orchestrator/SKILL.md)（召回→排序→发牌四段流水线 + §十生产闭环八段剧本）
 - **推荐控制面包**（§十七 RC）：`recsys/{contract,split,eval,ledger,replay,monitor,release}` —— 快照/事件/决策/曝光/反馈/证据契约、时间切分防泄漏、三层门禁、账本、归因回放、监控、发布状态机 + `release.Adapter`（只产出推广/回滚请求，无网络副作用）；端到端演练 `recsys/loop`；指南 [`docs/recsys-loop.md`](docs/recsys-loop.md)
 - **MovieLens Ranker**：[`demos/movielens/TUTORIAL.md`](demos/movielens/TUTORIAL.md) · [`skills/recsys-movielens-ranker/`](skills/recsys-movielens-ranker/SKILL.md)（demo 另有可选 `cmd/mcp`，**不是**主闭环依赖）
-- **通用 CLI**：`go run ./cmd/leaves <sniff|train|eval|predict|inspect|explain|publish|lessons|version>` —— sniff 自动推荐 objective；train 支持 `--cv`/`--runs`/`--tag`/`--emit-rounds`；explain 输出特征重要性/SHAP；`lessons` 跨任务记忆；子命令均写 metrics.json（version 除外）
-- **CLI 入口（用哪条命令）**：见 README「CLI 入口」表——训练发布用 `cmd/leaves`；推荐八段控制面用 `recsys/cmd/control`；离线四段用 `recsys/cmd/smoke`；MovieLens 案例用 `demos/movielens/cmd/*`（含可选 MCP）
+- **通用 CLI**：`go run ./cmd/leaves <sniff|split|train|autotune|runs|diagnose|eval|compare|predict|inspect|explain|publish|lessons|schema|version>` —— sniff 自动推荐 objective 并检测 ID/类别/缺失列；split 零泄漏切分；train 支持 `--cv`/`--runs`/`--tag`/`--emit-rounds`/`--label-col`/`--drop-cols`/`--weight-col`/`--scale-pos-weight`/`--na-policy`/`--auto-encode`；autotune 一键有界预算反射式演化自治闭环；runs/diagnose/compare 原生支撑演化搜索（含 `crossover`/`propose`）与多模型配对 Bootstrap 对比；explain 支持多维重要性、全局 SHAP 汇总、二阶交互 SHAP 与树结构 dump；publish 支持 `--quantize`/`--export-xgb`/`--export-onnx` 及回读 parity 自检；`lessons` 跨任务记忆；`schema` 机器自省契约；子命令均写 metrics.json（version/schema 除外）
+- **CLI 入口（用哪条命令）**：见 README「CLI 入口」表——训练发布用 `cmd/leaves`；推荐八段控制面用 `recsys/cmd/control`（支持 `pipeline` 一键全链路及各单步命令）；离线四段用 `recsys/cmd/smoke`；MovieLens 案例用 `demos/movielens/cmd/*`（含可选 MCP）
 - **闭环原语**：`train.NewLearner`/`Fit`/`Eval`/`CrossValidate`、`data.FromFileAuto`、`learner.Model()`→`io.SaveLeavesJSONFile`/`ExportXGBoostJSONFile`、`quantize.QuantizeForest`
 
 ## 文档

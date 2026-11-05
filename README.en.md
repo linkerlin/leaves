@@ -510,8 +510,8 @@ Zero-prep demo: [`examples/autotrain/`](examples/autotrain/README.md).
 
 | Job | Command |
 | --- | ------- |
-| Train / eval / publish / lessons | `go run ./cmd/leaves …` |
-| Recsys eight-stage control plane | `go run ./recsys/cmd/control …` (`snapshot` requires `-time-start/-time-end`) |
+| Train / eval / compare / publish / lessons | `go run ./cmd/leaves <sniff\|split\|train\|runs\|diagnose\|eval\|compare\|predict\|inspect\|explain\|publish\|lessons\|schema\|version>` |
+| Recsys eight-stage control plane | `go run ./recsys/cmd/control <pipeline\|snapshot\|split\|eval\|…>` (`snapshot` requires `-time-start/-time-end`) |
 | Offline four-stage smoke | `go run ./recsys/cmd/smoke` |
 | MovieLens four-stage | `go run ./recsys/cmd/movielens` |
 | MovieLens ranker demo | `go run ./demos/movielens/cmd/{train,recommend,agent}` (`cmd/mcp` optional) |

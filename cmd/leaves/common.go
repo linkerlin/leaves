@@ -34,8 +34,23 @@ type paramsRecord struct {
 	EarlyStop      int     `json:"early_stop,omitempty"`
 	CVFolds        int     `json:"cv_folds,omitempty"`
 	// Val（AGUX-08）：验证集路径——非超参，但早停 run 的忠实复现需要它（manifest.reproduce / --from-run）。
-	Val        string `json:"val,omitempty"`
-	EvalMetric string `json:"eval_metric,omitempty"`
+	Val                  string  `json:"val,omitempty"`
+	EvalMetric           string  `json:"eval_metric,omitempty"`
+	LabelCol             string  `json:"label_col,omitempty"`
+	DropCols             string  `json:"drop_cols,omitempty"`
+	Booster              string  `json:"booster,omitempty"`
+	RateDrop             float64 `json:"rate_drop,omitempty"`
+	SkipDrop             float64 `json:"skip_drop,omitempty"`
+	Monotone             string  `json:"monotone,omitempty"`
+	LRDecay              float64 `json:"lr_decay,omitempty"`
+	BatchRows            int     `json:"batch_rows,omitempty"`
+	NAPolicy             string  `json:"na_policy,omitempty"`
+	AutoEncode           bool    `json:"auto_encode,omitempty"`
+	WeightCol            string  `json:"weight_col,omitempty"`
+	ScalePosWeight       float64 `json:"scale_pos_weight,omitempty"`
+	TweedieVariancePower float64 `json:"tweedie_variance_power,omitempty"`
+	MultiOutputTree      bool    `json:"multi_output_tree,omitempty"`
+	NumParallelTree      int     `json:"num_parallel_tree,omitempty"`
 }
 
 // metricsSchemaVersion 是 metrics/sniff 等 Agent 信号 JSON 的契约版本（WP-18）。
@@ -43,21 +58,23 @@ const metricsSchemaVersion = 1
 
 // metricsDoc 是 Agent 闭环的唯一信号契约（见 skills/leaves-autotrain/cli.md）。
 type metricsDoc struct {
-	SchemaVersion int       `json:"schema_version"`
-	Objective     string    `json:"objective"`
-	Metric        string    `json:"metric"`
-	Value         float64   `json:"value"`
-	Maximize      bool      `json:"maximize"`
-	NRows         int       `json:"n_rows"`
-	NFeatures     int       `json:"n_features,omitempty"`
-	CVFolds       int       `json:"cv_folds,omitempty"`
-	CVMean        float64   `json:"cv_mean,omitempty"`
-	CVStd         float64   `json:"cv_std,omitempty"`
-	FoldMetrics   []float64 `json:"fold_metrics,omitempty"`
-	TrainMetric   float64   `json:"train_metric,omitempty"`
-	BestRound     int       `json:"best_round,omitempty"`
-	StoppedRound  int       `json:"stopped_round,omitempty"`
-	ModelRound    int       `json:"model_round,omitempty"`
+	SchemaVersion   int       `json:"schema_version"`
+	Objective       string    `json:"objective"`
+	Metric          string    `json:"metric"`
+	Value           float64   `json:"value"`
+	Maximize        bool      `json:"maximize"`
+	NRows           int       `json:"n_rows"`
+	NFeatures       int       `json:"n_features,omitempty"`
+	CVFolds         int       `json:"cv_folds,omitempty"`
+	CVMean          float64   `json:"cv_mean,omitempty"`
+	CVStd           float64   `json:"cv_std,omitempty"`
+	FoldMetrics     []float64 `json:"fold_metrics,omitempty"`
+	CVBestRounds    []int     `json:"cv_best_rounds,omitempty"`
+	CVBestRoundMean float64   `json:"cv_best_round_mean,omitempty"`
+	TrainMetric     float64   `json:"train_metric,omitempty"`
+	BestRound       int       `json:"best_round,omitempty"`
+	StoppedRound    int       `json:"stopped_round,omitempty"`
+	ModelRound      int       `json:"model_round,omitempty"`
 	// TrainAccel：Fit 后实际生效的训练加速模式（POST-13）；与推理 BackendAuto 无关。
 	TrainAccel string `json:"train_accel,omitempty"`
 	// FinalModel / FinalRound：--out-final 侧车（POST-12）；早停时为截断前 final-round。
@@ -65,9 +82,13 @@ type metricsDoc struct {
 	FinalRound int    `json:"final_round,omitempty"`
 	// NTrees / ElapsedMS（EVO-02）：模型树数与训练耗时（毫秒），供 Agent 做
 	// 「指标 vs 模型大小/耗时」Pareto 与时间感知的筛选晋级；gblinear 等无森林时省略。
-	NTrees    int           `json:"n_trees,omitempty"`
-	ElapsedMS int64         `json:"elapsed_ms,omitempty"`
-	Params    *paramsRecord `json:"params,omitempty"`
+	NTrees                int                    `json:"n_trees,omitempty"`
+	ElapsedMS             int64                  `json:"elapsed_ms,omitempty"`
+	BinaryDiagnostics     *binaryDiagnostics     `json:"binary_diagnostics,omitempty"`
+	RegressionDiagnostics *regressionDiagnostics `json:"regression_diagnostics,omitempty"`
+	MulticlassDiagnostics *multiclassDiagnostics `json:"multiclass_diagnostics,omitempty"`
+	RankingDiagnostics    *rankingDiagnostics    `json:"ranking_diagnostics,omitempty"`
+	Params                *paramsRecord          `json:"params,omitempty"`
 }
 
 // newParamsRecord 从 train CLI 旋钮组装完备 params（Agent 账本复现用）。
@@ -139,6 +160,8 @@ type runRecord struct {
 	// 折级 Pareto 选父与预算感知筛选所需的账本信号；metrics 已有、账本行此前缺。
 	// ElapsedMS 不用 omitempty：账本契约「每行必带」，0 表示 <1ms（CI 小数据即 0）。
 	FoldMetrics []float64     `json:"fold_metrics,omitempty"`
+	BestRound   int           `json:"best_round,omitempty"`
+	ModelRound  int           `json:"model_round,omitempty"`
 	NTrees      int           `json:"n_trees,omitempty"`
 	ElapsedMS   int64         `json:"elapsed_ms"`
 	Params      *paramsRecord `json:"params,omitempty"`
@@ -148,6 +171,10 @@ type runRecord struct {
 func appendRun(runsPath, tag, modelPath string, doc metricsDoc) error {
 	if runsPath == "" {
 		return nil
+	}
+	bestR := doc.BestRound
+	if bestR <= 0 && doc.CVBestRoundMean > 0 {
+		bestR = int(math.Round(doc.CVBestRoundMean))
 	}
 	rec := runRecord{
 		Tag:         tag,
@@ -160,6 +187,8 @@ func appendRun(runsPath, tag, modelPath string, doc metricsDoc) error {
 		CVMean:      doc.CVMean,
 		CVStd:       doc.CVStd,
 		FoldMetrics: doc.FoldMetrics,
+		BestRound:   bestR,
+		ModelRound:  doc.ModelRound,
 		NTrees:      doc.NTrees,
 		ElapsedMS:   doc.ElapsedMS,
 		Params:      doc.Params,

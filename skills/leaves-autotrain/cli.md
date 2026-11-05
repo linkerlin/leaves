@@ -79,12 +79,14 @@ Agent 用法：
 
 ```
 leaves sniff --data PATH [--metrics PATH] [--na-policy error|skip-row]
+  [--label-col NAME] [--drop-cols C1,C2]
 ```
 
 输出：
 ```json
 {"file":"...","format":"csv","n_rows":1000,"n_cols":11,"n_features":11,
  "has_label":true,"has_qid":false,"feature_names":["f0","f1", "..."],
+ "id_like_columns":["user_id"],"suggested_drop_cols":["user_id"],
  "label":{"detected":true,"min":0,"max":1,"n_unique":2,"kind":"binary"},
  "suggested_objective":"binary:logistic","suggested_metric":"logloss"}
 ```
@@ -128,6 +130,8 @@ stderr JSON 形状：
 | `data_load` | 1 | 路径不存在、格式嗅探/解析失败 | 查路径与格式 |
 | `non_numeric` | 1 | 类别字符串等 | 库外 one-hot / label encode |
 | `missing_value` | 1 | 空单元格 / NA（默认 na-policy） | 填补，或 `--na-policy skip-row` |
+| `missing_label` | 1 | 表头未命中默认标签名且未传 `--label-col` | 显式传 `--label-col <列名>` 或 `--num-target` |
+| `feature_mismatch` | 1 | 评估/预测数据表头缺失模型所需的特征列，或无表头维数不符 | 检查数据表头列是否完整包含模型 `feature_names` |
 | `objective_mismatch` | 1 | multi:* 无 `--num-class` | sniff 取 `label.n_unique` |
 | `model_load` | 1 | 模型路径/格式 | 用 leaves.json 或支持的 XGB/LGB |
 | `cv_conflict` | 1 | `--strict-flags` 且 cv 与 val/early-stop/emit-rounds 并存 | 去掉一侧 flag |
@@ -171,7 +175,25 @@ leaves train --data PATH [必需]
   --runs PATH             (运行账本 JSONL；追加本次记录，Agent 优化记忆)
   --tag NAME              (本次运行标签；与 --from-run 联用时兼作选行键)
   --from-run PATH         (从 runs.jsonl 加载 params 作默认；CLI 覆盖优先)
-  --na-policy error|skip-row  (默认 error：空/NA 单元格失败；skip-row=丢弃整行，不做插补)
+  --na-policy error|skip-row|nan (默认 error；skip-row=丢弃整行；nan=保留特征缺失为 NaN 走树默认方向)
+  --auto-encode           (自动将 CSV 非数值字符串特征列按字典序编码，并随模型持久化 category_maps)
+  --label-col NAME        (显式指定标签列名或 0-based 索引；防末列误退化为特征)
+  --drop-cols C1,C2       (显式剔除 ID/时间戳等非特征列，逗号分隔)
+  --weight-col NAME       (样本权重列名或 0-based 索引，自动从特征列剥离并传入损失函数，AG-APEX)
+  --scale-pos-weight F    (二分类正样本梯度/Hessian 权重乘子，默认 1.0，AG-APEX)
+  --tweedie-variance-power F (reg:tweedie 方差幂参数 (1,2)，默认 1.5，AG-APEX)
+  --multi-output-tree     (多分类/多目标使用向量叶单树，AG-APEX)
+  --num-parallel-tree N   (每轮并行随机森林树数，默认 1，AG-APEX)
+  --booster NAME          (gbtree|dart|gblinear，默认 gbtree)
+  --rate-drop F           (DART 丢弃率，默认 0.1)
+  --skip-drop F           (DART 跳过丢弃概率，默认 0.0)
+  --monotone C1,C2,...    (单调约束，按特征列填 1/-1/0)
+  --checkpoint PATH       (训练中途 checkpoint 路径)
+  --checkpoint-every N    (每 N 轮保存一次 checkpoint)
+  --resume PATH           (从已有模型/checkpoint 断点续训)
+  --batch-rows N          (外存/分块流式直方图训练批大小)
+  --lr-decay F            (每轮学习率衰减乘子，默认 1.0)
+  --dry-run               (毫秒级预检：校验数据/参数/冲突，输出预检 JSON，不执行训练)
   --emit-rounds PATH      (逐轮指标 JSONL；Agent 学习曲线诊断，仅单次训练)
 ```
 
@@ -187,7 +209,23 @@ leaves train --data PATH [必需]
   - `--out-final` 不得与 `--out-model` / `--metrics` 同路径。
 - **`--from-run`**：见上 runs 节；定稿复现时优先用此路径，少拼 flag。
 - **路径纪律**：`--out-model` 与 `--metrics` 不得为同一路径（CLI 会拒绝；否则 metrics 覆盖模型）。
-- **`--na-policy`**：仅 CSV；缺失 = 空单元格或 `nan/na/null/none/n/a/?`。**默认 error**（不静默改分布）；`skip-row` 丢行并在 stderr 报告跳过行数。非数值类别仍失败（须预编码）。
+- **`--na-policy`**：仅 CSV；缺失 = 空单元格或 `nan/na/null/none/n/a/?`。**默认 error**（不静默改分布）；`skip-row` 丢行并在 stderr 报告跳过行数；`nan` 保留特征缺失为 `NaN`（走 GBDT 默认方向路由）。非数值类别列默认报 `non_numeric`，开启 `--auto-encode` 时自动按字典序编码为整数并持久化 `category_maps` 至 `leaves.json`（下游 `eval`/`predict`/`explain`/`compare`/`publish` 自动复用映射，OOV 映射为 `NaN`）。
+- **二分类全息诊断（`binary_diagnostics`）**：`objective=binary:logistic` 时，`train` 与 `eval` 自动在 `metrics.json` 中输出 `binary_diagnostics`（含 `auc`、`accuracy_at_05`、`f1_at_05`、最优 F1 阈值 `best_threshold`、`best_f1`、`best_precision`、`best_recall`、`best_accuracy` 与 `confusion_matrix`）。
+- **回归全息诊断（`regression_diagnostics`，AG-OMNI）**：单目标回归任务时，`train` 与 `eval` 自动在 `metrics.json` 中输出 `regression_diagnostics`（含 `r2`、`mae`、`rmse`、`medae`、`p90_abs_error`、`max_abs_error`、`mean_residual` 与 `outlier_ratio`）。
+- **多分类全息诊断（`multiclass_diagnostics`，AG-OMNI）**：`multi:softmax|softprob` 时，`train` 与 `eval` 自动在 `metrics.json` 中输出 `multiclass_diagnostics`（含 `accuracy`、`macro_f1`、`macro_precision`、`macro_recall`、`per_class_f1` 与 $K\times K$ `confusion_matrix`）。
+- **排序学习全息诊断（`ranking_diagnostics`，AG-APEX）**：`rank:ndcg|pairwise|listwise` 时，`train` 与 `eval` 自动在 `metrics.json` 中输出 `ranking_diagnostics`（含 `n_queries`、`mean_group_size`、`min_group_size`、`max_group_size`、`zero_relevant_queries`、`ndcg_at_1`、`ndcg_at_3`、`ndcg_at_5`、`ndcg_at_10`、`map` 与 `mrr`）。
+- **模型特征 Schema 自动投影对齐（AG-APEX）**：当模型持久化了语义 `feature_names` 时，下游 `train --val`、`eval`、`predict`、`explain`、`compare` 与 `publish` 会自动按模型 `feature_names` 跳过多余列（免去重复传 `--drop-cols`）并重排列顺序；若数据缺少模型所需的任何特征列，立即报 `error=feature_mismatch`。
+
+## autotune（有界预算反射式演化自治闭环，AG-APEX）
+
+在单个有界命令内自动串联 `sniff`（脏数据自适应：自动推荐 `objective`/`metric`/`num_class`、自动开启 `--auto-encode` 与 `--na-policy nan`、自动剔除 ID/常数列、自动计算二分类 `--scale-pos-weight`）→ 第 1 轮 `baseline` → 第 $2 \dots B$ 轮 `diagnose` + `runs propose`/`crossover` 防重演化 → 最优模型定稿与谱系报告。
+
+```
+leaves autotune --data PATH [--val PATH] [--cv K] [--budget 4] [--rounds 30]
+  [--objective NAME] [--eval-metric NAME] [--num-class N] [--num-target N]
+  [--label-col NAME] [--drop-cols C1,C2] [--weight-col NAME]
+  [--out-dir DIR] [--out-model PATH] [--metrics autotune_report.json] [--seed 42]
+```
 
 ## eval
 
@@ -198,53 +236,124 @@ leaves eval --model PATH --data PATH
   --eval-metric NAME      [默认从模型 objective 推断]
   --objective NAME        [覆盖 objective；默认从模型推断，影响 margin→pred 变换]
   --num-target N          [多目标：CSV 末 N 列标签；也可从模型 n_output_groups 推断]
+  --label-col NAME        [显式指定标签列名或 0-based 索引]
+  --drop-cols C1,C2       [显式剔除冗余列]
+  --auto-encode           [若模型已含 category_maps 则自动复用]
   --metrics PATH          (输出 metrics.json)
-  --na-policy error|skip-row  (默认 error)
+  --na-policy error|skip-row|nan  (默认 error；模型含 category_maps 时自动允许 OOV NaN)
 ```
 
 多目标时 labels 为扁平 `n×N` 与预测对齐，RMSE/MAE 在全部目标元素上计算。
 
+## compare（多模型同台对比与配对 Bootstrap 显著性检验，AG-DEEP）
+
+在同一验证/测试集上评测 2 个及以上模型（支持 leaves.json / XGB / LGB / ONNX / sklearn），自动按最优排序，计算相对基线的 `delta_pct` 与确定性配对 Bootstrap 胜率及 95% 置信区间（`significant: true|false`）。
+
+```
+leaves compare --models m1.leaves.json,m2.leaves.json --data holdout.csv
+  [--eval-metric NAME] [--bootstrap 200] [--seed 42]
+  [--label-col NAME] [--drop-cols C1,C2] [--na-policy error|skip-row|nan] [--auto-encode]
+  [--metrics compare.json]
+```
+
 ## predict
 
-加载模型，输出每行预测（JSONL）。
+加载模型，输出每行预测（JSONL 或 CSV）并可选输出推理统计摘要（`--metrics`）。
 
 ```
 leaves predict --model PATH --data PATH --out PATH
-  --format jsonl|csv       (默认 jsonl；csv：单输出一列 / 多分类 argmax / 多目标 pred_0..k)
-  --objective NAME         [默认从模型推断；binary:logistic 时附 probability]
-  --na-policy error|skip-row  (默认 error)
+  --format jsonl|csv       (默认 jsonl；csv：单输出一列 prediction / 多分类 argmax / 多目标 pred_0..k)
+  --output value|margin|leaf|contrib  (默认 value；value 自动应用目标函数 Link 逆变换；leaf=叶节点索引；contrib=逐行 TreeSHAP 贡献)
+  --threshold F            (二分类判定阈值，如 0.42；设置后输出 predicted_label: 0|1)
+  --id-col NAME            (透传样本主键/ID 列到输出 JSONL/CSV，并自动从特征矩阵剔除)
+  --label-col NAME         (若测试集含自定义标签列名，显式指定以从特征中剥离)
+  --drop-cols C1,C2        (显式剔除冗余列)
+  --auto-encode            (若模型含 category_maps 则自动复用)
+  --objective NAME         [默认从模型推断；binary:logistic 自动 sigmoid，count:poisson/reg:gamma/reg:tweedie 自动 exp]
+  --na-policy error|skip-row|nan  (默认 error)
+  --metrics PATH           (可选输出模型推理统计摘要 JSON：pred_min/pred_max/pred_mean/pred_std/positive_rate)
 ```
 
-- 单输出：`margin`（及 logistic 的 `probability`）。
+- 单输出（`--output value`）：输出 `margin` 与变换后的 `prediction`（`binary:logistic` 附 `probability` 与 `predicted_label`；`count:poisson`/`reg:gamma`/`reg:tweedie` 的 `prediction = exp(margin)`）。
 - **多分类**（`multi:softmax|softprob`）：`class` + `probabilities`。
 - **多目标回归**（`n_output_groups>1` 且非 multi:*）：`margins` / `predictions` 数组，**不做 softmax**。
 
-`--format jsonl`（默认）：每行 JSON `{"row","margin"[,"probability"]}`
-`--format csv`：单 `prediction` 列（部署对接用）
-
-输出每行：`{"row":0,"margin":0.3421,"probability":0.5846}`（二分类才有 probability；回归/排序只有 margin）。
+`--format jsonl`（默认）：每行 JSON `{"row","margin","prediction"[,"probability","predicted_label"]}`
+`--format csv`：单 `prediction` 列（`--output value` 时已应用 Link 逆变换，部署对接用）
 
 ## explain
 
-读模型，输出特征重要性或 SHAP 值（Agent 诊断"模型为什么这样预测"）。
+读模型（支持 leaves.json / XGBoost / LightGBM / ONNX / sklearn），输出特征重要性、SHAP 值（逐行或全局汇总）、二阶特征交互矩阵或可读树结构转储。
 
 ```
-leaves explain --model PATH [--type importance|shap] [--data PATH] [--max-rows N] [--metrics PATH]
+leaves explain --model PATH [--type importance|shap|shap-summary|interaction|dump]
+  [--importance-type gain|weight|cover|total_gain|total_cover]
+  [--summary] [--dump-format json|text|dot]
+  [--data PATH] [--max-rows N] [--metrics PATH]
+  [--label-col NAME] [--drop-cols C1,C2]
 ```
 
-- `--type importance`（默认，无需数据）：输出 per-feature gain 分数。
-- `--type shap`（需 `--data`）：每行 SHAP 贡献 `[{row,base,features:[{name,value}]}]`，限 500 行。
+- `--type importance`（默认，无需数据）：支持 `--importance-type gain|weight|cover|total_gain|total_cover`，输出 `features` 映射、降序排列 `ranked_features` 及 `zero_gain_features`。
+- `--type shap`（需 `--data`）：单输出返回 `[{row,base,features:[{name,value}]}]`；多分类（`n_output_groups > 1`）返回 `[{row,classes:[{class,base,features}]}]`，限 500 行。加 `--summary`（或 `--type shap-summary`）时输出全局 `mean_abs_shap` 降序汇总（极其节省上下文 token）。
+- `--type interaction`（需 `--data`，AG-OMNI）：计算二阶 Tree SHAP 特征交互，输出 `top_interactions`（前 20 强特征对交互）与 `interaction_matrix`。
+- `--type dump`（无需数据，AG-OMNI）：按 `--dump-format json|text|dot` 导出完整树结构或 Graphviz DOT 拓扑。
 
 ## inspect
 
-加载 leaves.json，输出模型元数据 JSON（发布前复核、动态决策依据）。仅支持 leaves.json 原生格式。
+加载任意受支持模型（leaves.json / `.quant.json` 量化侧车 / XGBoost JSON / LightGBM text / ONNX / sklearn JSON），输出深度模型结构画像 JSON（发布前复核、动态决策依据）。
 
 ```
 leaves inspect --model PATH [--metrics PATH]
 ```
 
-输出：`{"file","objective","kind"（gbtree|dart|gblinear|sklearn_gbdt）,
-"num_features","n_output_groups","n_trees","name"[,"feature_names"]}`。
+输出：`{"schema_version":1,"file","format","objective","kind"（gbtree|dart|gblinear|sklearn_gbdt）,
+"num_features","n_output_groups","n_trees","n_boost_rounds","base_score","max_depth_observed",
+"total_nodes","total_leaves","mean_leaves_per_tree","used_features_count","unused_features_count"[,"unused_features","feature_names"]}`。
+
+## split（零泄漏数据切分与漂移审计，AG-NEXT / AG-ZENITH）
+
+在训练前将单文件数据切分为 `train` / `val` / `test` 并输出 `split.json`（含 `leakage_ok`、`missing_cells`、各子集 `label_means` 与 `max_label_drift`）。
+
+```
+leaves split --data PATH --out-dir DIR
+  [--strategy auto|random|stratified|group|time]
+  [--ratios 0.7,0.15,0.15] [--seed 42] [--na-policy error|skip-row|nan]
+  [--label-col NAME] [--group-col NAME] [--time-col NAME] [--drop-cols C1,C2]
+  [--metrics PATH]
+```
+
+- `auto`：排序数据（含 `qid` 或 `--group-col`）自动选 `group`（同组绝不跨集泄漏）；分类标签自动选 `stratified`；指定 `--time-col` 时选 `time`（严格按时间序前→中→后切分，`leakage_ok: true`）。
+
+## runs（运行账本原生分析与演化搜索算子，AG-NEXT / AG-OMNI）
+
+无需手写脚本，直接对 `runs.jsonl` 执行统计、折级 Pareto 前沿、选父、超参去重、双亲交叉重组与定向变异提案。
+
+```
+leaves runs status        --runs runs.jsonl
+leaves runs pareto        --runs runs.jsonl
+leaves runs select-parent --runs runs.jsonl [--strategy pareto|top-k] [--seed 42]
+leaves runs check-dup     --runs runs.jsonl [--params '{"depth":6,"lr":0.1,...}'] [--depth 6 --lr 0.1 ...]
+leaves runs crossover     --runs runs.jsonl [--parent-a TAG] [--parent-b TAG] [--seed 42] [--metrics xover.json]
+leaves runs propose       --runs runs.jsonl [--parent TAG] [--diagnose diag.json] [--seed 42] [--metrics prop.json]
+```
+
+## diagnose（全息 ASI 诊断包，AG-NEXT / AG-OMNI）
+
+聚合 `metrics.json`、`rounds.jsonl`（学习曲线斜率与平台期）、模型特征重要性（`--model`，识别零增益特征）与数据画像（`--data`，识别 ID 列、常数列、非数值类别列与缺失值），产出结构化诊断结论、`suggested_drop_cols`、`suggested_mutations` 与可直接拼接执行的 `suggested_cli_args`。
+
+```
+leaves diagnose [--metrics M.json] [--model PATH] [--rounds R.jsonl] [--data D.csv] [--out diag.json]
+```
+
+输出含 `status`（`overfitting` | `underfitting` | `plateau` | `high_variance` | `feature_noise` | `data_hygiene` | `healthy`）、`zero_gain_features`、`top_features`、`suggested_drop_cols`、`suggested_mutations` 与 `suggested_cli_args`。
+
+## schema（机器自省契约，AG-NEXT）
+
+输出全部子命令 flags、错误码枚举与核心 JSON 产物契约，供 Agent 零样本工具发现。
+
+```
+leaves schema [--subcommand train]
+```
 
 ## version
 
@@ -282,6 +391,7 @@ leaves publish --model PATH --out-dir DIR
   --version NAME          (默认 "1.0.0")
   --quantize              (int8 阈值量化 + parity 报告)
   --export-xgb            (导出 model.xgb.json，leaves→XGBoost 3.x)
+  --export-onnx           (导出 model.onnx，leaves→ONNX ai.onnx.ml TreeEnsemble)
   --metrics PATH          (把训练 metrics.json 快照进 manifest；reproduce 脚本必需)
   --data PATH             (量化 parity 用；省略则跳过 parity)
   --emit-repro-script ps1|sh|both  (写出 reproduce.ps1 / reproduce.sh；需 --metrics)
@@ -294,6 +404,7 @@ leaves publish --model PATH --out-dir DIR
 <out-dir>/
   model.leaves.json       主模型
   model.xgb.json          (--export-xgb 时)
+  model.onnx              (--export-onnx 时：ONNX TreeEnsembleRegressor/Classifier)
   model.quant.json        (--quantize 时：int8 量化侧车，可被 predict 重建)
   quantize_report.json    (--quantize 时：parity vs Native + max_threshold_err)
   reproduce.ps1 / .sh     (--emit-repro-script 时)

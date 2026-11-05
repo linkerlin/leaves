@@ -21,13 +21,15 @@ type LeavesJSON struct {
 }
 
 type leavesModelJSON struct {
-	Kind             int         `json:"kind"`
-	NumFeatures      int         `json:"num_features"`
-	NRawOutputGroups int         `json:"n_raw_output_groups"`
-	NOutputGroups    int         `json:"n_output_groups"`
-	Name             string      `json:"name"`
-	Forest           *forestJSON `json:"forest,omitempty"`
-	Linear           *linearJSON `json:"linear,omitempty"`
+	Kind             int                           `json:"kind"`
+	NumFeatures      int                           `json:"num_features"`
+	NRawOutputGroups int                           `json:"n_raw_output_groups"`
+	NOutputGroups    int                           `json:"n_output_groups"`
+	Name             string                        `json:"name"`
+	FeatureNames     []string                      `json:"feature_names,omitempty"`
+	CategoryMaps     map[string]map[string]float64 `json:"category_maps,omitempty"`
+	Forest           *forestJSON                   `json:"forest,omitempty"`
+	Linear           *linearJSON                   `json:"linear,omitempty"`
 }
 
 type linearJSON struct {
@@ -98,6 +100,8 @@ func SaveLeavesJSON(w io.Writer, ir *model.ModelIR, objective string) error {
 			NRawOutputGroups: ir.NRawOutputGroups,
 			NOutputGroups:    ir.NOutputGroups,
 			Name:             ir.Name,
+			FeatureNames:     ir.FeatureNames,
+			CategoryMaps:     ir.CategoryMaps,
 		},
 	}
 	if ir.Forest != nil {
@@ -139,6 +143,8 @@ func ParseLeavesJSON(r io.Reader) (*model.ModelIR, string, error) {
 		NRawOutputGroups: doc.Model.NRawOutputGroups,
 		NOutputGroups:    doc.Model.NOutputGroups,
 		Name:             doc.Model.Name,
+		FeatureNames:     doc.Model.FeatureNames,
+		CategoryMaps:     doc.Model.CategoryMaps,
 	}
 	if doc.Model.Forest != nil {
 		ir.Forest = forestFromJSON(doc.Model.Forest)

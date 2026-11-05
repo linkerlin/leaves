@@ -60,6 +60,7 @@ type Config struct {
 	LambdaRankNormalization    bool    // lambdarank_normalization；topk/mean 默认 true（对标 XGBoost）
 	LambdaRankScoreNorm        bool    // lambdarank_score_normalization
 	TweedieVariancePower       float64 // reg:tweedie，默认 1.5，范围 (1,2)
+	ScalePosWeight             float64 // binary:logistic 正样本（y>0.5）梯度/Hessian 权重乘子（默认 1.0，WP-41）
 }
 
 // Learner 训练编排器。
@@ -80,6 +81,8 @@ type Learner struct {
 	marginPredictGPU   int
 	marginPredictCPU   int
 	resumeFromRound    int // LoadCheckpoint 后续训起始轮（0-based，已完成的轮数）
+	featureNames       []string
+	categoryMaps       map[string]map[string]float64
 }
 
 // NewLearner 创建 Learner。
@@ -149,6 +152,13 @@ func NewLearner(cfg Config) (*Learner, error) {
 	}
 	if cfg.EarlyStop != nil && metric != nil {
 		cfg.EarlyStop.Maximize = metricMaximize(metric)
+		if cfg.EarlyStop.bestRound == 0 {
+			if cfg.EarlyStop.Maximize {
+				cfg.EarlyStop.BestScore = -1e300
+			} else {
+				cfg.EarlyStop.BestScore = 1e300
+			}
+		}
 	}
 	return &Learner{cfg: cfg, obj: obj, numGroups: numGroups, metric: metric, baseLearningRate: baseLR}, nil
 }
@@ -161,6 +171,14 @@ func (l *Learner) Fit(dm data.Matrix) error {
 	dm, err := l.resolveTrainMatrix(dm)
 	if err != nil {
 		return err
+	}
+	if fnm, ok := dm.(data.FeatureNamedMatrix); ok && len(fnm.FeatureNames()) > 0 {
+		l.featureNames = append([]string(nil), fnm.FeatureNames()...)
+	}
+	if d, ok := dm.(*data.Dense); ok && len(d.CategoryMaps) > 0 {
+		l.categoryMaps = d.CategoryMaps
+	} else if dwg, ok := dm.(*data.DenseWithGroups); ok && dwg.Dense != nil && len(dwg.Dense.CategoryMaps) > 0 {
+		l.categoryMaps = dwg.Dense.CategoryMaps
 	}
 	l.beginTrainAccel(dm)
 	defer func() {
@@ -233,7 +251,7 @@ func (l *Learner) Fit(dm data.Matrix) error {
 			}
 		} else {
 			for i := 0; i < n; i++ {
-				w := data.WeightAt(dm, i)
+				w := l.effectiveWeightAt(dm, labels, i)
 				p := preds[i*g]
 				grad[i], hess[i] = l.obj.GradHess(p, labels[i], w)
 			}
@@ -295,18 +313,19 @@ func (l *Learner) initBooster(dm data.Matrix, labels []float64) error {
 		method = l.cfg.TreeMethod
 	}
 
+	effWeights := l.effectiveWeights(dm, labels)
 	switch l.cfg.Booster {
 	case BoosterGBLinear:
-		base := l.obj.InitialPred(labels, dm.Weights())
+		base := l.obj.InitialPred(labels, effWeights)
 		l.booster = booster.NewGBLinear(dm.NumCol(), l.numGroups, base, booster.GBLinearConfig{
 			LearningRate: l.cfg.LearningRate,
 			Lambda:       l.cfg.Lambda,
 		})
 		return nil
 	default:
-		base := l.obj.InitialPred(labels, dm.Weights())
+		base := l.obj.InitialPred(labels, effWeights)
 		if mc, ok := objective.IsMulticlass(l.obj); ok {
-			vec := mc.InitialPredVec(labels, dm.Weights())
+			vec := mc.InitialPredVec(labels, effWeights)
 			if len(vec) > 0 {
 				base = vec[0]
 			}
@@ -321,7 +340,7 @@ func (l *Learner) initBooster(dm data.Matrix, labels []float64) error {
 			l.booster = booster.NewGBTree(dm.NumCol(), base, l.numGroups, tbCfg, method, trainParams)
 			if gt, ok := l.booster.(*booster.GBTree); ok {
 				if mt, ok := data.AsMultiTarget(dm); ok {
-					vec := multiTargetInitial(mt, dm.Weights())
+					vec := multiTargetInitial(mt, effWeights)
 					if len(vec) == l.numGroups {
 						gt.Forest().BaseScores = vec
 						if len(vec) > 0 {
@@ -335,6 +354,27 @@ func (l *Learner) initBooster(dm data.Matrix, labels []float64) error {
 		l.booster = booster.NewGBTree(dm.NumCol(), base, 1, tbCfg, method, trainParams)
 		return nil
 	}
+}
+
+func (l *Learner) effectiveWeightAt(dm data.Matrix, labels []float64, i int) float64 {
+	w := data.WeightAt(dm, i)
+	if l.cfg.ScalePosWeight > 0 && l.cfg.ScalePosWeight != 1.0 && i < len(labels) && labels[i] > 0.5 {
+		w *= l.cfg.ScalePosWeight
+	}
+	return w
+}
+
+func (l *Learner) effectiveWeights(dm data.Matrix, labels []float64) []float64 {
+	rawW := dm.Weights()
+	if l.cfg.ScalePosWeight <= 0 || l.cfg.ScalePosWeight == 1.0 {
+		return rawW
+	}
+	n := len(labels)
+	out := make([]float64, n)
+	for i := 0; i < n; i++ {
+		out[i] = l.effectiveWeightAt(dm, labels, i)
+	}
+	return out
 }
 
 // multiTargetInitial 各目标加权均值。
@@ -439,6 +479,8 @@ func (l *Learner) Model() *model.ModelIR {
 			NRawOutputGroups: lin.NumOutputGroups,
 			NOutputGroups:    lin.NumOutputGroups,
 			Name:             lin.Name,
+			FeatureNames:     l.featureNames,
+			CategoryMaps:     l.categoryMaps,
 			Linear:           lin,
 		}
 	case *booster.GBTree:
@@ -454,6 +496,8 @@ func (l *Learner) Model() *model.ModelIR {
 			NRawOutputGroups: l.numGroups,
 			NOutputGroups:    l.numGroups,
 			Name:             name,
+			FeatureNames:     l.featureNames,
+			CategoryMaps:     l.categoryMaps,
 			Forest:           f,
 		}
 	default:

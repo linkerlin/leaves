@@ -55,12 +55,13 @@ func cmdLessons(args []string) error {
 func lessonsAdd(args []string) error {
 	fs := flag.NewFlagSet("lessons add", flag.ContinueOnError)
 	fs.Usage = func() {
-		fmt.Fprintln(fs.Output(), "用法: leaves lessons add --task X --lesson \"...\" [--evidence \"...\"] [--tag a,b]")
+		fmt.Fprintln(fs.Output(), "用法: leaves lessons add --task X --lesson \"...\" [--evidence \"...\"] [--tag a,b] [--metrics PATH]")
 	}
 	task := fs.String("task", "", "任务签名（必需）")
 	lesson := fs.String("lesson", "", "教训一句话（必需）")
 	evidence := fs.String("evidence", "", "证据（账本 tag / 数字 / 错误码）")
 	tags := fs.String("tag", "", "逗号分隔标签")
+	metricsOut := fs.String("metrics", "", "可选输出结构化 JSON 路径（空=stdout 单行 JSONL，WP-48）")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -68,7 +69,6 @@ func lessonsAdd(args []string) error {
 		return errUsage("--task 与 --lesson 必需")
 	}
 	rec := lessonRecord{
-		TS:       time.Now().UTC().Format(time.RFC3339),
 		Task:     *task,
 		Lesson:   *lesson,
 		Evidence: *evidence,
@@ -80,23 +80,43 @@ func lessonsAdd(args []string) error {
 			}
 		}
 	}
+	saved, err := appendLessonRecord(rec)
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(*metricsOut) != "" {
+		return writeJSON(*metricsOut, map[string]any{
+			"schema_version": metricsSchemaVersion,
+			"action":         "add",
+			"count":          1,
+			"lesson":         saved,
+			"lessons":        []lessonRecord{saved},
+		})
+	}
+	return writeStdoutLine(saved)
+}
+
+func appendLessonRecord(rec lessonRecord) (lessonRecord, error) {
+	if rec.TS == "" {
+		rec.TS = time.Now().UTC().Format(time.RFC3339)
+	}
 	path := lessonsPath()
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return errAgentWrap("data_load", fmt.Sprintf("lessons: mkdir: %v", err), "检查目录权限", false, err)
+		return rec, errAgentWrap("data_load", fmt.Sprintf("lessons: mkdir: %v", err), "检查目录权限", false, err)
 	}
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
 	if err != nil {
-		return errAgentWrap("data_load", fmt.Sprintf("lessons: open: %v", err), "检查文件权限（LEAVES_LESSONS_PATH 可改路径）", false, err)
+		return rec, errAgentWrap("data_load", fmt.Sprintf("lessons: open: %v", err), "检查文件权限（LEAVES_LESSONS_PATH 可改路径）", false, err)
 	}
 	defer f.Close()
 	line, err := json.Marshal(rec)
 	if err != nil {
-		return err
+		return rec, err
 	}
 	if _, err := f.Write(append(line, '\n')); err != nil {
-		return err
+		return rec, err
 	}
-	return writeStdoutLine(rec)
+	return rec, nil
 }
 
 type lessonHit struct {
@@ -106,20 +126,48 @@ type lessonHit struct {
 
 func lessonsSearch(args []string) error {
 	fs := flag.NewFlagSet("lessons search", flag.ContinueOnError)
-	fs.Usage = func() { fmt.Fprintln(fs.Output(), "用法: leaves lessons search --query \"词...\" [--limit N]") }
+	fs.Usage = func() {
+		fmt.Fprintln(fs.Output(), "用法: leaves lessons search --query \"词...\" [--limit N] [--metrics PATH]")
+	}
 	query := fs.String("query", "", "检索词（空格分词，大小写不敏感）")
 	limit := fs.Int("limit", 10, "最多输出条数（0=不限）")
+	metricsOut := fs.String("metrics", "", "可选输出结构化 JSON 路径（空=stdout 逐行 JSONL，WP-48）")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	if strings.TrimSpace(*query) == "" {
 		return errUsage("--query 必需")
 	}
-	recs, err := readLessons()
+	hits, err := searchLessonsRecords(*query, *limit)
 	if err != nil {
 		return err
 	}
-	tokens := strings.Fields(strings.ToLower(*query))
+	if strings.TrimSpace(*metricsOut) != "" {
+		if hits == nil {
+			hits = []lessonHit{}
+		}
+		return writeJSON(*metricsOut, map[string]any{
+			"schema_version": metricsSchemaVersion,
+			"action":         "search",
+			"query":          *query,
+			"count":          len(hits),
+			"lessons":        hits,
+		})
+	}
+	for _, h := range hits {
+		if err := writeStdoutLine(h); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func searchLessonsRecords(query string, limit int) ([]lessonHit, error) {
+	recs, err := readLessons()
+	if err != nil {
+		return nil, err
+	}
+	tokens := strings.Fields(strings.ToLower(query))
 	var hits []lessonHit
 	for _, r := range recs {
 		hay := strings.ToLower(r.Task + " " + r.Lesson + " " + r.Evidence + " " + strings.Join(r.Tags, " "))
@@ -141,21 +189,17 @@ func lessonsSearch(args []string) error {
 			}
 		}
 	}
-	if *limit > 0 && len(hits) > *limit {
-		hits = hits[:*limit]
+	if limit > 0 && len(hits) > limit {
+		hits = hits[:limit]
 	}
-	for _, h := range hits {
-		if err := writeStdoutLine(h); err != nil {
-			return err
-		}
-	}
-	return nil
+	return hits, nil
 }
 
 func lessonsList(args []string) error {
 	fs := flag.NewFlagSet("lessons list", flag.ContinueOnError)
-	fs.Usage = func() { fmt.Fprintln(fs.Output(), "用法: leaves lessons list [--task X]") }
+	fs.Usage = func() { fmt.Fprintln(fs.Output(), "用法: leaves lessons list [--task X] [--metrics PATH]") }
 	task := fs.String("task", "", "按任务签名过滤（子串，大小写不敏感）")
+	metricsOut := fs.String("metrics", "", "可选输出结构化 JSON 路径（空=stdout 逐行 JSONL，WP-48）")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -163,10 +207,26 @@ func lessonsList(args []string) error {
 	if err != nil {
 		return err
 	}
+	var filtered []lessonRecord
 	for _, r := range recs {
 		if *task != "" && !strings.Contains(strings.ToLower(r.Task), strings.ToLower(*task)) {
 			continue
 		}
+		filtered = append(filtered, r)
+	}
+	if strings.TrimSpace(*metricsOut) != "" {
+		if filtered == nil {
+			filtered = []lessonRecord{}
+		}
+		return writeJSON(*metricsOut, map[string]any{
+			"schema_version": metricsSchemaVersion,
+			"action":         "list",
+			"task_filter":    *task,
+			"count":          len(filtered),
+			"lessons":        filtered,
+		})
+	}
+	for _, r := range filtered {
 		if err := writeStdoutLine(r); err != nil {
 			return err
 		}

@@ -4,9 +4,9 @@ import (
 	"fmt"
 
 	"github.com/linkerlin/leaves/v2/data"
-	"github.com/linkerlin/leaves/v2/recsys/rankutil"
 	"github.com/linkerlin/leaves/v2/io"
 	"github.com/linkerlin/leaves/v2/recsys"
+	"github.com/linkerlin/leaves/v2/recsys/rankutil"
 	"github.com/linkerlin/leaves/v2/recsys/tsvio"
 	"github.com/linkerlin/leaves/v2/train"
 )

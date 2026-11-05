@@ -480,3 +480,111 @@ func sortedKeys2(m map[string]recsys.DealRow) []string {
 	sort.Strings(out)
 	return out
 }
+
+// TestAN8_PipelineFromCustomTSVAndPureJSONStdout 锁定 WP-28 / DoD AN8：
+//  1. control pipeline 接受自定义四元交互 TSV 与物品目录 TSV，一键完成 prep→recall→rankconv→trainrank→deal；
+//  2. 在 --error-format json（或 -json）模式下，control release / pipeline 向 stdout 输出无散文前缀的纯正 JSON。
+func TestAN8_PipelineFromCustomTSVAndPureJSONStdout(t *testing.T) {
+	defer func() { controlJSONOutput = false }()
+
+	dir := t.TempDir()
+	ws := filepath.Join(dir, "ws")
+	cfg := recsys.DefaultSmokeConfig()
+	cfg.TrainUsers = 12
+	cfg.TestUsers = 4
+	cfg.RecallSize = 40
+	cfg.NumItems = 120
+	ds, err := synth.Generate(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rawTSV := filepath.Join(dir, "custom_interactions.tsv")
+	catTSV := filepath.Join(dir, "custom_catalog.tsv")
+	if err := tsvio.WriteInteractions(rawTSV, ds.Raw); err != nil {
+		t.Fatal(err)
+	}
+	if err := tsvio.WriteCatalog(catTSV, ds.FeatNames, ds.Catalog); err != nil {
+		t.Fatal(err)
+	}
+
+	repOut := filepath.Join(dir, "pipe_report.json")
+	if err := cmdPipeline([]string{
+		"-workspace", ws,
+		"-interactions", rawTSV,
+		"-catalog", catTSV,
+		"-recall-size", "40",
+		"-deck-size", "8",
+		"-max-same-tag", "3",
+		"-rounds", "10",
+		"-out", repOut,
+	}); err != nil {
+		t.Fatalf("cmdPipeline from custom TSV: %v", err)
+	}
+
+	// 验证工作区产物齐全，可直接串联 snapshot 与 eval
+	snapPath := filepath.Join(dir, "snap.json")
+	if err := cmdSnapshot([]string{
+		"-workspace", ws, "-out", snapPath, "-snapshot-id", "snap-an8", "-purpose", "release",
+		"-time-start", "2026-08-01T00:00:00Z", "-time-end", "2026-08-20T00:00:00Z",
+	}); err != nil {
+		t.Fatalf("snapshot after custom pipeline: %v", err)
+	}
+	evalPath := filepath.Join(dir, "eval.json")
+	thresholds := []eval.Threshold{
+		{Layer: eval.LayerData, Name: "data_leakage_rate", Max: ptr(0), Level: contract.StatusBlock},
+		{Layer: eval.LayerCandidateRank, Name: "recall_at_k", Min: ptr(0.01), Level: contract.StatusBlock},
+		{Layer: eval.LayerCandidateRank, Name: "ndcg_at_k", Min: ptr(0.01), Level: contract.StatusBlock},
+		{Layer: eval.LayerDeal, Name: "deck_fill_rate", Min: ptr(0.5), Level: contract.StatusBlock},
+	}
+	threshPath := filepath.Join(dir, "thresholds.json")
+	writeJSON(t, threshPath, thresholds)
+	if err := cmdEval([]string{
+		"-workspace", ws, "-thresholds", threshPath, "-out", evalPath,
+		"-recall-k", "40", "-deck-size", "8", "-event-count", "100",
+	}); err != nil {
+		t.Fatalf("eval after custom pipeline: %v", err)
+	}
+
+	// 验证 -error-format json 模式下 release confirm-promote 的 stdout 为无前缀纯 JSON
+	statePath := filepath.Join(dir, "rel_state.json")
+	w := recsys.Workspace{Root: ws}
+	if err := cmdRelease([]string{
+		"-state", statePath, "-action", "candidate",
+		"-release-id", "rel-an8", "-run-id", "run-1", "-snapshot-id", "snap-an8",
+		"-policy-version", "p1", "-evaluation", evalPath, "-model", w.ModelPath(),
+	}); err != nil {
+		t.Fatalf("release candidate: %v", err)
+	}
+	if err := cmdRelease([]string{"-state", statePath, "-action", "approve", "-approver", "agent"}); err != nil {
+		t.Fatalf("release approve: %v", err)
+	}
+
+	origStdout := os.Stdout
+	rPipe, wPipe, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Stdout = wPipe
+	runErr := cmdRelease([]string{
+		"--error-format", "json",
+		"-state", statePath, "-action", "confirm-promote", "-model-version", "v1.0.0",
+	})
+	wPipe.Close()
+	os.Stdout = origStdout
+	if runErr != nil {
+		t.Fatalf("confirm-promote json: %v", runErr)
+	}
+	var outBuf [4096]byte
+	n, _ := rPipe.Read(outBuf[:])
+	rPipe.Close()
+	stdoutStr := strings.TrimSpace(string(outBuf[:n]))
+
+	var parsed map[string]any
+	if err := json.Unmarshal([]byte(stdoutStr), &parsed); err != nil {
+		t.Fatalf("AN8 failed: stdout is not pure valid JSON: %v\nstdout=%s", err, stdoutStr)
+	}
+	if parsed["kind"] != "promote_request" || parsed["release_id"] != "rel-an8" {
+		t.Fatalf("unexpected promote_request JSON: %+v", parsed)
+	}
+}

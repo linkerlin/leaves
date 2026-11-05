@@ -50,9 +50,9 @@ description: >-
 
 Agent 每轮决策前 `Get-Content runs.jsonl`（或读全文件）：
 
-- **选最优**：按 `maximize` 在所有记录里取 `value` 最优的一组 `params`，作为下一轮起点与发布候选。
-- **一键复现**：`leaves train --data X --from-run runs.jsonl --tag <最优tag> --out-model ...`（无 `--tag` 则自动取最优行；`--tag` 为**新**谱系名时回落最优行作父代、新名入账；其余 CLI flag 覆盖账本）。注意：父代行含 `cv_folds` 时会连带走 CV 路径——要切 `--val --early-stop` 单跑路径须显式 `--cv 0`。
-- **避免重复**：若新提议的 `params` 已在账本中且更差，跳过。
+- **选最优**：`leaves runs status --runs runs.jsonl`（或 `pareto` / `select-parent`）直接输出 JSON，按 `maximize` 在所有记录里取 `value` 最优的一组 `params`，作为下一轮起点与发布候选。
+- **一键复现与定稿**：`leaves train --data X --from-run runs.jsonl --tag <最优tag> --out-model ...`（无 `--tag` 则自动取最优行；`--tag` 为**新**谱系名时回落最优行作父代、新名入账；**无 `--val` 且未显式传 `--rounds` 时，若父代含早停 `best_round`（或 `model_round`），自动回填 `rounds = best_round` 防全量过拟合**）。注意：父代行含 `cv_folds` 时会连带走 CV 路径——要切单跑定稿须显式 `--cv 0`。
+- **避免重复**：`leaves runs check-dup --runs runs.jsonl --params '{...}'`（或读账本）判定新提议的 `params` 是否已在账本中。
 - **可恢复**：长会话中断后，Agent 从账本续起，无需重头搜。
 - **收敛判据**（§五）的「连续 3 次改进 <0.5%」直接读账本尾部判定。
 - **演化信号**（EVO）：`fold_metrics` 支持折级 Pareto 选父（§4.5）；`n_trees`/`elapsed_ms` 支持「指标 vs 模型大小/耗时」权衡与时间感知的筛选晋级。
@@ -74,19 +74,31 @@ leaves train --data train.csv --objective reg:squarederror `
 # 复核模型状态（objective/特征/树数，发布前用）
 leaves inspect --model m.leaves.json --metrics inspect.json
 
-# 诊断：特征重要性（Agent 查"模型为什么不改进"）
-leaves explain --model m.leaves.json --type importance --metrics imp.json
+# 诊断：特征重要性 / 全局 SHAP 汇总 / 二阶特征交互 / 一站式 ASI 诊断（Agent 查"模型为什么不改进"）
+leaves explain --model m.leaves.json --type importance --importance-type gain --metrics imp.json
+leaves explain --model m.leaves.json --type shap --summary --data train.csv --metrics shap_sum.json
+leaves explain --model m.leaves.json --type interaction --data train.csv --metrics inter.json
+leaves diagnose --metrics metrics.json --model m.leaves.json --data train.csv --out diag.json
 
-# 对比已存模型
+# 演化搜索原语：自动生成保证不重复的变异提案或双亲交叉重组
+leaves runs propose --runs runs.jsonl --diagnose diag.json --metrics prop.json
+leaves runs crossover --runs runs.jsonl --seed 42 --metrics xover.json
+
+# 一键有界预算反射式演化自治（自动串联 sniff 脏数据自适应 -> baseline -> diagnose -> propose/crossover -> 定稿）
+leaves autotune --data train.csv --budget 5 --out-dir autotune_out --out-model best.leaves.json --metrics autotune.json
+
+# 对比已存模型（或用 compare 做多模型同台配对 Bootstrap 显著性对比）
 leaves eval --model m.leaves.json --data holdout.csv --eval-metric rmse `
   --metrics eval.json
+leaves compare --models m1.leaves.json,m2.leaves.json --data holdout.csv `
+  --metrics compare.json
 
-# 生成预测（部署验证用）
+# 生成预测（部署验证用；二分类可传 --threshold 0.42 输出 predicted_label）
 leaves predict --model m.leaves.json --data holdout.csv --out pred.jsonl
 
-# 发布本地产物包（leaves.json + 可选量化/XGB 导出 + manifest）
+# 发布本地产物包（leaves.json + 可选量化/XGB/ONNX 导出 + manifest）
 leaves publish --model m.leaves.json --out-dir release/v1 `
-  --version 1.0.0 --quantize --export-xgb --metrics metrics.json
+  --version 1.0.0 --quantize --export-xgb --export-onnx --metrics metrics.json
 ```
 
 > 若仓库内尚未 `go install`，用 `go run ./cmd/leaves ...` 等价；仓库外安装：`go install github.com/linkerlin/leaves/v2/cmd/leaves@latest`。
@@ -157,9 +169,9 @@ leaves publish --model m.leaves.json --out-dir release/v1 `
 
 **CV vs holdout 判据**：
 
-- 行数 <10k：用 `--cv 5`（数据少，不宜再切 holdout）。
-- 行数 ≥50k：切一份 holdout；优化期用 `--cv 3`，**定稿前**用 `eval` 在 holdout 上独立验收。
-- 排序任务：CV 可能切散 group，优先用 `--val`（保持 group 完整）。
+- 行数 <10k：用 `--cv 5`（数据少，不宜再切 holdout；分类任务自动走 StratifiedKFold，排序任务自动走 GroupKFold，且 `--cv K --early-stop N` 支持折内早停并汇总 `mean_best_round`）。
+- 行数 ≥50k：用 `leaves split --data raw.csv --out-dir split/ --strategy auto` 零泄漏切分 `train/val/test`；优化期用 `--cv 3` 或 `--val`，**定稿前**用 `eval` 在 holdout 上独立验收。
+- 排序任务：`leaves split --strategy group` 与 `--cv K`（GroupKFold）均保证同 `qid` 绝不跨切分/跨折泄漏。
 
 ### 4.5 演化搜索协议（EVO；对齐 GEPA 的反射式进化）
 
@@ -173,11 +185,11 @@ leaves publish --model m.leaves.json --out-dir release/v1 `
 
 **② 反射式变异（退化或 plateau 时，替代盲目换格）**
 
-1. **组装 ASI 包**（Actionable Side Information）：`--emit-rounds` 曲线形态（早升晚降=过拟合 / 平坦=欠拟合）、`train_metric` 与 value 差、`cv_std`、`explain --type importance`（gain≈0 的特征）、错误码。
+1. **组装 ASI 包**（Actionable Side Information）：直接调用 `leaves diagnose --metrics metrics.json --model m.leaves.json --rounds rounds.jsonl --data train.csv --out diag.json`，一次性汇聚学习曲线斜率、零增益特征（`zero_gain_features`）、数据嗅探告警（`id_like_columns`/`constant_features`/`categorical_columns`/`nan_cells`）、`suggested_drop_cols` 与 `suggested_cli_args`。
 2. **写假设一行**到 Agent 自持的 `decisions.md`（格式：`假设：<症状> → <定向变异>`；账本仍只读不写）。
-3. **定向变异 1–2 旋钮**——由假设驱动，不再查表碰运气。
+3. **定向变异 1–2 旋钮**：可直接运行 `leaves runs propose --runs runs.jsonl --diagnose diag.json` 自动生成保证与历史账本不重复的候选 `params`、`suggested_tag`（`p:<parent>+<mut>`）与 `suggested_cli_args`。
 
-**③ 交叉重组（Merge）**：从两个前沿候选各取半参：A 的 `depth`/`rounds`/`lr` + B 的正则/采样（`lambda`/`min_child_weight`/`subsample`/`colsample`）；与账本去重后再评估。
+**③ 交叉重组（Merge）**：直接调用 `leaves runs crossover --runs runs.jsonl`（自动从 Pareto 前沿挑选双亲 A/B，取 A 的结构超参 `depth`/`max_leaves`/`rounds`/`lr` + B 的正则/采样超参 `lambda`/`min_child_weight`/`gamma`/`subsample`/`colsample`，并与账本去重后输出 `suggested_tag: x:<A>|<B>` 与 `suggested_cli_args`）。
 
 **④ 筛选 → 晋级（预算分层）**：新候选先廉价筛查（`--cv 2`，或小 rounds + `--early-stop`）；筛查分不劣于父代 2% 以内，才升 `--cv 5` 全量定分。省下的预算多试一个候选。
 
@@ -233,6 +245,7 @@ leaves lessons list --task churn
 - [x] `model.leaves.json`（主模型，可 `io.LoadFromFile` 推理）
 - [x]（`--quantize`）`model.quant.json`（int8 量化侧车，`predict` 可直接加载重建量化推理）+ `quantize_report.json`（parity + max_threshold_err）
 - [x]（可选）`model.xgb.json`（`--export-xgb`，leaves→XGBoost 3.x）
+- [x]（可选）`model.onnx`（`--export-onnx`，leaves→ONNX `ai.onnx.ml` TreeEnsemble，支持 `io.LoadFromFile` 无损回读）
 - [x] `manifest.json`：`version`、`objective`、`num_features`、`n_trees`、各文件 `sha256`、`metrics` 快照、`created_at`
 
 **发布=本地工件包**。leaves 明确不做 serving/registry（见 TODO.md「明确不做」）；推送到镜像/registry 由用户的 CI 在库外接。
@@ -249,7 +262,7 @@ leaves lessons list --task churn
 - 不内置网格/贝义斯搜索（搜索逻辑在 Agent 文本里，不在 leaves 代码里——设计如此）
 - 不做分布式训练 / 实时在线学习 / serving 框架 / registry 推送
 - 召回算法 / 发牌策略属推荐系统，见 `recsys-*` SKILL
-- **数据要求**：数值型 CSV（表头可选，label 列名含 label/target/y/class 时自动识别）/ LIBSVM / 排序 TSV（qid label feat…）。默认 `--na-policy error`（空/NA 单元格失败）；可选 `skip-row` 丢弃含缺失的整行（**不做插补**）。非数值列须预先编码。`sniff` 的 `data_quality.warnings` 可预知常数列/不均衡/小样本。
+- **数据要求**：数值型或含类别列 CSV（表头可选，label 列名含 label/target/y/class 时自动识别，否则可用 `--label-col` 指定，并用 `--drop-cols` 剔除 ID 列）/ LIBSVM / 排序 TSV（qid label feat…）。默认 `--na-policy error`（空/NA 单元格失败）；可选 `skip-row` 丢弃含缺失的整行，或 `nan` 保留特征缺失为 `NaN` 走树默认方向。非数值类别列可加 `--auto-encode` 自动按字典序编码并持久化 `category_maps` 至 `leaves.json`（评估/预测自动复用，未见类别 OOV 映射为 `NaN`）。`sniff` 的 `data_quality.warnings` 可预知常数列/不均衡/小样本/类别列。
 
 ### 何时用 autotrain vs recsys
 
@@ -360,34 +373,39 @@ CLI flag 全表与 metrics.json schema 见 [`cli.md`](cli.md)。零代码 demo �
 ## 速查卡（Agent 缓存用）
 
 ```
-⸻ 10 命令速查 ⸻
+⸻ 14 命令速查 ⸻
 
-sniff    --data FILE                    → suggested_objective / feature_names / label stats
+sniff    --data FILE [--label-col COL] [--drop-cols C1,C2]  → suggested_objective / id_like_columns / label stats
+split    --data FILE --out-dir DIR [--strategy auto|random|stratified|group|time]  → 零泄漏 train/val/test + split_report.json
 train    --data FILE --objective OBJ    → metrics.json + --out-model + --emit-rounds + --runs/--tag
-             --cv K  --val FILE  --early-stop N
-             --from-run runs.jsonl [--tag NAME]  # 账本复现；CLI 覆盖优先
-eval     --model FILE --data FILE       → metrics.json（对比已存模型）
-predict  --model FILE --data FILE       → JSONL 或 --format csv（部署）
-inspect  --model FILE                   → {objective, kind, n_trees, num_features, n_output_groups}
-explain  --model FILE [--type importance] [--data FILE]  → 特征重要性/SHAP
+             --cv K  --val FILE  --early-stop N  [--dry-run]
+             --from-run runs.jsonl [--tag NAME]  # 账本复现；全量定稿自动回填 best_round
+runs     status|pareto|select-parent|check-dup --runs runs.jsonl  → 账本原生分析与选父去重
+diagnose --model FILE [--metrics M] [--rounds R] [--data D]       → 一站式 ASI 诊断包（diagnosis + suggested_mutations）
+eval     --model FILE --data FILE       → metrics.json（支持 leaves.json/XGB/LGB/ONNX/sklearn）
+predict  --model FILE --data FILE [--id-col COL] [--output value|margin|leaf|contrib]  → JSONL 或 --format csv
+inspect  --model FILE                   → {format, objective, kind, n_trees, num_features, n_output_groups}
+explain  --model FILE [--type importance|shap] [--data FILE]  → 特征重要性/SHAP（含多分类 per-class SHAP）
 publish  --model FILE --out-dir DIR     → 本地工件包 + manifest（--quantize --export-xgb --emit-repro-script）
 lessons  add|search|list                → 跨任务记忆库 ~/.leaves/lessons.jsonl（§4.6）
-version                                   → {version, go[, commit]}（排查装的哪个版本）
+schema   [--subcommand NAME]            → CLI flags / 错误码 / 产物 schema 机器自省 JSON
+version                                 → {version, go[, commit]}（排查装的哪个版本）
 
 ⸻ 最常见 flags ⸻
 
+列控：--label-col COL --drop-cols id,ts（未识别标签列时 train/eval 硬失败 error=missing_label）
 训练：--rounds --depth --lr --lambda --min-child-weight --subsample --colsample --seed
-早停：--early-stop N（配 --val）；默认 --save-best 内存截断（model_round==best_round）
-冲突：--cv 与 --val 并存 → 建议 --strict-flags（cv_conflict）
-诊断：--emit-rounds rounds.jsonl --runs runs.jsonl --tag NAME
+高阶：--booster gbtree|dart|gblinear --monotone 1,-1,0 --checkpoint PATH --resume PATH --batch-rows N --lr-decay F
+早停：--early-stop N（配 --val 或 --cv K 折内早停）；默认 --save-best 内存截断（model_round==best_round）
+诊断：--emit-rounds rounds.jsonl --runs runs.jsonl --tag NAME（或直接调 leaves diagnose / leaves runs）
 发布：--quantize --export-xgb --emit-repro-script both --version
 缺失：--na-policy error|skip-row（默认 error；不做插补）
 
 ⸻ 优化铁律 ⸻
 
-1. 先 sniff → 自动定 objective
+1. 先 sniff（必要时配 --label-col / --drop-cols）→ 切分数据 leaves split → 自动定 objective
 2. 默认超参 baseline → 看 train/cv 差距 → 定过拟合/欠拟合方向
-3. 每轮按 §4.5 选父（HoF/折级 Pareto）→ 定向变异 1-2 旋钮 → runs.jsonl 去重
-4. 退化/plateau → 组装 ASI（emit-rounds/explain/错误码）→ 写假设 → 定向变异
+3. 每轮用 leaves runs select-parent 选父 → 定向变异 1-2 旋钮 → leaves runs check-dup 去重
+4. 退化/plateau → 调 leaves diagnose 组装 ASI → 写假设 → 定向变异
 5. 预算帽 15 次或收敛 → inspect 复核 → publish 定稿
 ```

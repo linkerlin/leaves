@@ -44,5 +44,69 @@ func loadEnsemble(modelPath string) (*model.Ensemble, error) {
 		}
 		return model.NewEnsemble(eng), nil
 	}
+	if fmtKind, derr := leavesio.DetectFormat(modelPath); derr == nil && fmtKind == leavesio.FormatONNX {
+		if ir, _, _, err := leavesio.LoadModelIR(modelPath); err == nil && ir != nil {
+			return model.NewEnsembleFromIRWithHint(ir, tree.ApplyTransformRaw, tree.TransformRaw, tree.BackendAuto, tree.WorkloadHint{})
+		}
+	}
 	return leavesio.LoadFromFile(modelPath, &leavesio.LoadOptions{LoadTransformation: false})
+}
+
+// loadModelCategoryMaps 从模型文件（或 .quant.json 的 base 模型）提取持久化的类别编码字典（WP-31）。
+func loadModelCategoryMaps(modelPath string) map[string]map[string]float64 {
+	if strings.HasSuffix(modelPath, ".quant.json") {
+		ov, err := quantize.LoadOverlayFile(modelPath)
+		if err != nil {
+			return nil
+		}
+		base := ov.Base
+		if base == "" {
+			base = "model.leaves.json"
+		}
+		basePath := base
+		if !filepath.IsAbs(basePath) {
+			basePath = filepath.Join(filepath.Dir(modelPath), base)
+		}
+		if ir, _, err := leavesio.ParseLeavesJSONFile(basePath); err == nil && ir != nil {
+			return ir.CategoryMaps
+		}
+		return nil
+	}
+	if ir, _, _, err := leavesio.LoadModelIR(modelPath); err == nil && ir != nil {
+		return ir.CategoryMaps
+	}
+	return nil
+}
+
+// loadModelFeatureNames 从模型文件（或 .quant.json 的 base 模型）提取持久化的特征列名（WP-40）。
+func loadModelFeatureNames(modelPath string) []string {
+	if ir, _, _, _, err := loadModelIRWithQuant(modelPath); err == nil && ir != nil {
+		return ir.FeatureNames
+	}
+	return nil
+}
+
+// loadModelIRWithQuant 统一加载模型 IR，若为 .quant.json 则自动解析其 base 模型并返回量化侧车（WP-46）。
+func loadModelIRWithQuant(modelPath string) (*model.ModelIR, string, leavesio.Format, *quantize.Overlay, error) {
+	if strings.HasSuffix(modelPath, ".quant.json") {
+		ov, err := quantize.LoadOverlayFile(modelPath)
+		if err != nil {
+			return nil, "", leavesio.FormatUnknown, nil, fmt.Errorf("load overlay: %w", err)
+		}
+		base := ov.Base
+		if base == "" {
+			base = "model.leaves.json"
+		}
+		basePath := base
+		if !filepath.IsAbs(basePath) {
+			basePath = filepath.Join(filepath.Dir(modelPath), base)
+		}
+		ir, obj, fmtKind, err := leavesio.LoadModelIR(basePath)
+		if err != nil {
+			return nil, "", leavesio.FormatUnknown, nil, fmt.Errorf("load base model %s: %w", basePath, err)
+		}
+		return ir, obj, fmtKind, &ov, nil
+	}
+	ir, obj, fmtKind, err := leavesio.LoadModelIR(modelPath)
+	return ir, obj, fmtKind, nil, err
 }

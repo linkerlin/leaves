@@ -4,11 +4,14 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/linkerlin/leaves/v2/booster"
 	"github.com/linkerlin/leaves/v2/data"
 	"github.com/linkerlin/leaves/v2/train"
 )
@@ -57,8 +60,26 @@ func cmdTrain(args []string) error {
 	emitRounds := fs.String("emit-rounds", "", "逐轮指标 JSONL（Agent 学习曲线诊断用）")
 	saveBest := fs.Bool("save-best", true, "早停时截断并保存 best_round 模型（默认 true；false=保留 final-round）")
 	fromRun := fs.String("from-run", "", "从 runs.jsonl 加载 params 作默认（CLI 覆盖优先；无 --tag 则取最优行）")
-	naPolicy := fs.String("na-policy", "error", "缺失值策略：error（默认，遇空/NA 失败）| skip-row（丢弃含缺失的整行）")
-	strictFlags := fs.Bool("strict-flags", false, "严格模式：--cv 与 --val/--early-stop/--emit-rounds 并存时失败（默认仅警告）")
+	naPolicy := fs.String("na-policy", "error", "缺失值策略：error（默认）| skip-row（丢行）| nan（转为 NaN 走树默认方向，WP-31）")
+	autoEncode := fs.Bool("auto-encode", false, "将非数值字符串特征列自动按字典序编码并持久化进模型（WP-31）")
+	strictFlags := fs.Bool("strict-flags", false, "严格模式：--cv 与 --val/--emit-rounds 并存时失败（默认仅警告）")
+	labelCol := fs.String("label-col", "", "显式指定标签列名或 0-based 索引（WP-22）")
+	dropCols := fs.String("drop-cols", "", "逗号分隔需丢弃的列名或索引（如 ID、时间戳）")
+	boosterName := fs.String("booster", "gbtree", "基学习器：gbtree（默认）| dart | gblinear（WP-27）")
+	rateDrop := fs.Float64("rate-drop", 0.1, "DART 树丢弃率（--booster dart 时生效）")
+	skipDrop := fs.Float64("skip-drop", 0.0, "DART 跳过丢弃的前 N 棵树")
+	monotone := fs.String("monotone", "", "单调性约束，逗号分隔 -1/0/1（如 1,0,-1）")
+	checkpointPath := fs.String("checkpoint", "", "checkpoint JSON 输出路径")
+	checkpointEvery := fs.Int("checkpoint-every", 0, "每 N 轮写出一次 checkpoint")
+	resumePath := fs.String("resume", "", "从已有 checkpoint 恢复续训路径")
+	batchRows := fs.Int("batch-rows", 0, "外存分批训练每批行数（>0 启用 BatchedMatrix）")
+	lrDecay := fs.Float64("lr-decay", 0, "指数学习率衰减因子 gamma（0=不衰减）")
+	weightCol := fs.String("weight-col", "", "样本权重列名或 0-based 索引（WP-41）")
+	scalePosWeight := fs.Float64("scale-pos-weight", 0, "二分类正样本（y>0.5）梯度/Hessian 权重乘子（WP-41）")
+	tweediePower := fs.Float64("tweedie-variance-power", 0, "reg:tweedie 方差幂参数 (1,2)，默认 1.5（WP-42）")
+	multiOutputTree := fs.Bool("multi-output-tree", false, "多分类/多目标使用向量叶单树（WP-42）")
+	numParallelTree := fs.Int("num-parallel-tree", 0, "每轮并行随机森林树数（默认 1，WP-42）")
+	dryRun := fs.Bool("dry-run", false, "仅校验参数、数据、标签门禁与模型配置，不执行训练循环（WP-29）")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -73,22 +94,28 @@ func cmdTrain(args []string) error {
 		}
 		set := map[string]bool{}
 		fs.Visit(func(f *flag.Flag) { set[f.Name] = true })
-		// 选中账本行后，本次新 run 的 --tag 若未另给，保留选中 tag 便于追溯；
-		// 但用户若未传 --tag，from-run 选最优时 tag 已是最优行的 tag——不覆盖用户新 tag。
-		// 注意：tag 在 load 时已用于选行，这里不再改 *tag。
 		applyParamsIfUnset(set, rec.Params, objective, evalMetric,
 			numClass, numTarget, rounds, depth, maxLeaves,
 			lr, lambda, minChildWeight, gamma,
 			maxBin, subsample, colsample, treeMethod,
 			ndcgK, cv, earlyStop, seed, rec.Objective)
+		applyExtraParamsIfUnset(set, rec, rounds, valPath, cv,
+			labelCol, dropCols, boosterName, rateDrop, skipDrop, monotone, lrDecay,
+			batchRows, naPolicy, autoEncode)
+		applyApexParamsIfUnset(set, rec, weightCol, scalePosWeight, tweediePower, multiOutputTree, numParallelTree)
 		if *tag == "" && rec.Tag != "" {
 			// 未指定 tag：沿用源 tag 加后缀，避免账本混淆同名
 			*tag = rec.Tag + "_repro"
 		}
 		fmt.Fprintf(os.Stderr, "leaves: --from-run 已加载 tag=%q value=%g（CLI 显式 flag 优先）\n", rec.Tag, rec.Value)
 	}
+	if *resumePath != "" && *objective == "" {
+		if _, obj, _, cerr := train.LoadCheckpointFile(*resumePath); cerr == nil && obj != "" {
+			*objective = obj
+		}
+	}
 	if *dataPath == "" || *objective == "" {
-		return errUsage("--data 与 --objective 必需（--objective 也可由 --from-run 账本提供）")
+		return errUsage("--data 与 --objective 必需（--objective 也可由 --from-run 账本或 --resume 提供）")
 	}
 	// 防 Agent 踩坑：同一路径会先 Save 再被 metrics 覆盖，inspect 必失败。
 	if *outModel != "" && *metricsPath != "" && filepath.Clean(*outModel) == filepath.Clean(*metricsPath) {
@@ -114,43 +141,90 @@ func cmdTrain(args []string) error {
 	if metric == "" {
 		metric = defaultMetric(*objective)
 	}
-	if *cv >= 2 && (*valPath != "" || *earlyStop > 0 || *emitRounds != "") {
-		msg := "--cv 与 --val/--early-stop/--emit-rounds 互斥：cv 路径忽略后者"
-		hint := "基线用 --cv；逐轮诊断/早停去掉 --cv 改用 --val --early-stop；Agent 建议加 --strict-flags"
+	// WP-24：--cv 与 --early-stop 支持折内早停协同；仅 --cv 与 --val / --emit-rounds 互斥。
+	if *cv >= 2 && (*valPath != "" || *emitRounds != "") {
+		msg := "--cv 与 --val/--emit-rounds 互斥：cv 路径忽略后者"
+		hint := "基线用 --cv（可配 --early-stop 做折内早停）；独立验证集或逐轮诊断去掉 --cv 改用 --val"
 		if *strictFlags {
 			return errAgent("cv_conflict", msg, hint, false)
 		}
 		fmt.Fprintf(os.Stderr, "leaves: 注意：%s（要强制失败请加 --strict-flags）\n", msg)
 	}
 	// 自动建输出父目录（与 publish 一致，免 Agent 踩坑）。
-	for _, p := range []string{filepath.Dir(*outModel), filepath.Dir(*outFinal), filepath.Dir(*metricsPath), filepath.Dir(*runsPath), filepath.Dir(*emitRounds)} {
+	for _, p := range []string{filepath.Dir(*outModel), filepath.Dir(*outFinal), filepath.Dir(*metricsPath), filepath.Dir(*runsPath), filepath.Dir(*emitRounds), filepath.Dir(*checkpointPath)} {
 		if p != "" && p != "." {
 			_ = os.MkdirAll(p, 0o755)
 		}
 	}
 
-	dm, err := loadMatrixOpts(*dataPath, *naPolicy, *numTarget)
+	dm, err := loadMatrixFull(*dataPath, *naPolicy, *numTarget, *labelCol, *dropCols, "", *weightCol, *autoEncode, nil, nil)
 	if err != nil {
 		return err
 	}
+	if err := requireLabelColumn(dm, *dataPath, *numTarget); err != nil {
+		return err
+	}
+	var trainCatMaps map[string]map[string]float64
+	if d, ok := dm.(*data.Dense); ok {
+		trainCatMaps = d.CategoryMaps
+	} else if dwg, ok := dm.(*data.DenseWithGroups); ok && dwg.Dense != nil {
+		trainCatMaps = dwg.Dense.CategoryMaps
+	}
+	trainFeatNames := featureNamesOf(dm)
+
+	monoVec, err := parseMonotoneConstraints(*monotone)
+	if err != nil {
+		return errUsage(fmt.Sprintf("--monotone: %v", err))
+	}
+
+	bKind := strings.ToLower(strings.TrimSpace(*boosterName))
+	var cfgBooster string
+	var dartCfg *booster.DARTConfig
+	switch bKind {
+	case "", "gbtree":
+		cfgBooster = train.BoosterGBTree
+	case "dart":
+		cfgBooster = train.BoosterGBTree
+		dartCfg = &booster.DARTConfig{
+			RateDrop:      *rateDrop,
+			SkipDrop:      int(*skipDrop),
+			NormalizeType: "tree",
+		}
+	case "gblinear":
+		cfgBooster = train.BoosterGBLinear
+	default:
+		return errUsage(fmt.Sprintf("未知 --booster %q（支持 gbtree|dart|gblinear）", *boosterName))
+	}
 
 	cfg := train.Config{
-		Objective:       *objective,
-		NumTarget:       *numTarget,
-		NumRound:        *rounds,
-		MaxDepth:        *depth,
-		MaxLeaves:       *maxLeaves,
-		LearningRate:    *lr,
-		Lambda:          *lambda,
-		MinHessian:      *minChildWeight,
-		Gamma:           *gamma,
-		MaxBin:          *maxBin,
-		Subsample:       *subsample,
-		ColsampleByTree: *colsample,
-		TreeMethod:      *treeMethod,
-		Seed:            *seed,
-		EvalMetric:      metric,
-		NDCGK:           *ndcgK,
+		Booster:              cfgBooster,
+		Objective:            *objective,
+		NumTarget:            *numTarget,
+		NumRound:             *rounds,
+		MaxDepth:             *depth,
+		MaxLeaves:            *maxLeaves,
+		LearningRate:         *lr,
+		Lambda:               *lambda,
+		MinHessian:           *minChildWeight,
+		Gamma:                *gamma,
+		MaxBin:               *maxBin,
+		Subsample:            *subsample,
+		ColsampleByTree:      *colsample,
+		TreeMethod:           *treeMethod,
+		Seed:                 *seed,
+		EvalMetric:           metric,
+		NDCGK:                *ndcgK,
+		MonotoneConstraints:  monoVec,
+		CheckpointPath:       *checkpointPath,
+		CheckpointEvery:      *checkpointEvery,
+		DART:                 dartCfg,
+		ScalePosWeight:       *scalePosWeight,
+		TweedieVariancePower: *tweediePower,
+		MultiOutputTree:      *multiOutputTree,
+		NumParallelTree:      *numParallelTree,
+	}
+	if *lrDecay > 0 {
+		cfg.LRScheduler = train.ExponentialLRScheduler(*lrDecay)
 	}
 	if *numClass > 0 {
 		cfg.NumClass = *numClass
@@ -179,15 +253,76 @@ func cmdTrain(args []string) error {
 			metric,
 		),
 	}
-	// AGUX-08：记录 val 路径（非超参；早停 run 的忠实复现需要）。
-	// 仅单跑路径记录——--cv 与 --val 并存时 val 被忽略，记录会误导复现。
+	if *labelCol != "" {
+		doc.Params.LabelCol = *labelCol
+	}
+	if *dropCols != "" {
+		doc.Params.DropCols = *dropCols
+	}
+	if bKind != "" && bKind != "gbtree" {
+		doc.Params.Booster = bKind
+		if bKind == "dart" {
+			doc.Params.RateDrop = *rateDrop
+			doc.Params.SkipDrop = *skipDrop
+		}
+	}
+	if *monotone != "" {
+		doc.Params.Monotone = *monotone
+	}
+	if *lrDecay > 0 {
+		doc.Params.LRDecay = *lrDecay
+	}
+	if *batchRows > 0 {
+		doc.Params.BatchRows = *batchRows
+	}
+	if *naPolicy != "" && *naPolicy != "error" {
+		doc.Params.NAPolicy = *naPolicy
+	}
+	if *autoEncode {
+		doc.Params.AutoEncode = true
+	}
+	if *weightCol != "" {
+		doc.Params.WeightCol = *weightCol
+	}
+	if *scalePosWeight > 0 {
+		doc.Params.ScalePosWeight = *scalePosWeight
+	}
+	if *tweediePower > 0 {
+		doc.Params.TweedieVariancePower = *tweediePower
+	}
+	if *multiOutputTree {
+		doc.Params.MultiOutputTree = true
+	}
+	if *numParallelTree > 0 {
+		doc.Params.NumParallelTree = *numParallelTree
+	}
 	if *valPath != "" && *cv < 2 {
 		doc.Params.Val = *valPath
 	}
 
-	// 交叉验证路径：CV 出诚实估计；若要存模型再在全量上单跑一次。
+	if *dryRun {
+		if _, err := train.NewLearner(cfg); err != nil {
+			return err
+		}
+		return writeJSON(*metricsPath, map[string]any{
+			"schema_version": metricsSchemaVersion,
+			"dry_run":        true,
+			"valid":          true,
+			"objective":      *objective,
+			"metric":         metric,
+			"maximize":       doc.Maximize,
+			"n_rows":         dm.NumRow(),
+			"n_features":     dm.NumCol(),
+			"params":         doc.Params,
+		})
+	}
+
+	// 交叉验证路径：CV 出诚实估计；支持折内早停；若要存模型再在全量上单跑一次。
 	trainStart := time.Now()
 	if *cv >= 2 {
+		if *earlyStop > 0 {
+			cfg.EarlyStop = train.NewEarlyStopping(*earlyStop, doc.Maximize)
+		}
 		res, err := train.CrossValidate(cfg, dm, *cv)
 		if err != nil {
 			return fmt.Errorf("cv: %w", err)
@@ -197,8 +332,19 @@ func cmdTrain(args []string) error {
 		doc.CVStd = res.StdMetric
 		doc.FoldMetrics = res.FoldMetrics
 		doc.Value = res.MeanMetric
+		if len(res.FoldBestRounds) > 0 {
+			doc.CVBestRounds = res.FoldBestRounds
+			doc.CVBestRoundMean = res.MeanBestRound
+			doc.BestRound = int(math.Round(res.MeanBestRound))
+		}
 		if *outModel != "" {
-			full, err := train.NewLearner(cfg)
+			fullCfg := cfg
+			fullCfg.EarlyStop = nil
+			fullCfg.EvalSet = nil
+			if doc.BestRound > 0 {
+				fullCfg.NumRound = doc.BestRound
+			}
+			full, err := train.NewLearner(fullCfg)
 			if err != nil {
 				return err
 			}
@@ -206,6 +352,7 @@ func cmdTrain(args []string) error {
 				return err
 			}
 			doc.TrainAccel = full.EffectiveAccelMode()
+			doc.ModelRound = full.BoostRounds()
 			if err := full.Save(*outModel); err != nil {
 				return err
 			}
@@ -221,8 +368,11 @@ func cmdTrain(args []string) error {
 	// 单次训练路径。
 	var valDM data.Matrix
 	if *valPath != "" {
-		valDM, err = loadMatrixOpts(*valPath, *naPolicy, *numTarget)
+		valDM, err = loadMatrixFull(*valPath, *naPolicy, *numTarget, *labelCol, *dropCols, "", *weightCol, *autoEncode, trainCatMaps, trainFeatNames)
 		if err != nil {
+			return err
+		}
+		if err := requireLabelColumn(valDM, *valPath, *numTarget); err != nil {
 			return err
 		}
 		cfg.EvalSet = valDM
@@ -251,11 +401,33 @@ func cmdTrain(args []string) error {
 		}))
 	}
 
-	learner, err := train.NewLearner(cfg)
-	if err != nil {
-		return err
+	fitDM := dm
+	if *batchRows > 0 {
+		if d, ok := dm.(*data.Dense); ok {
+			if cfg.TreeMethod == "" || cfg.TreeMethod == "auto" {
+				cfg.TreeMethod = train.TreeMethodHist
+			}
+			bm, err := data.SplitDense(d, *batchRows)
+			if err != nil {
+				return err
+			}
+			fitDM = bm
+		}
 	}
-	if err := learner.Fit(dm); err != nil {
+
+	var learner *train.Learner
+	if *resumePath != "" {
+		learner, err = train.LoadCheckpoint(*resumePath, cfg)
+		if err != nil {
+			return err
+		}
+	} else {
+		learner, err = train.NewLearner(cfg)
+		if err != nil {
+			return err
+		}
+	}
+	if err := learner.Fit(fitDM); err != nil {
 		return err
 	}
 	doc.TrainAccel = learner.EffectiveAccelMode()
@@ -307,6 +479,39 @@ func cmdTrain(args []string) error {
 	}
 	// 有 early-stop 时 value 已是 BestScore；截断后 val 应与之对齐（可选复核，不覆盖 BestScore）。
 
+	diagDM := dm
+	if valDM != nil {
+		diagDM = valDM
+	}
+	if *objective == "binary:logistic" {
+		diagMargins := make([]float64, diagDM.NumRow())
+		if err := learner.PredictMargins(diagDM, diagMargins); err == nil {
+			probs := make([]float64, len(diagMargins))
+			for i, m := range diagMargins {
+				probs[i] = sigmoid(m)
+			}
+			doc.BinaryDiagnostics = computeBinaryDiagnostics(diagDM.Labels(), probs)
+		}
+	} else if isMulticlassObjective(*objective) && *numClass >= 2 {
+		diagMargins := make([]float64, diagDM.NumRow()*(*numClass))
+		if err := learner.PredictMargins(diagDM, diagMargins); err == nil {
+			doc.MulticlassDiagnostics = computeMulticlassDiagnostics(diagDM.Labels(), diagMargins, *numClass)
+		}
+	} else if *numTarget < 2 && (strings.HasPrefix(*objective, "reg:") || strings.HasPrefix(*objective, "count:")) {
+		diagMargins := make([]float64, diagDM.NumRow())
+		if err := learner.PredictMargins(diagDM, diagMargins); err == nil {
+			preds := metricInputs("rmse", *objective, diagMargins, 1)
+			doc.RegressionDiagnostics = computeRegressionDiagnostics(diagDM.Labels(), preds)
+		}
+	} else if strings.HasPrefix(*objective, "rank:") {
+		if grps := groupsOf(diagDM); len(grps) > 0 {
+			diagMargins := make([]float64, diagDM.NumRow())
+			if err := learner.PredictMargins(diagDM, diagMargins); err == nil {
+				doc.RankingDiagnostics = computeRankingDiagnostics(diagDM.Labels(), diagMargins, grps)
+			}
+		}
+	}
+
 	if *outModel != "" {
 		if err := learner.Save(*outModel); err != nil {
 			return err
@@ -316,4 +521,27 @@ func cmdTrain(args []string) error {
 		return err
 	}
 	return appendRun(*runsPath, *tag, *outModel, doc)
+}
+
+func parseMonotoneConstraints(spec string) ([]int, error) {
+	spec = strings.TrimSpace(spec)
+	if spec == "" {
+		return nil, nil
+	}
+	spec = strings.TrimPrefix(strings.TrimSuffix(spec, ")"), "(")
+	spec = strings.TrimPrefix(strings.TrimSuffix(spec, "]"), "[")
+	parts := strings.Split(spec, ",")
+	out := make([]int, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		v, err := strconv.Atoi(p)
+		if err != nil || (v != -1 && v != 0 && v != 1) {
+			return nil, fmt.Errorf("invalid monotone constraint %q (must be -1, 0, or 1)", p)
+		}
+		out = append(out, v)
+	}
+	return out, nil
 }

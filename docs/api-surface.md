@@ -46,8 +46,8 @@ _ = learner.Save("out.leaves.json")
 ### 1.3 Agent / CLI（零 Go 业务代码）
 
 ```text
-leaves sniff → train (--cv/--runs/--from-run) → eval → inspect → explain → publish
-         辅助：lessons (add|search|list) · version
+leaves sniff → [split] → train (--cv/--runs/--from-run) → runs / diagnose → eval / compare → inspect → explain → publish
+         辅助：lessons (add|search|list) · schema · version
 ```
 
 - SKILL：`skills/leaves-autotrain/`  

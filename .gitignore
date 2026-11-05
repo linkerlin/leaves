@@ -48,6 +48,7 @@ vendor/
 # Temp
 tmp/
 temp/
+演进方案.md
 
 .chong/
 examples/wasm/leaves.wasm

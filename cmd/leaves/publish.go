@@ -12,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/linkerlin/leaves/v2/data"
 	leavesio "github.com/linkerlin/leaves/v2/io"
 	"github.com/linkerlin/leaves/v2/quantize"
 	"github.com/linkerlin/leaves/v2/tree"
@@ -26,10 +25,14 @@ func cmdPublish(args []string) error {
 	version := fs.String("version", "1.0.0", "版本号")
 	doQuantize := fs.Bool("quantize", false, "int8 量化并出 parity 报告")
 	exportXGB := fs.Bool("export-xgb", false, "导出 XGBoost 3.x JSON")
+	exportONNX := fs.Bool("export-onnx", false, "导出 ai.onnx.ml 标准 ONNX 模型（WP-39）")
 	metricsPath := fs.String("metrics", "", "训练 metrics.json（快照进 manifest）")
 	dataPath := fs.String("data", "", "数据路径（量化 parity 用；可选）")
 	emitRepro := fs.String("emit-repro-script", "", "生成复现脚本：ps1|sh|both（写入 out-dir；空=不生成）")
 	printRepro := fs.Bool("print-repro", false, "将复现 train 命令打印到 stdout（需 --metrics 含 params；与 --emit-repro-script 可并用）")
+	labelCol := fs.String("label-col", "", "显式指定标签列名或索引（量化 parity 用；省略时自动从 --metrics 继承，WP-30）")
+	dropCols := fs.String("drop-cols", "", "逗号分隔需丢弃的列名或索引（量化 parity 用；省略时自动从 --metrics 继承，WP-30）")
+	naPolicy := fs.String("na-policy", "", "缺失值策略：error|skip-row|nan（省略时自动从 --metrics 继承）")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -46,9 +49,54 @@ func cmdPublish(args []string) error {
 		return fmt.Errorf("mkdir: %w", err)
 	}
 
-	ir, objective, err := leavesio.ParseLeavesJSONFile(*modelPath)
+	ir, objective, format, err := leavesio.LoadModelIR(*modelPath)
 	if err != nil {
 		return fmt.Errorf("parse model: %w", err)
+	}
+
+	var metricsSnap any
+	if *metricsPath != "" {
+		if b, err := os.ReadFile(*metricsPath); err == nil {
+			var mv any
+			if json.Unmarshal(b, &mv) == nil {
+				metricsSnap = mv
+			}
+		}
+	}
+
+	// WP-30：从 metrics.params 自动继承列控与缺失策略供量化 parity 使用（CLI 显式传入优先）。
+	effLabelCol := *labelCol
+	effDropCols := *dropCols
+	effNAPolicy := *naPolicy
+	effNumTarget := 0
+	effAutoEncode := false
+	if m, ok := metricsSnap.(map[string]any); ok && m != nil {
+		if params, ok := m["params"].(map[string]any); ok && params != nil {
+			if effLabelCol == "" {
+				if v, ok := params["label_col"].(string); ok {
+					effLabelCol = v
+				}
+			}
+			if effDropCols == "" {
+				if v, ok := params["drop_cols"].(string); ok {
+					effDropCols = v
+				}
+			}
+			if effNAPolicy == "" {
+				if v, ok := params["na_policy"].(string); ok {
+					effNAPolicy = v
+				}
+			}
+			if nt, ok := asFloat(params["num_target"]); ok && nt >= 2 {
+				effNumTarget = int(nt)
+			}
+			if ae, ok := params["auto_encode"].(bool); ok && ae {
+				effAutoEncode = true
+			}
+		}
+	}
+	if effNAPolicy == "" {
+		effNAPolicy = "error"
 	}
 
 	files := []map[string]any{}
@@ -57,11 +105,17 @@ func cmdPublish(args []string) error {
 		files = append(files, map[string]any{"name": name, "sha256": sum, "size": sz})
 	}
 
-	// 主模型：原样复制。
+	// 主模型：leaves.json 原样复制；外部模型（XGB/LGB/sklearn/ONNX）自动序列化为标准 model.leaves.json（WP-26）。
 	mainName := "model.leaves.json"
 	mainPath := filepath.Join(*outDir, mainName)
-	if err := copyFile(*modelPath, mainPath); err != nil {
-		return fmt.Errorf("copy model: %w", err)
+	if format == leavesio.FormatLeavesJSON {
+		if err := copyFile(*modelPath, mainPath); err != nil {
+			return fmt.Errorf("copy model: %w", err)
+		}
+	} else {
+		if err := leavesio.SaveLeavesJSONFile(mainPath, ir, objective); err != nil {
+			return fmt.Errorf("save leaves.json from %s: %w", leavesio.SupportOf(format).Name, err)
+		}
 	}
 	addFile(mainName, mainPath)
 
@@ -74,8 +128,17 @@ func cmdPublish(args []string) error {
 		addFile(xgbName, xgbPath)
 	}
 
+	if *exportONNX {
+		onnxName := "model.onnx"
+		onnxPath := filepath.Join(*outDir, onnxName)
+		if err := leavesio.ExportONNXFile(onnxPath, ir, objective); err != nil {
+			return fmt.Errorf("export onnx: %w", err)
+		}
+		addFile(onnxName, onnxPath)
+	}
+
 	if *doQuantize && ir.Forest != nil {
-		qf, report, err := quantizeReport(ir.Forest, *dataPath)
+		qf, report, err := quantizeReport(ir.Forest, *dataPath, effNAPolicy, effNumTarget, effLabelCol, effDropCols, effAutoEncode, ir.CategoryMaps, ir.FeatureNames)
 		if err != nil {
 			return fmt.Errorf("quantize: %w", err)
 		}
@@ -92,16 +155,6 @@ func cmdPublish(args []string) error {
 			return err
 		}
 		addFile("quantize_report.json", reportPath)
-	}
-
-	var metricsSnap any
-	if *metricsPath != "" {
-		if b, err := os.ReadFile(*metricsPath); err == nil {
-			var mv any
-			if json.Unmarshal(b, &mv) == nil {
-				metricsSnap = mv
-			}
-		}
 	}
 
 	nTrees := 0
@@ -149,6 +202,12 @@ func cmdPublish(args []string) error {
 			addFile(name, filepath.Join(*outDir, name))
 		}
 	}
+	// WP-44：发布产物回读推理自检与跨格式（XGB/ONNX/Quant）parity 审计。
+	verification, verr := verifyPublishedArtifacts(*outDir, mainPath, *exportXGB, *exportONNX, *doQuantize && ir.Forest != nil, ir.NumFeatures)
+	if verr != nil {
+		return fmt.Errorf("publish verification failed: %w", verr)
+	}
+	manifest["verification"] = verification
 	// 文档级对接提示：registry 推送在库外。
 	manifest["publish_note"] = "本地工件包；推送 registry/S3/镜像由用户 CI 完成（leaves 不内置 serving/registry）"
 	manifest["files"] = files
@@ -227,8 +286,30 @@ func buildReproduceCommand(metricsSnap any, dataPath, objective string) string {
 	// AGUX-08：max-leaves / num-target / cv 同为复现必需（原缺失使 CV run 退化为全量单训）。
 	add("max-leaves", "max_leaves")
 	add("num-target", "num_target")
+	add("label-col", "label_col")
+	add("drop-cols", "drop_cols")
+	add("booster", "booster")
+	add("rate-drop", "rate_drop")
+	add("skip-drop", "skip_drop")
+	add("monotone", "monotone")
+	add("lr-decay", "lr_decay")
+	add("batch-rows", "batch_rows")
+	add("na-policy", "na_policy")
+	add("weight-col", "weight_col")
+	add("scale-pos-weight", "scale_pos_weight")
+	add("tweedie-variance-power", "tweedie_variance_power")
+	add("num-parallel-tree", "num_parallel_tree")
+	if ae, ok := params["auto_encode"].(bool); ok && ae {
+		cmd += " --auto-encode"
+	}
+	if mot, ok := params["multi_output_tree"].(bool); ok && mot {
+		cmd += " --multi-output-tree"
+	}
 	if cv, ok := asFloat(params["cv_folds"]); ok && cv >= 2 {
 		cmd += fmt.Sprintf(" --cv %d", int(cv))
+		if es, ok := asFloat(params["early_stop"]); ok && es > 0 {
+			cmd += fmt.Sprintf(" --early-stop %d", int(es))
+		}
 	} else {
 		// 单跑路径：早停语义需 --val + --early-stop 成对（val 路径由 params.val 提供）。
 		if vp, ok := params["val"].(string); ok && vp != "" {
@@ -278,7 +359,15 @@ func asFloat(v any) (float64, bool) {
 
 // quantizeReport 对森林做 int8 量化；若提供 dataPath 则在≤5000 行上跑 parity。
 // 返回量化森林（供持久化侧车用）与报告。
-func quantizeReport(forest *tree.ForestIR, dataPath string) (*quantize.QuantizedForest, map[string]any, error) {
+func quantizeReport(
+	forest *tree.ForestIR,
+	dataPath, naPolicy string,
+	numTarget int,
+	labelCol, dropCols string,
+	autoEncode bool,
+	catMaps map[string]map[string]float64,
+	expectedFeats []string,
+) (*quantize.QuantizedForest, map[string]any, error) {
 	qf, err := quantize.QuantizeForest(forest, quantize.Config{})
 	if err != nil {
 		return nil, nil, err
@@ -293,7 +382,7 @@ func quantizeReport(forest *tree.ForestIR, dataPath string) (*quantize.Quantized
 	if dataPath == "" {
 		return qf, report, nil
 	}
-	dm, err := data.FromFileAuto(dataPath)
+	dm, err := loadMatrixFull(dataPath, naPolicy, numTarget, labelCol, dropCols, "", "", autoEncode, catMaps, expectedFeats)
 	if err != nil {
 		return qf, report, nil // 数据读不出则降级，不阻断发布。
 	}
@@ -367,4 +456,105 @@ func writeJSON(path string, v any) error {
 	}
 	_ = os.MkdirAll(filepath.Dir(path), 0o755)
 	return os.WriteFile(path, b, 0o644)
+}
+
+// verifyPublishedArtifacts 对发布目录中的主模型及可选导出产物执行回读与合成样本推理对齐自检（WP-44 / AA5）。
+func verifyPublishedArtifacts(outDir, mainPath string, exportXGB, exportONNX, hasQuant bool, numFeatures int) (map[string]any, error) {
+	cols := numFeatures
+	if cols <= 0 {
+		cols = 1
+	}
+	const smokeRows = 4
+	smokeVals := make([]float64, smokeRows*cols)
+	for r := 0; r < smokeRows; r++ {
+		for c := 0; c < cols; c++ {
+			smokeVals[r*cols+c] = float64(r-1)*0.75 + float64(c)*0.25
+		}
+	}
+
+	mainEns, err := loadEnsemble(mainPath)
+	if err != nil {
+		return nil, fmt.Errorf("reload main model: %w", err)
+	}
+	defer mainEns.Close()
+
+	nc := mainEns.NOutputGroups()
+	if nc < 1 {
+		nc = 1
+	}
+	basePreds := make([]float64, smokeRows*nc)
+	if err := mainEns.PredictDense(smokeVals, smokeRows, cols, basePreds, 0, 0); err != nil {
+		return nil, fmt.Errorf("smoke predict main model: %w", err)
+	}
+
+	res := map[string]any{
+		"verified":     true,
+		"main_load_ok": true,
+		"smoke_rows":   smokeRows,
+		"num_features": cols,
+	}
+
+	maxAbsDiff := func(a, b []float64) float64 {
+		var mx float64
+		for i := range a {
+			if i >= len(b) {
+				break
+			}
+			d := a[i] - b[i]
+			if d < 0 {
+				d = -d
+			}
+			if d > mx {
+				mx = d
+			}
+		}
+		return mx
+	}
+
+	if exportXGB {
+		xgbPath := filepath.Join(outDir, "model.xgb.json")
+		xgbEns, err := loadEnsemble(xgbPath)
+		if err != nil {
+			return nil, fmt.Errorf("reload exported xgb: %w", err)
+		}
+		defer xgbEns.Close()
+		xgbPreds := make([]float64, smokeRows*nc)
+		if err := xgbEns.PredictDense(smokeVals, smokeRows, cols, xgbPreds, 0, 0); err != nil {
+			return nil, fmt.Errorf("smoke predict exported xgb: %w", err)
+		}
+		res["xgb_load_ok"] = true
+		res["xgb_parity_max_diff"] = round4(maxAbsDiff(basePreds, xgbPreds))
+	}
+
+	if exportONNX {
+		onnxPath := filepath.Join(outDir, "model.onnx")
+		onnxEns, err := loadEnsemble(onnxPath)
+		if err != nil {
+			return nil, fmt.Errorf("reload exported onnx: %w", err)
+		}
+		defer onnxEns.Close()
+		onnxPreds := make([]float64, smokeRows*nc)
+		if err := onnxEns.PredictDense(smokeVals, smokeRows, cols, onnxPreds, 0, 0); err != nil {
+			return nil, fmt.Errorf("smoke predict exported onnx: %w", err)
+		}
+		res["onnx_load_ok"] = true
+		res["onnx_parity_max_diff"] = round4(maxAbsDiff(basePreds, onnxPreds))
+	}
+
+	if hasQuant {
+		quantPath := filepath.Join(outDir, "model.quant.json")
+		quantEns, err := loadEnsemble(quantPath)
+		if err != nil {
+			return nil, fmt.Errorf("reload quant overlay: %w", err)
+		}
+		defer quantEns.Close()
+		quantPreds := make([]float64, smokeRows*nc)
+		if err := quantEns.PredictDense(smokeVals, smokeRows, cols, quantPreds, 0, 0); err != nil {
+			return nil, fmt.Errorf("smoke predict quant overlay: %w", err)
+		}
+		res["quant_load_ok"] = true
+		res["quant_smoke_max_diff"] = round4(maxAbsDiff(basePreds, quantPreds))
+	}
+
+	return res, nil
 }

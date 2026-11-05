@@ -144,7 +144,7 @@ func sniffLabelColumn(header []string) (bool, int) {
 	for i, h := range header {
 		k := strings.ToLower(strings.TrimSpace(h))
 		switch k {
-		case "label", "target", "y", "class", "response":
+		case "label", "target", "y", "class", "response", "score", "rating", "click", "clicked", "churn", "outcome":
 			return true, i
 		}
 	}
@@ -309,8 +309,16 @@ func mergeSniffedOpts(user FileLoadOptions, sniff SniffResult) FileLoadOptions {
 	}
 	out := user
 	out.Format = sniff.Format
-	// CLI 传入的 NAPolicy 始终保留（嗅探不得覆盖）。
+	// CLI 传入的列控制与缺失策略始终保留（嗅探不得覆盖）。
 	userNA := user.CSV.NAPolicy
+	userLabelName := user.CSV.LabelColName
+	userDropNames := user.CSV.DropColNames
+	userIDName := user.CSV.IDColName
+	userWeightName := user.CSV.WeightColName
+	userNumTrail := user.CSV.NumTrailingTargets
+	userAutoEncode := user.CSV.AutoEncodeCats
+	userCatMaps := user.CSV.CategoryMaps
+	userExpected := user.CSV.ExpectedFeatures
 	switch sniff.Format {
 	case FormatLIBSVM:
 		if !user.libsvmConfigured() {
@@ -322,9 +330,40 @@ func mergeSniffedOpts(user FileLoadOptions, sniff SniffResult) FileLoadOptions {
 		} else if out.CSV.Delim == 0 && sniff.CSV.Delim != 0 {
 			out.CSV.Delim = sniff.CSV.Delim
 		}
+	case FormatTSVLabelLast:
+		// 若用户显式指定了列控制或类别编码，转由 FormatCSV(\t) 统一处理列解析。
+		if userLabelName != "" || len(userDropNames) > 0 || userIDName != "" || userWeightName != "" || userNumTrail >= 2 || userAutoEncode || len(userCatMaps) > 0 || len(userExpected) > 0 {
+			out.Format = FormatCSV
+			out.CSV = sniff.CSV
+			out.CSV.Delim = '\t'
+		}
 	}
 	if userNA != "" {
 		out.CSV.NAPolicy = userNA
+	}
+	if userLabelName != "" {
+		out.CSV.LabelColName = userLabelName
+	}
+	if len(userDropNames) > 0 {
+		out.CSV.DropColNames = append([]string(nil), userDropNames...)
+	}
+	if userIDName != "" {
+		out.CSV.IDColName = userIDName
+	}
+	if userWeightName != "" {
+		out.CSV.WeightColName = userWeightName
+	}
+	if userNumTrail >= 2 {
+		out.CSV.NumTrailingTargets = userNumTrail
+	}
+	if userAutoEncode {
+		out.CSV.AutoEncodeCats = true
+	}
+	if len(userCatMaps) > 0 {
+		out.CSV.CategoryMaps = userCatMaps
+	}
+	if len(userExpected) > 0 {
+		out.CSV.ExpectedFeatures = append([]string(nil), userExpected...)
 	}
 	return out
 }

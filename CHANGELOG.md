@@ -5,6 +5,17 @@
 
 ## [Unreleased]
 
+### Added — AG-NEXT, AG-DEEP, AG-OMNI, AG-APEX & AG-ZENITH（Agentic 全链路深化与全息自治收口）
+
+- **CLI 新子命令与有界演化自治**：`leaves autotune`（一键有界预算反射式演化自治闭环，串联 `sniff` 脏数据自适应 → `lessons` 跨任务记忆召回 `prior_lessons` → `baseline` → `diagnose` → `runs propose/crossover` → 最优模型定稿与经验自动沉淀 `distilled_lesson`）、`leaves split`（零泄漏 `random|stratified|group|time` 数据切分，支持 `--na-policy nan` 保留含缺失特征行并输出 `missing_cells`、`label_means`、`max_label_drift`、`leakage_ok`）、`leaves runs <status|pareto|select-parent|check-dup|crossover|propose>`（运行账本原生分析、折级 Pareto 选父、双亲交叉重组与防重变异提案）、`leaves diagnose`（一站式全息 ASI 诊断包，联动 `--metrics`/`--rounds`/`--model`/`--data` 输出 `zero_gain_features`、`suggested_drop_cols`、`suggested_scale_pos_weight` 与 `suggested_cli_args`）、`leaves compare`（多模型同台评测与配对 Bootstrap 置信区间显著性检验）、`leaves schema`（机器自省 CLI 契约，支持 `--command`/`--subcommand`）。
+- **深度模型画像与预测统计摘要（`leaves inspect` & `leaves predict`）**：`leaves inspect` 支持 `.quant.json` 量化侧车解析，并输出树深度 `max_depth_observed`、叶数分布 `mean_leaves_per_tree`、未使用特征列表 `unused_features` 及 `gblinear` 线性权重；`leaves predict` 对 `count:poisson`、`reg:gamma`、`reg:tweedie` 等对数链接目标及 `binary:logistic` 在 JSONL/CSV 下统一执行 Link 逆变换输出 `prediction`，并新增 `--metrics` 输出推理统计摘要（`pred_min`/`pred_max`/`pred_mean`/`positive_rate`）；`leaves lessons <add|search|list>` 新增 `--metrics` 结构化 JSON 输出。
+- **模型特征 Schema 自动对齐与数据防御**：当模型含语义 `FeatureNames` 时，`train --val`、`eval`、`predict`、`explain`、`compare` 与 `publish` 自动按模型特征 Schema 跳过多余列（免重复传 `--drop-cols`）并重排列顺序，缺失特征列时立即报 `error=feature_mismatch`；支持 `--label-col`、`--drop-cols`、`--id-col`、`--weight-col`（样本权重列）、`--scale-pos-weight`（二分类正样本加权）、`--na-policy nan`、`--auto-encode`（类别列编码字典随模型持久化）以及 `--tweedie-variance-power`、`--multi-output-tree`、`--num-parallel-tree`。
+- **深度可解释性（`leaves explain`）**：`--type importance` 支持 `--importance-type gain|weight|cover|total_gain|total_cover` 并输出 `ranked_features`/`zero_gain_features`；`--type shap` 支持 `--summary`（或 `--type shap-summary`）输出全局 `mean_abs_shap` 降序汇总；新增 `--type interaction`（二阶 Tree SHAP 特征交互矩阵与 `top_interactions`）与 `--type dump`（`--dump-format json|text|dot` 树结构转储）。
+- **诚实交叉验证与早停回填**：`CrossValidate` 排序任务自动走 `GroupKFold`、分类任务自动走 `StratifiedKFold`，支持 `--cv K --early-stop N` 折内早停并汇报 `mean_best_round`；`--from-run` 全量重训自动继承父代早停 `best_round` 防过拟合。
+- **全任务全息诊断与预测增强**：`train`/`eval` 自动输出二分类 `binary_diagnostics`（`auc`、最优 F1 阈值及混淆矩阵）、回归 `regression_diagnostics`（`r2`、`mae`、`medae`、`p90_abs_error`、`outlier_ratio`）、多分类 `multiclass_diagnostics`（`accuracy`、`macro_f1`、`per_class_f1` 及 $K\times K$ 混淆矩阵）与排序学习 `ranking_diagnostics`（`n_queries`、`ndcg@1/3/5/10`、`map`、`mrr`、`zero_relevant_queries`）；`predict` 支持 `--threshold`、`--output leaf|contrib`（逐行 TreeSHAP）且外部模型（LGB/XGB/ONNX/sklearn）无缝打通 `eval`/`predict`/`explain`。
+- **ONNX 双向互操作与发布回读自检（`--export-onnx` & `manifest.verification`）**：新增 `io.ExportONNX` / `io.ExportONNXFile` 与 `leaves publish --export-onnx`（产出标准 `ai.onnx.ml` `model.onnx`），且 `leaves publish` 自动对主模型与导出产物（XGB/ONNX/Quant）执行回读与合成样本推理 parity 自检并写入 `manifest.verification`。
+- **推荐控制面一键流水线**：`recsys/cmd/control pipeline` 支持从任意自定义 TSV 一键跑通八段控制面闭环，且所有子命令 stdout 统一输出纯 JSON。
+
 ---
 
 ## [2.8.0] - 2026-08-24

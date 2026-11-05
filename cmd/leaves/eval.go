@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"strings"
 
 	"github.com/linkerlin/leaves/v2/data"
 	leavesio "github.com/linkerlin/leaves/v2/io"
@@ -17,8 +18,12 @@ func cmdEval(args []string) error {
 	evalMetric := fs.String("eval-metric", "", "评估指标（默认 rmse）")
 	objective := fs.String("objective", "", "目标函数（margin→pred 变换；可从 metric 推断）")
 	metricsPath := fs.String("metrics", "", "输出 metrics.json（空=stdout）")
-	naPolicy := fs.String("na-policy", "error", "缺失值策略：error|skip-row")
+	naPolicy := fs.String("na-policy", "error", "缺失值策略：error|skip-row|nan")
+	autoEncode := fs.Bool("auto-encode", false, "将非数值字符串特征列自动按字典序编码（默认优先复用模型内 category_maps）")
 	numTarget := fs.Int("num-target", 0, "多目标评估：CSV 末 N 列标签（≥2；可从模型 n_output_groups 推断）")
+	labelCol := fs.String("label-col", "", "显式指定标签列名或 0-based 索引（WP-22）")
+	dropCols := fs.String("drop-cols", "", "逗号分隔需丢弃的列名或索引（如 ID、时间戳）")
+	weightCol := fs.String("weight-col", "", "样本权重列名或 0-based 索引（WP-41）")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -28,8 +33,8 @@ func cmdEval(args []string) error {
 	metric := *evalMetric
 	obj := *objective
 	if obj == "" {
-		// 从模型元数据自动推断 objective（排名默认 ndcg@10，二分类默认 logloss，等）
-		if _, irObj, err := leavesio.ParseLeavesJSONFile(*modelPath); err == nil {
+		// 从模型元数据自动推断 objective（支持 leaves.json / XGB / LGB / sklearn / ONNX，WP-26）
+		if _, irObj, _, err := leavesio.LoadModelIR(*modelPath); err == nil {
 			obj = irObj
 		}
 	}
@@ -53,8 +58,13 @@ func cmdEval(args []string) error {
 		nt = nc
 	}
 
-	dm, err := loadMatrixOpts(*dataPath, *naPolicy, nt)
+	catMaps := loadModelCategoryMaps(*modelPath)
+	expectedFeats := loadModelFeatureNames(*modelPath)
+	dm, err := loadMatrixFull(*dataPath, *naPolicy, nt, *labelCol, *dropCols, "", *weightCol, *autoEncode, catMaps, expectedFeats)
 	if err != nil {
+		return err
+	}
+	if err := requireLabelColumn(dm, *dataPath, nt); err != nil {
 		return err
 	}
 	vals, err := denseVals(dm)
@@ -95,6 +105,24 @@ func cmdEval(args []string) error {
 		Maximize:  mt.HigherIsBetter(),
 		NRows:     dm.NumRow(),
 		NFeatures: dm.NumCol(),
+	}
+	if obj == "binary:logistic" && nc == 1 {
+		probs := make([]float64, len(preds))
+		for i, raw := range preds {
+			probs[i] = sigmoid(raw)
+		}
+		doc.BinaryDiagnostics = computeBinaryDiagnostics(labels, probs)
+	} else if isMulticlassObjective(obj) && nc >= 2 {
+		doc.MulticlassDiagnostics = computeMulticlassDiagnostics(labels, preds, nc)
+	} else if nt < 2 && nc == 1 && (obj == "" || obj == "reg:squarederror" || obj == "reg:tweedie" || obj == "reg:gamma" || obj == "count:poisson") {
+		if len(groups) > 0 && strings.HasPrefix(metric, "ndcg") {
+			doc.RankingDiagnostics = computeRankingDiagnostics(labels, preds, groups)
+		} else {
+			regPreds := metricInputs("rmse", obj, preds, 1)
+			doc.RegressionDiagnostics = computeRegressionDiagnostics(labels, regPreds)
+		}
+	} else if len(groups) > 0 {
+		doc.RankingDiagnostics = computeRankingDiagnostics(labels, preds, groups)
 	}
 	if nt >= 2 {
 		doc.Params = &paramsRecord{NumTarget: nt, EvalMetric: metric}

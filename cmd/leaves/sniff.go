@@ -4,7 +4,9 @@ import (
 	"flag"
 	"fmt"
 	"math"
+	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/linkerlin/leaves/v2/data"
 )
@@ -17,7 +19,10 @@ func cmdSniff(args []string) error {
 	fs.Usage = func() { fmt.Fprintln(fs.Output(), "用法: leaves sniff --data PATH [--metrics PATH]") }
 	dataPath := fs.String("data", "", "数据路径（必需）")
 	metricsPath := fs.String("metrics", "", "输出 JSON（空=stdout）")
-	naPolicy := fs.String("na-policy", "error", "缺失值策略：error|skip-row（影响画像行数）")
+	naPolicy := fs.String("na-policy", "error", "缺失值策略：error|skip-row|nan（影响画像行数）")
+	autoEncode := fs.Bool("auto-encode", false, "将非数值字符串特征列自动按字典序编码（WP-31）")
+	labelCol := fs.String("label-col", "", "显式指定标签列名或 0-based 索引（WP-22）")
+	dropCols := fs.String("drop-cols", "", "逗号分隔需丢弃的列名或索引（如 ID、时间戳）")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -25,26 +30,111 @@ func cmdSniff(args []string) error {
 		return errUsage("--data 必需")
 	}
 
-	sniff, err := data.SniffFileFormat(*dataPath)
-	if err != nil {
-		return errAgentWrap("data_load", fmt.Sprintf("sniff: %v", err),
-			"检查文件路径与可读性", false, err)
-	}
-	dm, err := loadMatrix(*dataPath, *naPolicy)
+	doc, err := buildSniffReport(*dataPath, *naPolicy, *labelCol, *dropCols, *autoEncode)
 	if err != nil {
 		return err
+	}
+	return writeJSON(*metricsPath, doc)
+}
+
+func buildSniffReport(dataPath, naPolicy, labelCol, dropCols string, autoEncode bool) (map[string]any, error) {
+	sniff, err := data.SniffFileFormat(dataPath)
+	if err != nil {
+		return nil, errAgentWrap("data_load", fmt.Sprintf("sniff: %v", err),
+			"检查文件路径与可读性", false, err)
+	}
+	dm, err := loadMatrixWithColsAndCats(dataPath, naPolicy, 0, labelCol, dropCols, "", autoEncode, nil)
+	autoFallbackNumeric := true
+	if err != nil {
+		// 若用户未显式开启 --auto-encode 或 --na-policy nan，sniff 作为只读探测工具自动以宽容模式重试画像，
+		// 以便向智能体报告 categorical_columns / nan_cells / id_like_columns，而非直接报错中断探测。
+		dm2, err2 := loadMatrixWithColsAndCats(dataPath, "nan", 0, labelCol, dropCols, "", true, nil)
+		if err2 != nil {
+			return nil, err
+		}
+		dm = dm2
+		autoFallbackNumeric = false
 	}
 
 	// Matrix.NumCol() 始终是特征维：标签在 Labels()，排序 qid 在 Groups，均不计入列数。
 	nRows, nFeat := dm.NumRow(), dm.NumCol()
-	ls := labelStats(dm.Labels())
 	isRank := sniff.Format == data.FormatRanking
-	hasLabel := len(dm.Labels()) == nRows || isRank
+	missingLabel := false
+	if d, ok := dm.(*data.Dense); ok && d.MissingLabel && !isRank {
+		missingLabel = true
+	}
+	hasLabel := (len(dm.Labels()) == nRows || isRank) && !missingLabel
+	var ls map[string]any
+	var suggObj, suggMetric string
+	if missingLabel {
+		ls = map[string]any{"detected": false}
+	} else {
+		ls = labelStats(dm.Labels())
+		suggObj, suggMetric = suggestObjective(ls, sniff.Format)
+	}
+	featNames := namesOf(dm)
+	dq := scanDataQuality(dm, featNames)
+	if !autoFallbackNumeric {
+		dq["numeric"] = false
+	}
+	if missingLabel {
+		if w, ok := dq["warnings"].([]string); ok {
+			dq["warnings"] = append(w, "missing_label")
+		}
+	}
 
-	suggObj, suggMetric := suggestObjective(ls, sniff.Format)
+	var catCols []string
+	var idLikeCols []string
+	var suggestedDrops []string
+	dropSeen := map[string]bool{}
+	addSuggestedDrop := func(c string) {
+		c = strings.TrimSpace(c)
+		if c == "" || dropSeen[c] {
+			return
+		}
+		dropSeen[c] = true
+		suggestedDrops = append(suggestedDrops, c)
+	}
+
+	if d, ok := dm.(*data.Dense); ok {
+		for colName := range d.CategoryMaps {
+			catCols = append(catCols, colName)
+		}
+		sort.Strings(catCols)
+		for _, nm := range featNames {
+			lower := strings.ToLower(strings.TrimSpace(nm))
+			isIDName := lower == "id" || lower == "uuid" || lower == "guid" ||
+				strings.HasSuffix(lower, "_id") || strings.HasSuffix(lower, "id") && (strings.HasPrefix(lower, "user") || strings.HasPrefix(lower, "item") || strings.HasPrefix(lower, "row") || strings.HasPrefix(lower, "sample"))
+			if isIDName {
+				idLikeCols = append(idLikeCols, nm)
+				addSuggestedDrop(nm)
+				continue
+			}
+			if m, isCat := d.CategoryMaps[nm]; isCat && nRows >= 10 && len(m) == nRows {
+				idLikeCols = append(idLikeCols, nm)
+				addSuggestedDrop(nm)
+			}
+		}
+	}
+	if cf, ok := dq["constant_features"].([]string); ok {
+		for _, c := range cf {
+			addSuggestedDrop(c)
+		}
+	}
+	if len(catCols) > 0 {
+		if w, ok := dq["warnings"].([]string); ok {
+			dq["warnings"] = append(w, fmt.Sprintf("categorical_columns=%d (use --auto-encode)", len(catCols)))
+		}
+	}
+	if len(idLikeCols) > 0 {
+		if w, ok := dq["warnings"].([]string); ok {
+			dq["warnings"] = append(w, fmt.Sprintf("id_like_columns=%d", len(idLikeCols)))
+		}
+	}
+
 	doc := map[string]any{
 		"schema_version":      metricsSchemaVersion,
-		"file":                *dataPath,
+		"file":                dataPath,
 		"format":              formatName(sniff.Format),
 		"n_rows":              nRows,
 		"n_cols":              nFeat, // 与 Matrix 对齐：特征列数（非文件原始列数）
@@ -54,10 +144,30 @@ func cmdSniff(args []string) error {
 		"label":               ls,
 		"suggested_objective": suggObj,
 		"suggested_metric":    suggMetric,
-		"data_quality":        scanDataQuality(dm, namesOf(dm)),
+		"data_quality":        dq,
 	}
-	if names := featureNamesOf(dm); len(names) > 0 {
-		doc["feature_names"] = names
+	if len(catCols) > 0 {
+		doc["categorical_columns"] = catCols
+	}
+	if len(idLikeCols) > 0 {
+		doc["id_like_columns"] = idLikeCols
+	}
+	if len(suggestedDrops) > 0 {
+		doc["suggested_drop_cols"] = suggestedDrops
+	}
+	if d, ok := dm.(*data.Dense); ok {
+		if d.LabelName != "" {
+			doc["label_col"] = d.LabelName
+		}
+		if len(d.DroppedCols) > 0 {
+			doc["dropped_cols"] = d.DroppedCols
+		}
+		if len(d.CategoryMaps) > 0 && (autoEncode || !autoFallbackNumeric) {
+			doc["category_maps"] = d.CategoryMaps
+		}
+	}
+	if len(featNames) > 0 {
+		doc["feature_names"] = featNames
 	}
 	if d, ok := dm.(*data.Dense); ok && d.SkippedRows > 0 {
 		doc["skipped_rows"] = d.SkippedRows
@@ -66,7 +176,7 @@ func cmdSniff(args []string) error {
 			doc["data_quality"] = dq
 		}
 	}
-	return writeJSON(*metricsPath, doc)
+	return doc, nil
 }
 
 func namesOf(dm data.Matrix) []string {

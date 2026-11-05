@@ -16,9 +16,11 @@ import (
 	"github.com/linkerlin/leaves/v2/recsys/eval"
 	"github.com/linkerlin/leaves/v2/recsys/ledger"
 	"github.com/linkerlin/leaves/v2/recsys/monitor"
+	"github.com/linkerlin/leaves/v2/recsys/pipeline"
 	"github.com/linkerlin/leaves/v2/recsys/release"
 	"github.com/linkerlin/leaves/v2/recsys/replay"
 	"github.com/linkerlin/leaves/v2/recsys/split"
+	"github.com/linkerlin/leaves/v2/recsys/synth"
 	"github.com/linkerlin/leaves/v2/recsys/tsvio"
 )
 
@@ -31,8 +33,90 @@ func newFlagSet(name string) *flag.FlagSet {
 
 // parseFlags 解析并吞掉默认输出；错误转为 usage 错误。
 func parseFlags(fs *flag.FlagSet, args []string) error {
-	if err := fs.Parse(args); err != nil {
+	cleaned := stripControlGlobalFlags(args)
+	if err := fs.Parse(cleaned); err != nil {
 		return usageErr("flag 解析失败: %v", err)
+	}
+	return nil
+}
+
+// ── pipeline（WP-28）───────────────────────────────────────
+
+func cmdPipeline(args []string) error {
+	fs := newFlagSet("pipeline")
+	ws := fs.String("workspace", "", "recsys 工作区根目录（必填）")
+	interactions := fs.String("interactions", "", "四元交互 TSV（User\\tItem\\tScore\\tTag）")
+	catalog := fs.String("catalog", "", "物品目录 TSV（Item\\tTag\\tfeat1...）")
+	useSynth := fs.Bool("synth", false, "使用内置合成数据运行离线四段流水线")
+	recallSize := fs.Int("recall-size", 100, "每用户召回候选数")
+	deckSize := fs.Int("deck-size", 10, "发牌 deck 大小")
+	maxSameTag := fs.Int("max-same-tag", 3, "发牌同 Tag 上限")
+	rounds := fs.Int("rounds", 25, "LTR 训练轮数")
+	ndcgK := fs.Int("ndcg-k", 10, "NDCG@K")
+	splitMode := fs.String("split-mode", "user", "切分方式 user|time")
+	seed := fs.Int64("seed", 42, "随机种子")
+	trainUsers := fs.Int("train-users", 18, "合成数据训练用户数")
+	testUsers := fs.Int("test-users", 6, "合成数据测试用户数")
+	testRatio := fs.Float64("test-ratio", 0.25, "外部 TSV 测试用户比例")
+	out := fs.String("out", "", "可选输出流水线报告 JSON 路径")
+	if err := parseFlags(fs, args); err != nil {
+		return err
+	}
+	if *ws == "" {
+		return usageErr("-workspace 必填")
+	}
+	if !*useSynth && (*interactions == "" || *catalog == "") {
+		return usageErr("需提供 -interactions 与 -catalog TSV，或指定 -synth")
+	}
+
+	w, err := recsys.NewWorkspace(*ws)
+	if err != nil {
+		return err
+	}
+	cfg := recsys.DefaultSmokeConfig()
+	cfg.Seed = *seed
+	cfg.RecallSize = *recallSize
+	cfg.DeckSize = *deckSize
+	cfg.MaxSameTag = *maxSameTag
+	cfg.TrainRounds = *rounds
+	cfg.NDCGK = *ndcgK
+	cfg.SplitMode = *splitMode
+	cfg.TrainUsers = *trainUsers
+	cfg.TestUsers = *testUsers
+
+	var ds synth.Dataset
+	if *useSynth {
+		if cfg.NumItems < cfg.RecallSize {
+			cfg.NumItems = cfg.RecallSize * 4
+		}
+		ds, err = synth.Generate(cfg)
+		if err != nil {
+			return err
+		}
+	} else {
+		ds, err = pipeline.LoadDatasetFromFiles(*interactions, *catalog, *seed, *testRatio)
+		if err != nil {
+			return err
+		}
+		if len(ds.Catalog) < cfg.RecallSize {
+			cfg.RecallSize = len(ds.Catalog)
+		}
+	}
+
+	res, err := pipeline.RunFromDataset(w, ds, cfg)
+	if err != nil {
+		return err
+	}
+	if *out != "" {
+		if err := tsvio.WriteJSON(*out, res); err != nil {
+			return err
+		}
+	}
+	if controlJSONOutput {
+		printJSON("pipeline_result", res)
+	} else {
+		fmt.Printf("流水线完成: workspace=%s recall_train=%d recall_test=%d test_ndcg=%.4f deal=%d\n",
+			w.Root, res.RecallTrain, res.RecallTest, res.Eval.TestNDCG, res.DealRows)
 	}
 	return nil
 }
@@ -610,7 +694,9 @@ func cmdRelease(args []string) error {
 	if err := tsvio.WriteJSON(*statePath, st); err != nil {
 		return err
 	}
-	fmt.Printf("release %s → %s（状态已写 %s）\n", m.ReleaseID, st.State, *statePath)
+	if !controlJSONOutput {
+		fmt.Printf("release %s → %s（状态已写 %s）\n", m.ReleaseID, st.State, *statePath)
+	}
 	return nil
 }
 
@@ -628,6 +714,21 @@ func readJSON(path string, v any) error {
 }
 
 func printJSON(kind string, v any) {
+	if controlJSONOutput {
+		raw, err := json.Marshal(v)
+		if err == nil {
+			var m map[string]any
+			if json.Unmarshal(raw, &m) == nil && m != nil {
+				m["kind"] = kind
+				b, _ := json.MarshalIndent(m, "", "  ")
+				fmt.Printf("%s\n", b)
+				return
+			}
+		}
+		b, _ := json.MarshalIndent(v, "", "  ")
+		fmt.Printf("%s\n", b)
+		return
+	}
 	b, _ := json.MarshalIndent(v, "", "  ")
 	fmt.Printf("%s:\n%s\n", kind, b)
 }

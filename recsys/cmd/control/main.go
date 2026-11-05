@@ -4,14 +4,19 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 )
 
 const usage = `control — recsys 推荐生产闭环控制面 CLI
 
 用法:
+  control [--error-format text|json] <subcommand> [flags]
+
+  control pipeline   -workspace DIR [-interactions raw.tsv -catalog items.tsv | -synth] [-recall-size 100] [-deck-size 10] [-max-same-tag 3] [-rounds 25] [-out pipeline_report.json]
   control snapshot   -workspace DIR -out snapshot.json -snapshot-id ID -purpose train|eval|release -time-start T -time-end T [-legacy] [-created-at T]
   control split      -events events.jsonl -train-end T -val-start T -test-start T -out-dir DIR
   control eval       -workspace DIR -thresholds th.json [-out evaluation.json] [-recall-k 100] [-ndcg-k 10] [-deck-size 10] [-max-same-tag 3] [-leak-count 0] [-event-count 0]
@@ -25,6 +30,9 @@ const usage = `control — recsys 推荐生产闭环控制面 CLI
 T = RFC3339（如 2026-08-20T10:00:00Z）。全部输出为结构化文件；
 退出码: 0 成功 / 1 用法或 IO / 2 校验或内部错误。
 `
+
+// controlJSONOutput 标记是否处于纯 JSON 输出模式（WP-28 / AN8）。
+var controlJSONOutput = false
 
 // errUsage 标记用法类错误（退出码 1）。
 var errUsage = errors.New("usage")
@@ -40,41 +48,82 @@ func exitCode(err error) int {
 	return 2
 }
 
+func stripControlGlobalFlags(args []string) []string {
+	if strings.EqualFold(strings.TrimSpace(os.Getenv("LEAVES_ERROR_FORMAT")), "json") {
+		controlJSONOutput = true
+	}
+	out := make([]string, 0, len(args))
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		switch {
+		case (a == "--error-format" || a == "-error-format") && i+1 < len(args):
+			controlJSONOutput = strings.EqualFold(strings.TrimSpace(args[i+1]), "json")
+			i++
+		case strings.HasPrefix(a, "--error-format="):
+			controlJSONOutput = strings.EqualFold(strings.TrimSpace(strings.TrimPrefix(a, "--error-format=")), "json")
+		case strings.HasPrefix(a, "-error-format="):
+			controlJSONOutput = strings.EqualFold(strings.TrimSpace(strings.TrimPrefix(a, "-error-format=")), "json")
+		case a == "--json" || a == "-json":
+			controlJSONOutput = true
+		default:
+			out = append(out, a)
+		}
+	}
+	return out
+}
+
 func main() {
-	if len(os.Args) < 2 {
+	args := stripControlGlobalFlags(os.Args[1:])
+	if len(args) < 1 {
 		fmt.Fprint(os.Stderr, usage)
 		os.Exit(1)
 	}
-	sub, args := os.Args[1], os.Args[2:]
+	sub, rest := args[0], args[1:]
 	var err error
 	switch sub {
+	case "pipeline":
+		err = cmdPipeline(rest)
 	case "snapshot":
-		err = cmdSnapshot(args)
+		err = cmdSnapshot(rest)
 	case "split":
-		err = cmdSplit(args)
+		err = cmdSplit(rest)
 	case "eval":
-		err = cmdEval(args)
+		err = cmdEval(rest)
 	case "from-deal":
-		err = cmdFromDeal(args)
+		err = cmdFromDeal(rest)
 	case "append-exposure":
-		err = cmdAppend(args, "exposure")
+		err = cmdAppend(rest, "exposure")
 	case "append-feedback":
-		err = cmdAppend(args, "feedback")
+		err = cmdAppend(rest, "feedback")
 	case "replay":
-		err = cmdReplay(args)
+		err = cmdReplay(rest)
 	case "monitor":
-		err = cmdMonitor(args)
+		err = cmdMonitor(rest)
 	case "release":
-		err = cmdRelease(args)
+		err = cmdRelease(rest)
 	case "help", "-h", "--help":
 		fmt.Print(usage)
 		return
 	default:
-		fmt.Fprintf(os.Stderr, "control: 未知子命令 %q\n\n%s", sub, usage)
-		os.Exit(1)
+		err = usageErr("未知子命令 %q", sub)
 	}
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "control %s: %v\n", sub, err)
-		os.Exit(exitCode(err))
+		code := exitCode(err)
+		if controlJSONOutput {
+			errCode := "internal"
+			if code == 1 {
+				errCode = "usage"
+			}
+			b, _ := json.MarshalIndent(map[string]any{
+				"error":      errCode,
+				"subcommand": sub,
+				"message":    err.Error(),
+				"exit_code":  code,
+			}, "", "  ")
+			fmt.Fprintln(os.Stderr, string(b))
+		} else {
+			fmt.Fprintf(os.Stderr, "control %s: %v\n", sub, err)
+		}
+		os.Exit(code)
 	}
 }

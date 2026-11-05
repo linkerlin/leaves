@@ -11,6 +11,7 @@ import (
 
 	"github.com/linkerlin/leaves/v2/internal/xgbin"
 	"github.com/linkerlin/leaves/v2/model"
+	"github.com/linkerlin/leaves/v2/tree"
 )
 
 // LoaderFunc 由根包注册的遗留模型加载函数。
@@ -258,51 +259,91 @@ func LoadFromFile(filename string, opts *LoadOptions) (*model.Ensemble, error) {
 
 var errNeedLegacyLoader = fmt.Errorf("need legacy loader")
 
-func loadIRFormat(filename string, format Format, opts *LoadOptions) (*model.Ensemble, error) {
+// LoadModelIR 自动检测文件格式并解析为统一 ModelIR、objective 字符串与 Format。
+// 支持 leaves.json、XGBoost JSON/UBJ/bin、LightGBM text/JSON、sklearn pickle、ONNX TreeEnsemble。
+func LoadModelIR(filename string) (*model.ModelIR, string, Format, error) {
+	format, derr := DetectFormat(filename)
+	if derr != nil {
+		return nil, "", FormatUnknown, wrapDetectError(filename, derr)
+	}
+	if format == FormatONNX {
+		raw, err := os.ReadFile(filename)
+		if err != nil {
+			return nil, "", format, wrapLoadError(filename, format, err)
+		}
+		ir, outT, err := parseONNXForest(raw)
+		if err != nil {
+			return nil, "", format, wrapLoadError(filename, format, err)
+		}
+		obj := "reg:squarederror"
+		switch outT.outTyp {
+		case tree.TransformLogistic:
+			obj = "binary:logistic"
+		case tree.TransformSoftmax:
+			obj = "multi:softprob"
+		}
+		return ir, obj, format, nil
+	}
+	ir, obj, err := parseIRFormat(filename, format)
+	if err != nil {
+		return nil, "", format, wrapLoadError(filename, format, err)
+	}
+	return ir, obj, format, nil
+}
+
+func parseIRFormat(filename string, format Format) (*model.ModelIR, string, error) {
 	switch format {
 	case FormatXGBoostJSON:
 		r, err := ParseXGBoostJSONFile(filename)
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
-		return ensembleFromIR(r.IR, r.Objective, opts)
+		return r.IR, r.Objective, nil
 	case FormatXGBoostUBJSON:
 		r, err := ParseXGBoostUBJSONFile(filename)
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
-		return ensembleFromIR(r.IR, r.Objective, opts)
+		return r.IR, r.Objective, nil
 	case FormatXGBoost:
 		r, err := ParseXGBoostBinaryFile(filename)
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
-		return ensembleFromIR(r.IR, r.Objective, opts)
+		return r.IR, r.Objective, nil
 	case FormatLeavesJSON:
 		r, err := LoadLeavesJSONFile(filename)
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
-		return ensembleFromIR(r.IR, r.Objective, opts)
+		return r.IR, r.Objective, nil
 	case FormatLightGBM:
 		r, err := ParseLightGBMTextFile(filename)
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
-		return ensembleFromIR(r.IR, r.Objective, opts)
+		return r.IR, r.Objective, nil
 	case FormatLightGBMJSON:
 		r, err := ParseLightGBMJSONFile(filename)
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
-		return ensembleFromIR(r.IR, r.Objective, opts)
+		return r.IR, r.Objective, nil
 	case FormatSklearn:
 		r, err := ParseSklearnPickleFile(filename)
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
-		return ensembleFromIR(r.IR, r.Objective, opts)
+		return r.IR, r.Objective, nil
 	default:
-		return nil, errNeedLegacyLoader
+		return nil, "", errNeedLegacyLoader
 	}
+}
+
+func loadIRFormat(filename string, format Format, opts *LoadOptions) (*model.Ensemble, error) {
+	ir, obj, err := parseIRFormat(filename, format)
+	if err != nil {
+		return nil, err
+	}
+	return ensembleFromIR(ir, obj, opts)
 }

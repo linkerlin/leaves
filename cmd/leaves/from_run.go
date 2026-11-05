@@ -157,3 +157,90 @@ func applyParamsIfUnset(
 		*evalMetric = p.EvalMetric
 	}
 }
+
+func applyExtraParamsIfUnset(
+	set map[string]bool,
+	rec *runRecord,
+	rounds *int,
+	valPath *string,
+	cv *int,
+	labelCol, dropCols, boosterName *string,
+	rateDrop, skipDrop *float64,
+	monotone *string,
+	lrDecay *float64,
+	batchRows *int,
+	naPolicy *string,
+	autoEncode *bool,
+) {
+	if rec == nil {
+		return
+	}
+	if p := rec.Params; p != nil {
+		if !set["label-col"] && p.LabelCol != "" {
+			*labelCol = p.LabelCol
+		}
+		if !set["drop-cols"] && p.DropCols != "" {
+			*dropCols = p.DropCols
+		}
+		if !set["booster"] && p.Booster != "" {
+			*boosterName = p.Booster
+		}
+		if !set["rate-drop"] && p.RateDrop > 0 {
+			*rateDrop = p.RateDrop
+		}
+		if !set["skip-drop"] && p.SkipDrop > 0 {
+			*skipDrop = p.SkipDrop
+		}
+		if !set["monotone"] && p.Monotone != "" {
+			*monotone = p.Monotone
+		}
+		if !set["lr-decay"] && p.LRDecay > 0 {
+			*lrDecay = p.LRDecay
+		}
+		if batchRows != nil && !set["batch-rows"] && p.BatchRows > 0 {
+			*batchRows = p.BatchRows
+		}
+		if naPolicy != nil && !set["na-policy"] && p.NAPolicy != "" {
+			*naPolicy = p.NAPolicy
+		}
+		if autoEncode != nil && !set["auto-encode"] && p.AutoEncode {
+			*autoEncode = true
+		}
+	}
+	// WP-24（AN3）：若源 run 经过早停（BestRound > 0），且当前为全量定稿（无 --val 且 --cv < 2）
+	// 且未显式指定 --rounds，则自动采用 BestRound 代替初始最大轮数上限，防止全量定稿严重过拟合。
+	if !set["rounds"] && *valPath == "" && *cv < 2 {
+		if rec.BestRound > 0 {
+			*rounds = rec.BestRound
+		}
+	}
+}
+
+func applyApexParamsIfUnset(
+	set map[string]bool,
+	rec *runRecord,
+	weightCol *string,
+	scalePosWeight, tweediePower *float64,
+	multiOutputTree *bool,
+	numParallelTree *int,
+) {
+	if rec == nil || rec.Params == nil {
+		return
+	}
+	p := rec.Params
+	if weightCol != nil && !set["weight-col"] && p.WeightCol != "" {
+		*weightCol = p.WeightCol
+	}
+	if scalePosWeight != nil && !set["scale-pos-weight"] && p.ScalePosWeight > 0 {
+		*scalePosWeight = p.ScalePosWeight
+	}
+	if tweediePower != nil && !set["tweedie-variance-power"] && p.TweedieVariancePower > 0 {
+		*tweediePower = p.TweedieVariancePower
+	}
+	if multiOutputTree != nil && !set["multi-output-tree"] && p.MultiOutputTree {
+		*multiOutputTree = true
+	}
+	if numParallelTree != nil && !set["num-parallel-tree"] && p.NumParallelTree > 0 {
+		*numParallelTree = p.NumParallelTree
+	}
+}
